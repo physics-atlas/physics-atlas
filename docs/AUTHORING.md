@@ -234,7 +234,7 @@ The 12 types (key → what it means), from `src/data/conceptVocabulary.json`:
 label} {relationship} {target label}."* The `relationship` string is looked
 up (trimmed, case-insensitive) against the template table in
 `conceptVocabulary.json` — an edge whose relationship isn't in the table
-fails validation. The 17 known relationships:
+fails validation. The 32 known relationships:
 
 | `relationship` | Sentence template |
 |---|---|
@@ -255,6 +255,44 @@ fails validation. The 17 known relationships:
 | `assumes a` | `{s} assumes a {t}.` |
 | `describes` | `{s} describes {t}.` |
 | `happens in` | `{s} happens in {t}.` |
+| `exhibits` | `{s} exhibits {t}.` |
+| `under` | `{s} is under {t}.` |
+| `predicts` | `{s} predicts {t}.` |
+| `applies to` | `{s} applies to {t}.` |
+| `valid under` | `{s} is valid under {t}.` |
+| `uses` | `{s} uses {t}.` |
+| `expressed by` | `{s} is expressed by {t}.` |
+| `tested by` | `{s} is tested by {t}.` |
+| `concerns` | `{s} concerns {t}.` |
+| `requires` | `{s} requires {t}.` |
+| `supported by` | `{s} is supported by {t}.` |
+| `addresses` | `{s} addresses {t}.` |
+| `approximates` | `{s} approximates {t}.` |
+| `assumes` | `{s} assumes {t}.` |
+| `is a class of` | `{s} is a class of {t}.` |
+
+The twelve from `exhibits` to `addresses` follow the intended pattern by node type (not enforced by the
+validator):
+
+| Source type | Relationship | Target type |
+|---|---|---|
+| Physical system | `exhibits` | Phenomenon |
+| Physical system | `under` | Conditions |
+| Model | `explains` / `predicts` | Phenomenon |
+| Model | `applies to` | Physical system |
+| Model | `valid under` | Conditions |
+| Model | `uses` | Mathematical formalism |
+| Model | `expressed by` | Law/equation |
+| Model | `tested by` | Experiment |
+| Learning goal | `concerns` | any physics node |
+| Learning goal | `requires` | Learning goal |
+| Learning goal | `supported by` | Educational resource |
+| Learning goal | `addresses` | Misconception |
+
+On the concept map every edge carries its relationship name as a label along
+the line (hidden when zoomed far out, larger when the edge is highlighted);
+hovering the line enlarges its name and pops out the two concepts it joins.
+The full sentence appears in each concept's card under **Relations**.
 
 Adding a new relationship type means adding a row to `conceptVocabulary.json`
 first — the validator refuses any edge whose relationship isn't in the table.
@@ -282,6 +320,26 @@ An optional integer, 1 (most specific) to 5 (most general) — drives node
 size on the map once feature-16 renders it. **Leave it out** until you've
 decided; a missing value falls back to a connection-count heuristic.
 Learning goals are always drawn smallest, regardless of `generality`.
+
+### What a concept's card shows
+
+Clicking a concept highlights everything it builds on and opens its card: the
+description, the epistemic status, then sections that depend on its type —
+e.g. a phenomenon lists the conditions it applies under (directly linked, or
+through the system/model that exhibits it), where it is seen and what explains
+it, plus its learning goals (still TBD). The sections are configured per type in
+`src/graph/cardSections.ts`; they list linked concepts of the right type in
+either edge direction, so they fill in as you add edges. Every relation is
+also listed under **All relations**.
+
+### `epistemicStatus`
+
+An optional top-level string on any node saying how settled the concept is,
+e.g. `"epistemicStatus": "Candidate"` (Wave Dark Matter). It appears on the
+concept's card; a missing value shows a **To-do** marker. Known values live in
+`conceptVocabulary.json` → `epistemicStatuses`; using a new value is fine but
+the validator warns until you add it there. Leave the field out rather than
+writing an empty string.
 
 ### `review` — an open question for you
 

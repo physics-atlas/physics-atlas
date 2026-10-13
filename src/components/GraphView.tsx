@@ -4,20 +4,31 @@ import dagre from 'cytoscape-dagre';
 import type { ConceptGraph, Topic } from '../data/types';
 import { buildTopicMap, buildUnitGraph, parseUnitId, resolveSubtopicRef } from '../graph/dag';
 import { CATEGORY_COLORS, categoryOf } from '../graph/categoryColors';
-import { buildConceptIndex, edgeSentence, nodeRadius } from '../graph/concepts';
+import { buildConceptIndex, nodeRadius, normalizeRelationship } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import { TYPE_COLORS } from '../graph/typeColors';
+import { typeIconUri } from '../graph/typeIcons';
+import {
+  better,
+  createRng,
+  layoutKey,
+  packComponents,
+  shuffled,
+  sweepRanks,
+} from '../graph/layoutOptimize';
+import type { LayoutScore, NodeBox, Positions, Segment } from '../graph/layoutOptimize';
 
 cytoscape.use(dagre);
 
 const FADE_PX = 6;
 const LABEL_PX = 8;
+const ICON_BOOST_PX = 14;
 
 interface GraphViewProps {
   /**
    * The input variant: pass exactly one of `topics` (topic/subtopic DAG) or
    * `concepts` (typed concept graph — circles sized by generality, 1-hop
-   * hover, sentence edges, zoom-linked fade).
+   * hover, relation-labelled edges, zoom-linked fade).
    */
   topics?: Topic[];
   concepts?: ConceptGraph;
@@ -46,12 +57,53 @@ interface GraphViewProps {
   goalId?: string | null;
   /** Units to connect with cross-topic unit edges (the goal-path closure). */
   unitPathIds?: Set<string> | null;
+  /**
+   * Animate-fit the viewport to these nodes whenever the set changes; going
+   * back to null re-fits the whole graph.
+   */
+  fitIds?: Set<string> | null;
+  /** Screen px covered by overlay panels on each side, kept clear by `fitIds`. */
+  fitInsets?: Insets;
   onSelect: (id: string | null) => void;
+}
+
+interface Insets {
+  left: number;
+  right: number;
+  bottom: number;
+}
+
+const NO_INSETS: Insets = { left: 0, right: 0, bottom: 0 };
+const FIT_PADDING = 48;
+const FIT_MAX_ZOOM = 1.3;
+
+/** cy.fit() with asymmetric side insets, so the fit lands beside overlay panels. */
+function fitBeside(
+  cy: cytoscape.Core,
+  eles: cytoscape.CollectionReturnValue,
+  insets: Insets,
+  animate = true,
+) {
+  // On narrow screens the panels cover the canvas anyway — fit the full width.
+  if (insets.left + insets.right > cy.width() * 0.6) insets = { ...insets, left: 0, right: 0 };
+  const bb = eles.boundingBox();
+  const w = cy.width() - insets.left - insets.right - 2 * FIT_PADDING;
+  const h = cy.height() - insets.bottom - 2 * FIT_PADDING;
+  if (w <= 0 || h <= 0 || eles.empty()) return;
+  const zoom = Math.min(FIT_MAX_ZOOM, w / Math.max(bb.w, 1), h / Math.max(bb.h, 1));
+  const pan = {
+    x: insets.left + FIT_PADDING + (w - bb.w * zoom) / 2 - bb.x1 * zoom,
+    y: FIT_PADDING + (h - bb.h * zoom) / 2 - bb.y1 * zoom,
+  };
+  cy.stop();
+  if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) cy.viewport({ zoom, pan });
+  else cy.animate({ zoom, pan }, { duration: 700, easing: 'ease-in-out-cubic' });
 }
 
 const styleFor = (large: boolean, light: boolean) => {
   const ink = light ? '#1c2333' : '#eef2fb';
   const surface = light ? '#f3f5fa' : '#070b14';
+  const inkMuted = light ? '#4a5570' : '#b7c2dc';
   const fadeDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? '0s' : '0.3s';
   const edge = light ? 'rgba(70, 90, 135, 0.4)' : 'rgba(160, 180, 224, 0.28)';
   const edgeArrow = light ? 'rgba(70, 90, 135, 0.5)' : 'rgba(160, 180, 224, 0.35)';
@@ -105,6 +157,20 @@ const styleFor = (large: boolean, light: boolean) => {
       'transition-property': 'opacity, text-opacity, background-opacity, border-width, border-color',
       'transition-duration': fadeDuration,
     },
+  },
+  {
+    selector: 'node.concept-node[icon]',
+    style: {
+      'background-image': 'data(icon)',
+      'background-width': '76%',
+      'background-height': '76%',
+      'background-image-opacity': 0.95,
+    },
+  },
+  // Zoomed out, the circle is only a few px across — let the glyph fill more of it.
+  {
+    selector: 'node.concept-node[icon].icon-boost',
+    style: { 'background-width': '86%', 'background-height': '86%' },
   },
   // Zoom-linked fade (concept variant) — before chosen/dimmed/sel/hover so an
   // explicitly selected or hovered node is never left invisible.
@@ -178,7 +244,23 @@ const styleFor = (large: boolean, light: boolean) => {
       'transition-timing-function': 'ease-in-out',
     },
   },
-  { selector: 'edge.concept-edge', style: { 'transition-duration': fadeDuration } },
+  {
+    selector: 'edge.concept-edge',
+    style: {
+      label: 'data(relation)',
+      color: inkMuted,
+      'font-size': 9,
+      // Cytoscape drops a label whose on-screen size falls below this, so
+      // relation names vanish when zoomed out instead of piling up.
+      'min-zoomed-font-size': 7,
+      'font-family': 'system-ui, -apple-system, "Segoe UI", sans-serif',
+      'text-rotation': 'autorotate',
+      'text-background-color': surface,
+      'text-background-opacity': 0.75,
+      'text-background-padding': 2,
+      'transition-duration': fadeDuration,
+    },
+  },
   { selector: 'edge.zoom-faded', style: { opacity: 0.12 } },
   {
     selector: 'edge.optional-edge',
@@ -219,21 +301,6 @@ const styleFor = (large: boolean, light: boolean) => {
       width: 2.5,
       'line-color': goldEdge,
       'target-arrow-color': goldArrow,
-    },
-  },
-  {
-    selector: 'edge.concept-edge.sentence-shown',
-    style: {
-      opacity: 1,
-      label: 'data(sentence)',
-      color: ink,
-      'font-size': 11,
-      'font-family': 'system-ui, -apple-system, "Segoe UI", sans-serif',
-      'text-rotation': 'autorotate',
-      'text-background-color': surface,
-      'text-background-opacity': 0.85,
-      'text-background-padding': 3,
-      'z-index': 20,
     },
   },
   // Hover states — defined last so they win over dimmed/onpath/sel while active.
@@ -295,12 +362,59 @@ const styleFor = (large: boolean, light: boolean) => {
       'underlay-padding': 10,
     },
   },
+  {
+    selector: 'edge.concept-edge.onpath, edge.concept-edge.hover-pre, edge.concept-edge.hover-post',
+    style: {
+      color: ink,
+      'font-size': 12.5,
+      'font-weight': 'bold',
+      'text-background-opacity': 0.85,
+      'z-index': 15,
+    },
+  },
+  // Hovering a line: its relation name grows and the two concepts it joins
+  // pop out, their names on the same plate as the relation name.
+  {
+    selector: 'edge.concept-edge.edge-hovered',
+    style: {
+      opacity: 1,
+      width: 3,
+      'line-color': onpath,
+      'target-arrow-color': onpathArrow,
+      color: ink,
+      'font-size': 15,
+      'font-weight': 'bold',
+      'text-background-opacity': 0.95,
+      'text-background-padding': 3,
+      'z-index': 20,
+    },
+  },
   // Circles are sized by generality — keep the grow small and the fill
   // stronger than the topic boxes' tint, or small circles vanish on hover.
   { selector: 'node.concept-node.hovered', style: { padding: '3px' } },
   {
     selector: 'node.concept-node.chosen, node.concept-node.hovered',
     style: { 'background-opacity': 0.85 },
+  },
+  {
+    selector: 'node.concept-node.edge-end',
+    style: {
+      opacity: 1,
+      'text-opacity': 1,
+      'background-opacity': 0.85,
+      'border-width': 3,
+      color: ink,
+      'font-size': 15,
+      'font-weight': 'bold',
+      'text-margin-y': 6,
+      'text-background-color': surface,
+      'text-background-opacity': 0.95,
+      'text-background-padding': 3,
+      'underlay-color': 'data(color)',
+      'underlay-opacity': 0.22,
+      'underlay-padding': 8,
+      'z-index': 20,
+    },
   },
 ] as unknown as cytoscape.StylesheetJson;
 };
@@ -309,10 +423,183 @@ const layoutFor = (large: boolean, concepts: boolean) =>
   ({
     name: 'dagre',
     rankDir: 'BT',
-    nodeSep: concepts ? 60 : large ? 44 : 24,
-    rankSep: large ? 110 : 60,
+    // Concept layouts space by label-inclusive size (nodeDimensionsIncludeLabels),
+    // so the gap between them can stay small.
+    nodeSep: concepts ? 28 : large ? 44 : 24,
+    rankSep: concepts ? 90 : large ? 110 : 60,
     padding: large ? 32 : 16,
   }) as cytoscape.LayoutOptions;
+
+// Concept layout: each connected component gets its own dagre run (so
+// unrelated sub-graphs never interleave), then the components are packed side
+// by side. A first, quick pass shows immediately; a background search over
+// node orders then keeps whichever arrangement has the fewest crossings and
+// edge-through-node overlaps, glides to it, and caches it per graph.
+const SEARCH_ORDERS = 24;
+const COMPONENT_GAP = 120;
+const LONE_NODE_GAP = 40;
+const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v1';
+const layoutCache = new Map<string, Positions>();
+
+interface ConceptComponent {
+  nodes: cytoscape.NodeCollection;
+  edges: cytoscape.EdgeCollection;
+  segments: Segment[];
+}
+
+interface ComponentLayout {
+  pos: Positions;
+  score: LayoutScore;
+}
+
+function readStoredLayout(key: string): Positions | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LAYOUT_STORE_KEY) ?? 'null') as {
+      key: string;
+      positions: Positions;
+    } | null;
+    return stored?.key === key ? stored.positions : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeLayout(key: string, positions: Positions) {
+  try {
+    localStorage.setItem(LAYOUT_STORE_KEY, JSON.stringify({ key, positions }));
+  } catch {
+    // storage blocked — the in-memory cache still covers this session
+  }
+}
+
+/** One dagre run over a component in the given node order, then the rank sweep. */
+function layoutComponent(
+  cy: cytoscape.Core,
+  comp: ConceptComponent,
+  order: cytoscape.NodeSingular[],
+  boxes: Record<string, NodeBox>,
+  large: boolean,
+): ComponentLayout {
+  // An array keeps the given order (the typings only admit a collection);
+  // cytoscape-dagre feeds nodes to dagre in collection order.
+  cy.collection(order as unknown as cytoscape.CollectionArgument)
+    .union(comp.edges)
+    .layout({ ...layoutFor(large, true), fit: false, animate: false, nodeDimensionsIncludeLabels: true } as cytoscape.LayoutOptions)
+    .run();
+  const raw: Positions = {};
+  comp.nodes.forEach((n) => {
+    raw[n.id()] = { ...n.position() };
+  });
+  return sweepRanks(comp.segments, raw, boxes);
+}
+
+function setPositions(cy: cytoscape.Core, positions: Positions) {
+  cy.batch(() => {
+    cy.nodes().forEach((n) => {
+      const p = positions[n.id()];
+      if (p) n.position(p);
+    });
+  });
+}
+
+/**
+ * Lays the concept graph out and returns a cancel function for the
+ * background search (no-op when the layout came from the cache).
+ */
+function layoutConcepts(
+  cy: cytoscape.Core,
+  large: boolean,
+  onImproved: (positions: Positions) => void,
+): () => void {
+  const all = cy
+    .elements()
+    .components()
+    .sort((a, b) => b.nodes().length - a.nodes().length);
+  const comps: ConceptComponent[] = all
+    .filter((c) => c.nodes().length > 1)
+    .map((c) => ({
+      nodes: c.nodes(),
+      edges: c.edges(),
+      segments: c.edges().map((e) => [e.source().id(), e.target().id()] as Segment),
+    }));
+  // Unlinked concepts share one compact row instead of each taking a full slot.
+  const loneIds = all.filter((c) => c.nodes().length === 1).map((c) => c.nodes()[0].id());
+  const key = layoutKey(
+    cy.nodes().map((n) => n.id()),
+    comps.flatMap((c) => c.segments),
+    large ? 'large' : 'small',
+  );
+  const cached = layoutCache.get(key) ?? readStoredLayout(key);
+  if (cached) {
+    layoutCache.set(key, cached);
+    setPositions(cy, cached);
+    return () => {};
+  }
+
+  const boxes: Record<string, NodeBox> = {};
+  cy.nodes().forEach((n) => {
+    const p = n.position();
+    const bb = n.boundingBox({ includeLabels: true });
+    boxes[n.id()] = {
+      radius: n.width() / 2,
+      left: bb.x1 - p.x,
+      right: bb.x2 - p.x,
+      top: bb.y1 - p.y,
+      bottom: bb.y2 - p.y,
+    };
+  });
+  const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
+  const loneRow: Positions = {};
+  let x = 0;
+  for (const id of loneIds) {
+    loneRow[id] = { x: x - boxes[id].left, y: 0 };
+    x += boxes[id].right - boxes[id].left + LONE_NODE_GAP;
+  }
+  const pack = (best: ComponentLayout[]) =>
+    packComponents(
+      [...best.map((b) => b.pos), ...(loneIds.length ? [loneRow] : [])],
+      boxes,
+      aspect,
+      COMPONENT_GAP,
+    );
+
+  const best = comps.map((c) => layoutComponent(cy, c, c.nodes.toArray(), boxes, large));
+  const shown = pack(best);
+  setPositions(cy, shown);
+
+  // Background search: one dagre run per tick. Each run moves the live
+  // nodes, so their shown positions are restored in the same task — the
+  // renderer never paints an intermediate state.
+  const rng = createRng(1);
+  const jobs: number[] = [];
+  for (let k = 0; k < SEARCH_ORDERS; k++)
+    comps.forEach((c, i) => {
+      if (c.nodes.length >= 4) jobs.push(i);
+    });
+  let improved = false;
+  let timer = 0;
+  const step = () => {
+    if (cy.destroyed()) return;
+    const i = jobs.shift();
+    if (i === undefined) {
+      const final = improved ? pack(best) : shown;
+      layoutCache.set(key, final);
+      storeLayout(key, final);
+      if (improved) onImproved(final);
+      return;
+    }
+    const comp = comps[i];
+    const candidate = layoutComponent(cy, comp, shuffled(comp.nodes.toArray(), rng), boxes, large);
+    setPositions(cy, shown);
+    if (better(candidate.score, best[i].score)) {
+      best[i] = candidate;
+      improved = true;
+    }
+    timer = window.setTimeout(step, 0);
+  };
+  timer = window.setTimeout(step, 300);
+  return () => window.clearTimeout(timer);
+}
 
 function topicElements(
   topics: Topic[],
@@ -400,7 +687,11 @@ function topicElements(
   return elements;
 }
 
-function conceptElements(graph: ConceptGraph, index: ConceptIndex): cytoscape.ElementDefinition[] {
+function conceptElements(
+  graph: ConceptGraph,
+  index: ConceptIndex,
+  iconColor: string,
+): cytoscape.ElementDefinition[] {
   return [
     ...graph.nodes.map((n) => {
       const radius = nodeRadius(n, index.degree.get(n.id) ?? 0);
@@ -413,12 +704,18 @@ function conceptElements(graph: ConceptGraph, index: ConceptIndex): cytoscape.El
           size: 2 * radius,
           radius,
           type: n.type,
+          icon: typeIconUri(n.type, iconColor) ?? undefined,
         },
         classes: 'concept-node',
       };
     }),
     ...graph.edges.map((e) => ({
-      data: { id: e.id, source: e.source, target: e.target, sentence: edgeSentence(e, index.byId) },
+      data: {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        relation: normalizeRelationship(e.relationship) ?? e.relationship.trim(),
+      },
       classes: 'concept-edge',
     })),
   ];
@@ -438,6 +735,8 @@ export default function GraphView({
   theme = 'dark',
   goalId = null,
   unitPathIds = null,
+  fitIds = null,
+  fitInsets,
   onSelect,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -453,11 +752,22 @@ export default function GraphView({
   const hoverZoomExitRef = useRef<number | null>(null);
   const preHoverViewportRef = useRef<{ zoom: number; pan: cytoscape.Position } | null>(null);
   const hoverZoomActiveIdRef = useRef<string | null>(null);
+  const fitIdsRef = useRef(fitIds);
+  fitIdsRef.current = fitIds;
+  const fitInsetsRef = useRef(fitInsets);
+  fitInsetsRef.current = fitInsets;
+  // The whole-graph fit keeps only the bottom strip (legend) clear — side
+  // panels belong to a selection and are gone when nothing is selected.
+  const overviewInsets = (): Insets => ({
+    left: 0,
+    right: 0,
+    bottom: fitInsetsRef.current?.bottom ?? 0,
+  });
 
   // (Re)build the graph when the topic/concept set (or expansion) changes
   useEffect(() => {
     const elements = concepts
-      ? conceptElements(concepts, buildConceptIndex(concepts))
+      ? conceptElements(concepts, buildConceptIndex(concepts), theme === 'light' ? '#1c2333' : '#ffffff')
       : topicElements(topics ?? [], expandedIds, unitPathIds);
 
     const cy = cytoscape({
@@ -467,8 +777,42 @@ export default function GraphView({
       wheelSensitivity: 0.3,
       autoungrabify: true,
     });
-    cy.layout(layoutFor(large, Boolean(concepts))).run();
-    cy.fit(undefined, large ? 40 : 24);
+    // A user pan/zoom before the background layout search finishes means the
+    // improved layout should not re-fit the viewport under them.
+    let viewportTouched = false;
+    cy.on('scrollzoom dragpan pinchzoom', () => {
+      viewportTouched = true;
+    });
+    let cancelLayoutSearch = () => {};
+    if (concepts) {
+      cancelLayoutSearch = layoutConcepts(cy, large, (positions) => {
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const refit = () => {
+          const ids = fitIdsRef.current;
+          if (ids) fitBeside(cy, cy.nodes().filter((n) => ids.has(n.id())), fitInsetsRef.current ?? NO_INSETS);
+          else if (!viewportTouched) fitBeside(cy, cy.elements(), overviewInsets());
+        };
+        if (reduced) {
+          setPositions(cy, positions);
+          refit();
+          return;
+        }
+        const glide = cy.layout({
+          name: 'preset',
+          positions: (n: cytoscape.NodeSingular) => positions[n.id()],
+          fit: false,
+          animate: true,
+          animationDuration: 600,
+          animationEasing: 'ease-in-out-cubic',
+        } as cytoscape.LayoutOptions);
+        glide.one('layoutstop', refit);
+        glide.run();
+      });
+    } else {
+      cy.layout(layoutFor(large, false)).run();
+    }
+    if (concepts) fitBeside(cy, cy.elements(), overviewInsets(), false);
+    else cy.fit(undefined, large ? 40 : 24);
 
     // Zoom-linked fade: small (specific) circles recede as you zoom out and
     // return as you zoom in. rAF-throttled — 'zoom' fires per wheel tick.
@@ -481,6 +825,7 @@ export default function GraphView({
           const px = (n.data('radius') as number) * z;
           n.toggleClass('zoom-faded', px < FADE_PX);
           n.toggleClass('label-hidden', px >= FADE_PX && px < LABEL_PX);
+          n.toggleClass('icon-boost', px < ICON_BOOST_PX);
         });
         cy.edges().forEach((e) => {
           e.toggleClass('zoom-faded', e.source().hasClass('zoom-faded') && e.target().hasClass('zoom-faded'));
@@ -529,7 +874,6 @@ export default function GraphView({
         if (concepts) {
           n.incomers().removeClass('hover-soft').addClass('hover-pre');
           n.outgoers().removeClass('hover-soft').addClass('hover-post');
-          n.connectedEdges().addClass('sentence-shown');
         } else {
           n.predecessors().removeClass('hover-soft').addClass('hover-pre');
           n.successors().removeClass('hover-soft').addClass('hover-post');
@@ -540,13 +884,24 @@ export default function GraphView({
     });
     cy.on('mouseout', 'node', () => {
       cy.batch(() =>
-        cy.elements().removeClass('hover-soft hover-pre hover-post hovered sentence-shown'),
+        cy.elements().removeClass('hover-soft hover-pre hover-post hovered'),
       );
       if (containerRef.current) containerRef.current.style.cursor = '';
     });
     if (concepts) {
-      cy.on('mouseover', 'edge.concept-edge', (e) => e.target.addClass('sentence-shown'));
-      cy.on('mouseout', 'edge.concept-edge', (e) => e.target.removeClass('sentence-shown'));
+      cy.on('mouseover', 'edge.concept-edge', (e) => {
+        const edge = e.target as cytoscape.EdgeSingular;
+        cy.batch(() => {
+          edge.addClass('edge-hovered');
+          edge.connectedNodes().addClass('edge-end');
+        });
+      });
+      cy.on('mouseout', 'edge.concept-edge', () => {
+        cy.batch(() => {
+          cy.edges().removeClass('edge-hovered');
+          cy.nodes().removeClass('edge-end');
+        });
+      });
     }
 
     // Hover-zoom: on the big explorer map, before a goal is chosen, dwelling
@@ -626,6 +981,7 @@ export default function GraphView({
     cyRef.current = cy;
     return () => {
       if (fadeFrame) window.cancelAnimationFrame(fadeFrame);
+      cancelLayoutSearch();
       clearHoverZoomTimers();
       preHoverViewportRef.current = null;
       hoverZoomActiveIdRef.current = null;
@@ -673,7 +1029,7 @@ export default function GraphView({
         if (goalId) cy.$id(goalId).addClass('goal-node');
       }
     });
-  }, [selectedId, highlightIds, doneIds, topics, concepts, directionalSelect, goalId]);
+  }, [selectedId, highlightIds, doneIds, topics, concepts, directionalSelect, goalId, theme]);
 
   // Glide to the focused concept (search / home jumps) — a smooth pan+zoom
   // that frames the concept with its immediate connections, rather than a
@@ -692,6 +1048,21 @@ export default function GraphView({
     }
     cy.animate({ fit: { eles, padding } }, { duration: 900, easing: 'ease-in-out-cubic' });
   }, [focus, large]);
+
+  // Sub-view fit — declared after the focus glide so it wins when both fire.
+  const hadFitRef = useRef(false);
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const insets = fitInsetsRef.current ?? NO_INSETS;
+    if (fitIds) {
+      hadFitRef.current = true;
+      fitBeside(cy, cy.nodes().filter((n) => fitIds.has(n.id())), insets);
+    } else if (hadFitRef.current) {
+      hadFitRef.current = false;
+      fitBeside(cy, cy.elements(), overviewInsets());
+    }
+  }, [fitIds, theme]);
 
   return <div ref={containerRef} className="graph-canvas" />;
 }

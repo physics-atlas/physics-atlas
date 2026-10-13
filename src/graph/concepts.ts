@@ -16,21 +16,11 @@ export function normalizeRelationship(raw: string): EdgeType | null {
 }
 
 /**
- * Fills {s}/{t} with node labels. Falls back to a plain "{s} — {raw} — {t}"
- * reading only for an unknown relationship type — a case the validator
- * already rejects, so this is a defensive fallback, not a normal path.
- */
-export function edgeSentence(edge: GraphEdge, byId: ConceptMap): string {
-  const s = byId.get(edge.source)?.label ?? edge.source;
-  const t = byId.get(edge.target)?.label ?? edge.target;
-  const type = normalizeRelationship(edge.relationship);
-  if (!type) return `${s} — ${edge.relationship} — ${t}`;
-  return EDGE_SENTENCE_TEMPLATES[type].replace('{s}', s).replace('{t}', t);
-}
-
-/**
- * The sentence split into text runs and node references, so a view can render
- * the other node's label as a control. Same fallback as edgeSentence().
+ * The edge's sentence ({s}/{t} filled with node labels) split into text runs
+ * and node references, so a view can render the other node's label as a
+ * control. Falls back to a plain "{s} — {raw} — {t}" reading only for an
+ * unknown relationship type — a case the validator already rejects, so this
+ * is a defensive fallback, not a normal path.
  */
 export function sentenceParts(
   edge: GraphEdge,
@@ -90,12 +80,21 @@ export function nodeRadius(node: GraphNode, degree: number): number {
   return Math.min(24, 7 + 5.7 * Math.sqrt(degree));
 }
 
-/** The node itself plus its direct in- and out-neighbours. */
-export function neighbourIds(id: string, index: ConceptIndex): Set<string> {
-  const ids = new Set([id]);
-  for (const e of index.incoming.get(id) ?? []) ids.add(e.source);
-  for (const e of index.outgoing.get(id) ?? []) ids.add(e.target);
-  return ids;
+/**
+ * The node plus every parent reachable against the edge direction (any
+ * relation type), up to the last one, nearest first — the click sub-graph.
+ */
+export function upstreamOf(id: string, index: ConceptIndex): string[] {
+  const order = [id];
+  const seen = new Set(order);
+  for (let i = 0; i < order.length; i++) {
+    for (const e of index.incoming.get(order[i]) ?? []) {
+      if (seen.has(e.source)) continue;
+      seen.add(e.source);
+      order.push(e.source);
+    }
+  }
+  return order;
 }
 
 /**

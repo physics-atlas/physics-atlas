@@ -531,6 +531,195 @@
         "description": "The idea that gravity is a force pulling objects directly toward one another through space, rather than the effect of objects following straight paths (geodesics) through curved spacetime.",
         "domain": "General relativity"
       }
+    },
+    {
+      "id": "dark_matter",
+      "type": "physical_system",
+      "label": "Dark Matter",
+      "generality": 5,
+      "attrs": {
+        "description": "Non-luminous matter inferred from its gravitational effects, making up most of the matter in the universe.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "wave_dark_matter",
+      "type": "physical_system",
+      "label": "Wave Dark Matter",
+      "generality": 2,
+      "epistemicStatus": "Candidate",
+      "attrs": {
+        "description": "Bosonic matter which behaves like a wave on sub-galactic scales due to coherence of wave functions at cold temperatures with a small mass.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "bosons",
+      "type": "physical_system",
+      "label": "Bosons",
+      "generality": 5,
+      "attrs": {
+        "description": "Particles with integer spin; they obey Bose–Einstein statistics, so any number of them can occupy the same quantum state.",
+        "domain": "Quantum mechanics"
+      }
+    },
+    {
+      "id": "bec",
+      "type": "physical_system",
+      "label": "BEC",
+      "generality": 5,
+      "attrs": {
+        "description": "Bose–Einstein condensate: a state in which a large fraction of bosons occupy the same lowest-energy quantum state and behave as one coherent matter wave.",
+        "domain": "Quantum mechanics"
+      }
+    },
+    {
+      "id": "interference",
+      "type": "phenomenon",
+      "label": "Interference",
+      "generality": 5,
+      "attrs": {
+        "description": "The superposition of waves, producing a pattern of reinforcement where they are in phase and cancellation where they are out of phase.",
+        "domain": "Wave physics"
+      }
+    },
+    {
+      "id": "structure_formation",
+      "type": "phenomenon",
+      "label": "Structure Formation",
+      "generality": 3,
+      "attrs": {
+        "description": "The growth of galaxies, clusters and the cosmic web from small initial density fluctuations through gravitational instability.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "caustics",
+      "type": "phenomenon",
+      "label": "Caustics",
+      "generality": 2,
+      "attrs": {
+        "description": "Surfaces where rays or particle streams cross and focus, producing sharp peaks in intensity or density."
+      }
+    },
+    {
+      "id": "zeldovich_approximation",
+      "type": "model_regime",
+      "label": "Zel'dovich approximation",
+      "generality": 2,
+      "attrs": {
+        "description": "A first-order Lagrangian model of structure formation in which particles move on straight lines from their initial positions, displaced along the gradient of the initial gravitational potential.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "vlasov_equation",
+      "type": "equation",
+      "label": "Vlasov eq.",
+      "generality": 2,
+      "attrs": {
+        "description": "Describes the phase-space evolution of a particle gas.",
+        "equation": "∂f/∂t + v·∇ₓf − ∇Φ·∇ᵥf = 0",
+        "variables": [
+          {
+            "symbol": "f",
+            "meaning": "Phase-space distribution function f(x, v, t)"
+          },
+          {
+            "symbol": "v",
+            "meaning": "Velocity"
+          },
+          {
+            "symbol": "Φ",
+            "meaning": "Gravitational potential"
+          }
+        ],
+        "conditions": [
+          "Collisionless system"
+        ],
+        "representations": [],
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "schrodinger_poisson_equation",
+      "type": "equation",
+      "label": "Schrödinger-Poisson eq.",
+      "generality": 1,
+      "epistemicStatus": "Candidate",
+      "attrs": {
+        "description": "Describes the evolution of a Schrödinger wave which is self-gravitational.",
+        "equation": "iħ ∂ψ/∂t = −(ħ²/2m)∇²ψ + mΦψ,  ∇²Φ = 4πGm|ψ|²",
+        "variables": [
+          {
+            "symbol": "ψ",
+            "meaning": "Wavefunction (classical field) of the dark matter"
+          },
+          {
+            "symbol": "m",
+            "meaning": "Particle mass"
+          },
+          {
+            "symbol": "Φ",
+            "meaning": "Gravitational potential"
+          },
+          {
+            "symbol": "ħ",
+            "meaning": "Reduced Planck constant"
+          },
+          {
+            "symbol": "G",
+            "meaning": "Newtonian constant of gravitation"
+          }
+        ],
+        "conditions": [
+          "Non-relativistic",
+          "Newtonian (weak-field) gravity"
+        ],
+        "representations": [],
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "ultralight_mass",
+      "type": "conditions",
+      "label": "Ultralight mass",
+      "generality": 2,
+      "attrs": {
+        "description": "The assumption that the dark matter particle is extremely light (around 10⁻²² eV), so its de Broglie wavelength reaches galactic scales.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "linear_potential",
+      "type": "conditions",
+      "label": "Linear Potential",
+      "generality": 3,
+      "attrs": {
+        "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow.",
+        "domain": "Cosmology"
+      }
+    },
+    {
+      "id": "pdf",
+      "type": "formalism",
+      "label": "PDF",
+      "generality": 3,
+      "attrs": {
+        "description": "Probability density function: a function whose integral over a range gives the probability of a value falling in that range.",
+        "domain": "Mathematics"
+      },
+      "review": "Which PDF is meant here — the one-point density PDF of the dark matter field, or the phase-space distribution function f(x, v)? The description is a generic placeholder until this is settled."
+    },
+    {
+      "id": "airy_solution",
+      "type": "formalism",
+      "label": "Airy solution",
+      "generality": 3,
+      "attrs": {
+        "description": "Solutions built from the Airy function Ai(x), which solves y'' − xy = 0 — the universal wave pattern near a fold caustic.",
+        "domain": "Mathematics"
+      }
     }
   ],
   "edges": [
@@ -892,6 +1081,74 @@
       "source": "alpha_decay",
       "target": "nucleus",
       "relationship": "happens in"
+    },
+    {
+      "id": "e60",
+      "source": "pdf",
+      "target": "dark_matter",
+      "relationship": "describes"
+    },
+    {
+      "id": "e61",
+      "source": "structure_formation",
+      "target": "dark_matter",
+      "relationship": "relates",
+      "review": "Unlabelled in the sketch (arrow Structure Formation → Dark Matter) — which relationship? \"relates\" is a placeholder."
+    },
+    {
+      "id": "e62",
+      "source": "structure_formation",
+      "target": "vlasov_equation",
+      "relationship": "relates",
+      "review": "Unlabelled in the sketch (arrow Structure Formation → Vlasov eq.) — which relationship? \"relates\" is a placeholder."
+    },
+    {
+      "id": "e63",
+      "source": "zeldovich_approximation",
+      "target": "structure_formation",
+      "relationship": "approximates"
+    },
+    {
+      "id": "e64",
+      "source": "zeldovich_approximation",
+      "target": "linear_potential",
+      "relationship": "assumes"
+    },
+    {
+      "id": "e65",
+      "source": "wave_dark_matter",
+      "target": "dark_matter",
+      "relationship": "is a class of"
+    },
+    {
+      "id": "e66",
+      "source": "wave_dark_matter",
+      "target": "interference",
+      "relationship": "exhibits"
+    },
+    {
+      "id": "e67",
+      "source": "wave_dark_matter",
+      "target": "ultralight_mass",
+      "relationship": "assumes"
+    },
+    {
+      "id": "e68",
+      "source": "schrodinger_poisson_equation",
+      "target": "wave_dark_matter",
+      "relationship": "describes"
+    },
+    {
+      "id": "e69",
+      "source": "schrodinger_poisson_equation",
+      "target": "vlasov_equation",
+      "relationship": "approximates"
+    },
+    {
+      "id": "e70",
+      "source": "airy_solution",
+      "target": "schrodinger_poisson_equation",
+      "relationship": "describes"
     }
   ]
 }

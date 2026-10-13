@@ -138,6 +138,8 @@ interface GraphNodeBase {
   label: string;
   /** 1 (most specific) – 5 (most general); optional, drives node size once authored */
   generality?: number;
+  /** How settled the concept is, e.g. "Candidate"; known values in conceptVocabulary.json */
+  epistemicStatus?: string;
   /** An open question for Sophie — cleared by deleting the field */
   review?: string;
 }

@@ -1,14 +1,22 @@
 import { Fragment, useMemo } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge } from '../data/types';
-import { buildConceptIndex, conceptPathFor, neighbourIds, sentenceParts } from '../graph/concepts';
+import { buildConceptIndex, conceptPathFor, upstreamOf, sentenceParts } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
-import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
+import { TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
+import ConceptCard from './ConceptCard';
 import GraphView from './GraphView';
 import Legend from './Legend';
+import TypeBadge from './TypeBadge';
 
 const PROGRESS_PREFIX = 'concept:';
+// Overlay sizes (px) the sub-view fit keeps clear: .concept-side with a goal
+// path open on the left, the map card on the right, the type legend along the
+// bottom — mirrored in App.css.
+const PATH_PANEL_INSET = 304;
+const CARD_INSET = 412;
+const LEGEND_INSET = 110;
 
 interface ConceptMapViewProps {
   graph: ConceptGraph;
@@ -37,9 +45,13 @@ export default function ConceptMapView({
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
   const path = useMemo(() => (goalId ? conceptPathFor(goalId, index) : null), [goalId, index]);
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
+  const upstream = useMemo(
+    () => (selected ? upstreamOf(selected.id, index) : null),
+    [selected, index],
+  );
   const highlightIds = useMemo(
-    () => path?.highlight ?? (selected ? neighbourIds(selected.id, index) : null),
-    [path, selected, index],
+    () => path?.highlight ?? (upstream ? new Set(upstream) : null),
+    [path, upstream],
   );
   // Concept progress shares the topic store; the prefix keeps the id spaces apart.
   const doneIds = useMemo(
@@ -85,6 +97,12 @@ export default function ConceptMapView({
           large
           theme={theme}
           goalId={goal ? goal.id : null}
+          fitIds={highlightIds}
+          fitInsets={{
+            left: goal ? PATH_PANEL_INSET : 0,
+            right: selected ? CARD_INSET : 0,
+            bottom: LEGEND_INSET,
+          }}
         />
         <Legend variant="type" />
 
@@ -106,11 +124,7 @@ export default function ConceptMapView({
             {byType.map(({ type, nodes }) => (
               <div key={type} className="concept-index-group">
                 <h3 className="block-heading">
-                  <span
-                    className="type-dot"
-                    style={{ background: TYPE_COLORS[type], color: TYPE_COLORS[type] }}
-                    aria-hidden
-                  />
+                  <TypeBadge type={type} />
                   {NODE_TYPE_LABELS[type]}
                   <span className="rel-count">{nodes.length}</span>
                 </h3>
@@ -151,11 +165,7 @@ export default function ConceptMapView({
                         className={`concept-path-label ${id === selectedId ? 'concept-index-item-active' : ''}`}
                         onClick={() => onFocus(id)}
                       >
-                        <span
-                          className="type-dot"
-                          style={{ background: TYPE_COLORS[n.type], color: TYPE_COLORS[n.type] }}
-                          aria-hidden
-                        />
+                        <TypeBadge type={n.type} />
                         <span>
                           {n.label}
                           <span className="concept-path-type">{NODE_TYPE_LABELS[n.type]}</span>
@@ -202,86 +212,75 @@ export default function ConceptMapView({
 
         {!selected && !goal && (
           <p className="map-hint">
-            Colour = kind of concept, size = how general it is. Hover a line to read it as a
-            sentence. Zoom in for specific concepts and learning goals.
+            Colour = kind of concept, size = how general it is. Each line names its relation —
+            hover one to highlight the two concepts it joins. Click a concept to see everything it builds on.
           </p>
         )}
 
         {selected && (
-          <aside className="map-card" key={selected.id}>
-            <h2 className="map-card-title">
-              <span
-                className="type-dot"
-                style={{ background: TYPE_COLORS[selected.type], color: TYPE_COLORS[selected.type] }}
-                aria-hidden
-              />
-              {selected.label}
-            </h2>
-            <p className="map-card-category">
-              {NODE_TYPE_LABELS[selected.type]}
-              {'domain' in selected.attrs && selected.attrs.domain && ` · ${selected.attrs.domain}`}
-            </p>
-            {'description' in selected.attrs && (
-              <p className="topic-description">{selected.attrs.description}</p>
-            )}
+          <aside className="map-card concept-map-card" key={selected.id}>
+            <ConceptCard node={selected} index={index} onPick={onFocus}>
+              {selected.type === 'equation' && (
+                <div className="rel-block concept-equation">
+                  <p className="concept-equation-formula">{selected.attrs.equation}</p>
+                  {selected.attrs.variables.length > 0 && (
+                    <>
+                      <h3 className="block-heading">Variables</h3>
+                      <dl className="concept-variables">
+                        {selected.attrs.variables.map((v) => (
+                          <div key={v.symbol} className="concept-variable">
+                            <dt>{v.symbol}</dt>
+                            <dd>{v.meaning}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </>
+                  )}
+                  {selected.attrs.conditions.length > 0 && (
+                    <>
+                      <h3 className="block-heading">Conditions</h3>
+                      <ul className="concept-list">
+                        {selected.attrs.conditions.map((c) => (
+                          <li key={c}>{c}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {selected.attrs.representations.length > 0 && (
+                    <>
+                      <h3 className="block-heading">Representations</h3>
+                      <ul className="concept-list">
+                        {selected.attrs.representations.map((r) => (
+                          <li key={r}>{r}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
 
-            {selected.type === 'equation' && (
-              <div className="rel-block concept-equation">
-                <p className="concept-equation-formula">{selected.attrs.equation}</p>
-                {selected.attrs.variables.length > 0 && (
-                  <>
-                    <h3 className="block-heading">Variables</h3>
-                    <dl className="concept-variables">
-                      {selected.attrs.variables.map((v) => (
-                        <div key={v.symbol} className="concept-variable">
-                          <dt>{v.symbol}</dt>
-                          <dd>{v.meaning}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </>
-                )}
-                {selected.attrs.conditions.length > 0 && (
-                  <>
-                    <h3 className="block-heading">Conditions</h3>
-                    <ul className="concept-list">
-                      {selected.attrs.conditions.map((c) => (
-                        <li key={c}>{c}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {selected.attrs.representations.length > 0 && (
-                  <>
-                    <h3 className="block-heading">Representations</h3>
-                    <ul className="concept-list">
-                      {selected.attrs.representations.map((r) => (
-                        <li key={r}>{r}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
+              {selected.type === 'resource' && (
+                <div className="rel-block">
+                  <a
+                    className="concept-resource-link"
+                    href={selected.attrs.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open resource ↗
+                  </a>
+                  <p className="concept-resource-meta">
+                    {selected.attrs.mediaType} · {selected.attrs.estimatedMinutes} min
+                  </p>
+                </div>
+              )}
+            </ConceptCard>
 
-            {selected.type === 'resource' && (
-              <div className="rel-block">
-                <a
-                  className="concept-resource-link"
-                  href={selected.attrs.link}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open resource ↗
-                </a>
-                <p className="concept-resource-meta">
-                  {selected.attrs.mediaType} · {selected.attrs.estimatedMinutes} min
-                </p>
-              </div>
-            )}
-
-            <div className="rel-block">
-              <h3 className="block-heading">Relations</h3>
+            <details className="rel-block concept-all-relations">
+              <summary className="block-heading">
+                All relations
+                <span className="rel-count">{outgoing.length + incoming.length}</span>
+              </summary>
               {outgoing.length === 0 && incoming.length === 0 && (
                 <p className="concept-empty">No relations yet.</p>
               )}
@@ -303,7 +302,7 @@ export default function ConceptMapView({
                   onPick={onFocus}
                 />
               )}
-            </div>
+            </details>
 
             {reviews.length > 0 && (
               <div className="concept-review">

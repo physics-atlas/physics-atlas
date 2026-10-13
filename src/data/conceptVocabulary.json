@@ -30,7 +30,23 @@
     "is a": "{s} is a {t}.",
     "assumes a": "{s} assumes a {t}.",
     "describes": "{s} describes {t}.",
-    "happens in": "{s} happens in {t}."
+    "happens in": "{s} happens in {t}.",
+    "exhibits": "{s} exhibits {t}.",
+    "under": "{s} is under {t}.",
+    "predicts": "{s} predicts {t}.",
+    "applies to": "{s} applies to {t}.",
+    "valid under": "{s} is valid under {t}.",
+    "uses": "{s} uses {t}.",
+    "expressed by": "{s} is expressed by {t}.",
+    "tested by": "{s} is tested by {t}.",
+    "concerns": "{s} concerns {t}.",
+    "requires": "{s} requires {t}.",
+    "supported by": "{s} is supported by {t}.",
+    "addresses": "{s} addresses {t}.",
+    "approximates": "{s} approximates {t}.",
+    "assumes": "{s} assumes {t}.",
+    "is a class of": "{s} is a class of {t}."
   },
-  "mediaTypes": ["text", "video", "quiz"]
+  "mediaTypes": ["text", "video", "quiz"],
+  "epistemicStatuses": ["Candidate"]
 }

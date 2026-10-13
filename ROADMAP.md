@@ -6,6 +6,71 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-25: Concept layout with minimal crossings
+
+**Status:** ✅ Implemented <!-- status-line: feature-25 -->
+**Planned:** — (direct session, no plan)
+**Implemented:** 2026-10-13
+
+### Implemented
+- `src/graph/layoutOptimize.ts` — crossing / edge-through-node counting, rank-swap clean-up, seeded orders, viewport-fit component packing, layout cache key
+- `src/components/GraphView.tsx` — per-component dagre (label-inclusive spacing), lone concepts in one row, background search over 24 node orders, glide + cache (memory + localStorage); whole-map fit keeps the legend clear
+- `docs/DESIGN-DECISIONS.md` — Decision 14 (44 → 9 crossings; cost: overview zoom 0.57 → 0.37)
+
+### Review
+Not run — direct session; validate/build/lint clean, smoke shows only the 2 pre-existing feature-20 failures.
+
+<!-- impl-marker: feature-25 -->
+
+## feature-24: Concept sub-view, type-dependent concept card + type icons
+
+**Status:** ✅ Implemented <!-- status-line: feature-24 -->
+**Planned:** — (direct session, no plan)
+**Implemented:** 2026-10-13
+
+### Implemented
+- `src/graph/concepts.ts` — `upstreamOf()` (click sub-graph: every parent up to the last)
+- `src/graph/cardSections.ts`, `src/components/ConceptCard.tsx` — per-type card sections, Learning goals TBD, collapsed All relations
+- `src/graph/typeIcons.ts`, `src/components/TypeBadge.tsx` — Sophie's type glyphs in nodes, legend and card
+- `src/components/GraphView.tsx` — `fitIds`/`fitInsets` sub-view fit, icons, highlight/fit survive theme toggle
+- `src/data/*`, `scripts/validate-concepts.mjs` — optional `epistemicStatus` + vocabulary, Sophie's card texts
+
+### Review
+Not run — direct session; validate/build/lint clean, smoke shows only the 2 pre-existing feature-20 failures.
+
+<!-- impl-marker: feature-24 -->
+
+## feature-23: Wave dark matter cluster (Sophie's sketch)
+
+**Status:** ✅ Implemented <!-- status-line: feature-23 -->
+**Planned:** — (direct session, no plan)
+**Implemented:** 2026-10-13
+
+### Implemented
+- `src/data/concepts.json` — 14 nodes, edges e60–e70 (open `review`s on e61/e62 and PDF)
+- `src/data/conceptVocabulary.json` — `approximates`, `assumes`, `is a class of`
+- `scripts/smoke-test.mjs` — counts 68 nodes / 70 edges
+
+### Review
+Not run — direct session; validate/build/lint clean, smoke shows only the 2 pre-existing feature-20 failures.
+
+<!-- impl-marker: feature-23 -->
+
+## feature-22: Named relation labels on the concept map + 12 new edge types
+
+**Status:** ✅ Implemented <!-- status-line: feature-22 -->
+**Planned:** — (direct session, no plan)
+**Implemented:** 2026-10-13
+
+### Implemented
+- `src/components/GraphView.tsx` — relation-name edge labels (min-zoomed-font-size), larger on highlight; edge hover enlarges the name and pops out both endpoint names
+- `src/data/conceptVocabulary.json`, `docs/AUTHORING.md` — 12 relation types + intended source→target type table
+
+### Review
+Not run — direct session; validate/build/lint clean, smoke shows only the 2 pre-existing feature-20 failures.
+
+<!-- impl-marker: feature-22 -->
+
 ## feature-21: Concepts takes the Full Map's place in navigation
 
 **Status:** ✅ Implemented <!-- status-line: feature-21 -->

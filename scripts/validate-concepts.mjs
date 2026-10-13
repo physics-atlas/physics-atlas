@@ -42,6 +42,7 @@ try {
 const NODE_TYPES = Object.keys(vocab.nodeTypes ?? {});
 const EDGE_TEMPLATES = vocab.edgeTemplates ?? {};
 const MEDIA_TYPES = vocab.mediaTypes ?? [];
+const EPISTEMIC_STATUSES = vocab.epistemicStatuses ?? [];
 
 function normalizeRelationship(raw) {
   const key = String(raw).trim().replace(/\s+/g, ' ').toLowerCase();
@@ -141,6 +142,12 @@ for (const n of data.nodes) {
     if (n.type === 'learning_goal')
       warn.push(`${where}: generality set on a learning_goal (ignored — learning goals always render minimal)`);
   }
+  if (n.epistemicStatus !== undefined) {
+    if (typeof n.epistemicStatus !== 'string' || !n.epistemicStatus.trim())
+      errors.push(`${where}: epistemicStatus must be a non-empty string (delete the field if unknown)`);
+    else if (!EPISTEMIC_STATUSES.includes(n.epistemicStatus))
+      warn.push(`${where}: unknown epistemicStatus "${n.epistemicStatus}" — add it to conceptVocabulary.json if this is a new status`);
+  }
   if (n.review !== undefined) warn.push(`${where}: open review — ${n.review}`);
 }
 
@@ -211,6 +218,8 @@ if (errors.length === 0) {
 
 const noGenerality = data.nodes.filter((n) => n.generality === undefined).length;
 warn.push(`${noGenerality} of ${data.nodes.length} nodes have no authored generality yet — size falls back to connection count`);
+const noStatus = data.nodes.filter((n) => n.epistemicStatus === undefined).length;
+warn.push(`${noStatus} of ${data.nodes.length} nodes have no epistemicStatus yet — the card shows "To-do"`);
 
 for (const w of warn) console.log(`⚠ ${w}`);
 if (errors.length) {

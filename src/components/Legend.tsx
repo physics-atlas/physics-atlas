@@ -1,6 +1,7 @@
 import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_ORDER } from '../graph/categoryColors';
-import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
+import { TYPE_ORDER } from '../graph/typeColors';
 import { NODE_TYPE_LABELS } from '../data/types';
+import TypeBadge from './TypeBadge';
 
 export default function Legend({ variant = 'category' }: { variant?: 'category' | 'type' }) {
   if (variant === 'type') {
@@ -8,11 +9,7 @@ export default function Legend({ variant = 'category' }: { variant?: 'category' 
       <div className="legend legend-type">
         {TYPE_ORDER.map((type) => (
           <span key={type} className="legend-entry">
-            <span
-              className="type-dot"
-              style={{ background: TYPE_COLORS[type], color: TYPE_COLORS[type] }}
-              aria-hidden
-            />
+            <TypeBadge type={type} />
             {NODE_TYPE_LABELS[type]}
           </span>
         ))}

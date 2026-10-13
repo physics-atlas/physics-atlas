@@ -233,6 +233,26 @@ topic views are unchanged.
 | **Zoom-linked fade** | ✅ Chosen | A node recedes (`zoom-faded`, opacity 0.3, no label) when its on-screen radius drops below 6 px, its label hides below 8 px; an edge fades when both ends have. Zoomed out, the general concepts remain; zooming in brings back specific ones and learning goals. Faded nodes stay tappable, hover/selection always show them fully, and the tween is off under `prefers-reduced-motion`. Thresholds are tuning values, not requirements. |
 | Shape per type | ↩ pathway | The CVD redundancy channel for twelve hues that cannot all be pairwise CVD-safe. Not built now: every node has a visible text label, the legend names every type, the card states the type in text, and "Browse by type" lists every node grouped by type (also the keyboard path — canvas nodes aren't focusable). |
 
+## Decision 14 — Concept layout: per-component dagre + crossing search (2026-10)
+
+One dagre run over the whole concept graph interleaved unrelated sub-graphs
+(e.g. the Einstein-equations resource sat inside the dark-matter cluster) and
+left 44 straight-line edge crossings. Now each connected component is laid out
+on its own (label-inclusive spacing), unlinked concepts share one compact row,
+and the components are shelf-packed to best fit the viewport. A background
+search re-runs dagre per component over 24 seeded node orders, each followed
+by a rank-swap clean-up, and keeps the arrangement with the fewest crossings +
+edges-through-circles (tie-break: total edge length): 44 → 9 crossings on the
+current data. The map shows the quick layout first, glides to the better one
+(~4 s on first load) and caches it per graph (memory + localStorage).
+Geometry lives in `src/graph/layoutOptimize.ts`; Cytoscape glue in GraphView.
+
+**Cost:** separated components need more room, so the whole-map overview
+zooms out further (0.57 → 0.37 at 1440×900). **Open paths:** a compound
+(domain-grouped) layout, an ELK layered layout with proper crossing
+minimisation (new dependency), orthogonal/bundled edge routing, or
+precomputing the layout at build time instead of searching in the browser.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):
