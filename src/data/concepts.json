@@ -5,6 +5,7 @@
       "id": "spacetime",
       "type": "physical_system",
       "label": "Spacetime",
+      "importance": 5,
       "attrs": {
         "description": "The four-dimensional continuum combining the three dimensions of space with one dimension of time, whose geometry is dynamical in general relativity.",
         "domain": "General relativity"
@@ -14,6 +15,7 @@
       "id": "quark_gluon_plasma",
       "type": "physical_system",
       "label": "Quark-Gluon-Plasma",
+      "importance": 4,
       "attrs": {
         "description": "A state of strongly interacting matter in which quarks and gluons are not confined inside hadrons.",
         "domain": "Nuclear physics"
@@ -23,6 +25,7 @@
       "id": "nucleus",
       "type": "physical_system",
       "label": "Nucleus",
+      "importance": 4,
       "attrs": {
         "description": "The compact, positively charged core of an atom containing protons and neutrons.",
         "domain": "Nuclear physics"
@@ -32,6 +35,7 @@
       "id": "tangent_vector",
       "type": "property",
       "label": "Tangent vector",
+      "importance": 3,
       "attrs": {
         "description": "A vector that lives in the tangent space at a single point of a manifold, representing an instantaneous direction and rate of change at that point.",
         "domain": "Differential geometry"
@@ -41,6 +45,7 @@
       "id": "curvature",
       "type": "property",
       "label": "Curvature",
+      "importance": 4,
       "attrs": {
         "description": "A measure of how much a manifold deviates from being flat, captured by how a vector changes when parallel-transported around a closed loop.",
         "domain": "Differential geometry / General relativity"
@@ -50,6 +55,7 @@
       "id": "energy_momentum",
       "type": "property",
       "label": "Energy-Momentum",
+      "importance": 4,
       "attrs": {
         "description": "The stress-energy tensor: a description of the density and flux of energy and momentum in spacetime, acting as the source of gravity.",
         "domain": "General relativity"
@@ -59,6 +65,7 @@
       "id": "particle_charge_current",
       "type": "property",
       "label": "Particle Charge current",
+      "importance": 2,
       "attrs": {
         "description": "A current describing the transport of particles or conserved charge through the fluid.",
         "domain": "Relativistic fluid dynamics"
@@ -68,6 +75,7 @@
       "id": "dissipative_fields",
       "type": "property",
       "label": "Dissipative fields",
+      "importance": 2,
       "attrs": {
         "description": "Hydrodynamic fields describing departures from local equilibrium, including viscous stresses and diffusion currents.",
         "domain": "Relativistic fluid dynamics"
@@ -77,6 +85,7 @@
       "id": "charge_diffusion",
       "type": "property",
       "label": "Charge Diffusion",
+      "importance": 1,
       "attrs": {
         "description": "The dissipative transport of conserved charge caused by spatial gradients and interactions.",
         "domain": "Relativistic fluid dynamics"
@@ -86,6 +95,7 @@
       "id": "four_velocity",
       "type": "property",
       "label": "Four-velocity",
+      "importance": 3,
       "attrs": {
         "description": "The relativistic velocity field tangent to the fluid worldlines.",
         "domain": "Relativity"
@@ -95,6 +105,7 @@
       "id": "fluid_expansion",
       "type": "property",
       "label": "Fluid Expansion",
+      "importance": 2,
       "attrs": {
         "description": "The scalar expansion of a fluid congruence, describing the local rate at which neighboring fluid elements separate.",
         "domain": "Relativistic fluid dynamics"
@@ -104,6 +115,7 @@
       "id": "half_life",
       "type": "property",
       "label": "Half life",
+      "importance": 3,
       "attrs": {
         "description": "The time required for half of the unstable nuclei in a sample to decay.",
         "domain": "Nuclear physics"
@@ -113,6 +125,7 @@
       "id": "nucleon_number",
       "type": "property",
       "label": "Nucleon number",
+      "importance": 2,
       "attrs": {
         "description": "The total number of protons and neutrons in a nucleus.",
         "domain": "Nuclear physics"
@@ -122,6 +135,7 @@
       "id": "alpha_particle",
       "type": "property",
       "label": "alpha particle",
+      "importance": 2,
       "attrs": {
         "description": "A helium-4 nucleus consisting of two protons and two neutrons.",
         "domain": "Nuclear physics"
@@ -131,6 +145,7 @@
       "id": "gravitational_lensing",
       "type": "phenomenon",
       "label": "Gravitational lensing",
+      "importance": 4,
       "attrs": {
         "description": "The bending of light from a distant source as it passes near a massive object, caused by the curvature of spacetime around that mass.",
         "domain": "General relativity / Astrophysics"
@@ -140,6 +155,7 @@
       "id": "alpha_decay",
       "type": "phenomenon",
       "label": "Alpha decay",
+      "importance": 3,
       "attrs": {
         "description": "Radioactive decay in which an unstable nucleus emits an alpha particle.",
         "domain": "Nuclear physics"
@@ -149,6 +165,7 @@
       "id": "newtonian_gravity",
       "type": "model_regime",
       "label": "Newtonian Gravity",
+      "importance": 5,
       "attrs": {
         "description": "The classical model in which gravity is treated as an instantaneous attractive force between masses, recovered from general relativity as a low-velocity, weak-field approximation.",
         "domain": "Classical mechanics"
@@ -158,42 +175,28 @@
       "id": "special_relativity",
       "type": "model_regime",
       "label": "Special Relativity",
+      "importance": 5,
       "attrs": {
         "description": "The theory of spacetime and motion in inertial frames when gravity is neglected.",
         "domain": "Relativity"
       }
     },
     {
-      "id": "weak_field_limit",
-      "type": "conditions",
-      "label": "Weak-field low-velocity limit",
-      "attrs": {
-        "description": "The regime where gravitational fields are weak and velocities are much smaller than the speed of light, so spacetime curvature can be treated as a small perturbation on flat space.",
-        "domain": "General relativity"
-      }
-    },
-    {
       "id": "lorentz_invariance",
-      "type": "conditions",
+      "type": "property",
       "label": "Lorentz invariance",
+      "importance": 4,
+      "review": "Was a 'conditions' node. Conditions are now edge attributes, but this one has no edge to qualify (it only 'is a condition of' Coordinate Transformations and Special Relativity), so it was kept as a node and retyped to property. Sophie to confirm the type, or turn it into a condition on an edge into Special Relativity once one exists.",
       "attrs": {
         "description": "The requirement that physical laws take the same form in all inertial frames related by Lorentz transformations.",
         "domain": "Special relativity"
       }
     },
     {
-      "id": "large_number",
-      "type": "conditions",
-      "label": "large number",
-      "attrs": {
-        "description": "The large-sample condition under which radioactive decay is well described statistically.",
-        "domain": "Nuclear physics"
-      }
-    },
-    {
       "id": "linear_algebra",
       "type": "formalism",
       "label": "Linear Algebra",
+      "importance": 5,
       "attrs": {
         "description": "The study of vector spaces and the linear maps between them: vectors, matrices, bases, eigenvalues, and linear transformations.",
         "domain": "Mathematics"
@@ -203,6 +206,7 @@
       "id": "vector_space",
       "type": "formalism",
       "label": "Vector space",
+      "importance": 4,
       "attrs": {
         "description": "An abstract set of objects (vectors) that can be added together and scaled by numbers, satisfying a fixed set of axioms.",
         "domain": "Mathematics"
@@ -212,6 +216,7 @@
       "id": "diff_geometry",
       "type": "formalism",
       "label": "Differential Geometry",
+      "importance": 5,
       "attrs": {
         "description": "The study of curves, surfaces, and manifolds using calculus and linear algebra — the mathematical language used to describe curved spacetime.",
         "domain": "Mathematics"
@@ -221,6 +226,7 @@
       "id": "tangent_space",
       "type": "formalism",
       "label": "Tangent Space",
+      "importance": 3,
       "attrs": {
         "description": "The vector space of all possible tangent vectors at a single point of a manifold — the local 'flat' approximation of the manifold at that point.",
         "domain": "Differential geometry"
@@ -230,6 +236,7 @@
       "id": "kinetic_theory",
       "type": "formalism",
       "label": "Kinetic theory",
+      "importance": 3,
       "attrs": {
         "description": "A microscopic description of matter in terms of distribution functions and particle interactions.",
         "domain": "Statistical physics"
@@ -239,6 +246,7 @@
       "id": "coordinate_transformations",
       "type": "formalism",
       "label": "Coordinate Transformations",
+      "importance": 3,
       "attrs": {
         "description": "Changes between coordinate descriptions used to express physical quantities without changing the underlying physics.",
         "domain": "Relativity"
@@ -248,6 +256,7 @@
       "id": "exponentials",
       "type": "formalism",
       "label": "exponentials",
+      "importance": 3,
       "attrs": {
         "description": "Exponential functions used to model continuous growth or decay processes.",
         "domain": "Mathematics"
@@ -257,6 +266,7 @@
       "id": "einstein_eq",
       "type": "equation",
       "label": "Einstein Field Equations",
+      "importance": 5,
       "attrs": {
         "description": "Relate the curvature of spacetime directly to the energy and momentum of whatever matter and radiation are present, forming the core field equation of general relativity.",
         "equation": "Gμν + Λgμν = (8πG / c⁴) Tμν",
@@ -301,6 +311,7 @@
       "id": "conservation_equations",
       "type": "equation",
       "label": "Conservation equations",
+      "importance": 3,
       "attrs": {
         "description": "Equations expressing local conservation of energy-momentum and particle or charge currents.",
         "equation": "∇μTμν = 0,  ∇μJμ = 0",
@@ -313,6 +324,7 @@
       "id": "israel_stewart_equations",
       "type": "equation",
       "label": "Israel-Stewart equations",
+      "importance": 2,
       "attrs": {
         "description": "Causal and stable relativistic dissipative hydrodynamic equations.",
         "equation": "τΠ DΠ + Π = −ζθ",
@@ -325,6 +337,7 @@
       "id": "decay_equation",
       "type": "equation",
       "label": "Decay equation",
+      "importance": 3,
       "attrs": {
         "description": "An equation describing the exponential decrease of the number of undecayed nuclei over time.",
         "equation": "N(t) = N₀e^(−λt)",
@@ -337,6 +350,7 @@
       "id": "parallel_transport",
       "type": "method",
       "label": "Parallel Transport",
+      "importance": 4,
       "attrs": {
         "description": "A rule for moving a vector along a curve on a manifold while keeping it 'as parallel as possible' to itself at each step.",
         "domain": "Differential geometry"
@@ -346,6 +360,7 @@
       "id": "relativistic_viscous_hydrodynamics",
       "type": "method",
       "label": "Relativistic Viscous Hydrodynamics",
+      "importance": 3,
       "attrs": {
         "description": "A continuum description of relativistic fluids that includes dissipative effects such as viscosity.",
         "domain": "Relativistic fluid dynamics"
@@ -355,6 +370,7 @@
       "id": "fourteen_moment_approximation",
       "type": "method",
       "label": "14-moment approximation",
+      "importance": 2,
       "attrs": {
         "description": "A moment expansion that approximates a kinetic distribution function using a finite set of macroscopic moments.",
         "domain": "Kinetic theory"
@@ -364,6 +380,7 @@
       "id": "orthogonal_projection",
       "type": "method",
       "label": "Orthogonal Projection",
+      "importance": 2,
       "attrs": {
         "description": "Projection of a tensor or vector onto the subspace orthogonal to the fluid four-velocity.",
         "domain": "Relativity"
@@ -373,6 +390,7 @@
       "id": "experiment_eddington",
       "type": "experiment",
       "label": "1919 Eddington eclipse expedition",
+      "importance": 3,
       "attrs": {
         "description": "Solar eclipse expeditions led by Arthur Eddington that measured the deflection of starlight by the Sun, providing early observational support for general relativity.",
         "domain": "General relativity"
@@ -382,6 +400,7 @@
       "id": "rhic",
       "type": "experiment",
       "label": "RHIC",
+      "importance": 3,
       "attrs": {
         "description": "The Relativistic Heavy Ion Collider, used to study matter under extreme temperatures and densities.",
         "domain": "Nuclear physics"
@@ -391,6 +410,7 @@
       "id": "gravity_goal",
       "type": "learning_goal",
       "label": "Understand why planets orbit the Sun",
+      "importance": 2,
       "attrs": {
         "description": "Understand why planets orbit the Sun, from both the classical (force-based) and relativistic (geometric) points of view."
       }
@@ -399,6 +419,7 @@
       "id": "lg_pt_1",
       "type": "learning_goal",
       "label": "Explain all the elements of the equation.",
+      "importance": 1,
       "attrs": {
         "description": "Given the parallel transport equation, name and explain the role of each term (the components, the connection coefficients, the tangent vector to the curve)."
       }
@@ -407,6 +428,7 @@
       "id": "lg_pt_2",
       "type": "learning_goal",
       "label": "Differentiate between the geodesic equation and parallel transport",
+      "importance": 1,
       "attrs": {
         "description": "Explain how the geodesic equation is the special case of parallel-transporting a curve's own tangent vector along itself."
       }
@@ -415,6 +437,7 @@
       "id": "lg_pt_3",
       "type": "learning_goal",
       "label": "Interpret geometrically the action of parallel transport on a vector.",
+      "importance": 1,
       "attrs": {
         "description": "Describe, in words and pictures, what happens to a vector as it is parallel-transported along a path on a curved manifold."
       }
@@ -423,6 +446,7 @@
       "id": "lg_pt_4",
       "type": "learning_goal",
       "label": "Compute component transformations of a transported vector.",
+      "importance": 1,
       "attrs": {
         "description": "Given a metric/connection and a path, compute how a vector's components change under parallel transport."
       }
@@ -431,6 +455,7 @@
       "id": "lg_pt_5",
       "type": "learning_goal",
       "label": "Illustrate the relevance of parallel transport to different curvature types.",
+      "importance": 1,
       "attrs": {
         "description": "Compare parallel transport around a closed loop in flat, positively-curved, and negatively-curved spaces, and relate the result to curvature."
       }
@@ -439,6 +464,7 @@
       "id": "lg_tv_1",
       "type": "learning_goal",
       "label": "Explain why vectors at different points belong to different tangent spaces.",
+      "importance": 1,
       "attrs": {
         "description": "Explain why two tangent vectors defined at different points of a manifold cannot be compared or added directly without first specifying a way to transport one to the other."
       }
@@ -447,6 +473,7 @@
       "id": "lg_tv_2",
       "type": "learning_goal",
       "label": "Construct tangent vectors as derivatives of curves.",
+      "importance": 1,
       "attrs": {
         "description": "Given a parametrized curve on a manifold, construct its tangent vector at a point as the derivative of the curve with respect to its parameter."
       }
@@ -455,6 +482,7 @@
       "id": "lg_tv_3",
       "type": "learning_goal",
       "label": "Differentiate the manifold from its tangent spaces.",
+      "importance": 1,
       "attrs": {
         "description": "Explain the difference between the (possibly curved) manifold itself and the flat vector space that approximates it at a single point."
       }
@@ -463,6 +491,7 @@
       "id": "lg_alpha_decay_nucleons",
       "type": "learning_goal",
       "label": "Predict changes in neutron and proton number after the decay",
+      "importance": 1,
       "attrs": {
         "description": "Determine how alpha decay changes the neutron number and proton number of the parent nucleus."
       }
@@ -471,6 +500,7 @@
       "id": "lg_alpha_radiation_properties",
       "type": "learning_goal",
       "label": "Explain the properties of alpha radiation using information about the properties of an alpha particle",
+      "importance": 1,
       "attrs": {
         "description": "Use the composition and properties of an alpha particle to explain the behavior of alpha radiation."
       }
@@ -479,6 +509,7 @@
       "id": "resource_mtw",
       "type": "resource",
       "label": "Intro to the Einstein Field Equations (sample resource)",
+      "importance": 1,
       "attrs": {
         "link": "https://example.com/learn/einstein-field-equations",
         "mediaType": "text",
@@ -491,6 +522,7 @@
       "id": "res_pt_video",
       "type": "resource",
       "label": "Video: visualising parallel transport",
+      "importance": 1,
       "attrs": {
         "link": "https://example.com/videos/visualising-parallel-transport",
         "mediaType": "video",
@@ -503,6 +535,7 @@
       "id": "res_pt_concepttest",
       "type": "resource",
       "label": "Concept test: parallel transport",
+      "importance": 1,
       "attrs": {
         "link": "https://example.com/quizzes/parallel-transport-concept-test",
         "mediaType": "quiz",
@@ -515,6 +548,7 @@
       "id": "res_pt_textbook",
       "type": "resource",
       "label": "Textbook page: parallel transport",
+      "importance": 1,
       "attrs": {
         "link": "https://example.com/learn/parallel-transport-ch4",
         "mediaType": "text",
@@ -527,6 +561,7 @@
       "id": "misconception_force",
       "type": "misconception",
       "label": "Misconception: gravity is a pulling force",
+      "importance": 2,
       "attrs": {
         "description": "The idea that gravity is a force pulling objects directly toward one another through space, rather than the effect of objects following straight paths (geodesics) through curved spacetime.",
         "domain": "General relativity"
@@ -536,6 +571,7 @@
       "id": "dark_matter",
       "type": "physical_system",
       "label": "Dark Matter",
+      "importance": 5,
       "generality": 5,
       "attrs": {
         "description": "Non-luminous matter inferred from its gravitational effects, making up most of the matter in the universe.",
@@ -546,6 +582,7 @@
       "id": "wave_dark_matter",
       "type": "physical_system",
       "label": "Wave Dark Matter",
+      "importance": 3,
       "generality": 2,
       "epistemicStatus": "Candidate",
       "attrs": {
@@ -557,6 +594,7 @@
       "id": "bosons",
       "type": "physical_system",
       "label": "Bosons",
+      "importance": 4,
       "generality": 5,
       "attrs": {
         "description": "Particles with integer spin; they obey Bose–Einstein statistics, so any number of them can occupy the same quantum state.",
@@ -567,6 +605,7 @@
       "id": "bec",
       "type": "physical_system",
       "label": "BEC",
+      "importance": 3,
       "generality": 5,
       "attrs": {
         "description": "Bose–Einstein condensate: a state in which a large fraction of bosons occupy the same lowest-energy quantum state and behave as one coherent matter wave.",
@@ -577,6 +616,7 @@
       "id": "interference",
       "type": "phenomenon",
       "label": "Interference",
+      "importance": 4,
       "generality": 5,
       "attrs": {
         "description": "The superposition of waves, producing a pattern of reinforcement where they are in phase and cancellation where they are out of phase.",
@@ -587,6 +627,7 @@
       "id": "structure_formation",
       "type": "phenomenon",
       "label": "Structure Formation",
+      "importance": 4,
       "generality": 3,
       "attrs": {
         "description": "The growth of galaxies, clusters and the cosmic web from small initial density fluctuations through gravitational instability.",
@@ -597,6 +638,7 @@
       "id": "caustics",
       "type": "phenomenon",
       "label": "Caustics",
+      "importance": 2,
       "generality": 2,
       "attrs": {
         "description": "Surfaces where rays or particle streams cross and focus, producing sharp peaks in intensity or density."
@@ -606,6 +648,7 @@
       "id": "zeldovich_approximation",
       "type": "model_regime",
       "label": "Zel'dovich approximation",
+      "importance": 3,
       "generality": 2,
       "attrs": {
         "description": "A first-order Lagrangian model of structure formation in which particles move on straight lines from their initial positions, displaced along the gradient of the initial gravitational potential.",
@@ -616,6 +659,7 @@
       "id": "vlasov_equation",
       "type": "equation",
       "label": "Vlasov eq.",
+      "importance": 3,
       "generality": 2,
       "attrs": {
         "description": "Describes the phase-space evolution of a particle gas.",
@@ -645,6 +689,7 @@
       "id": "schrodinger_poisson_equation",
       "type": "equation",
       "label": "Schrödinger-Poisson eq.",
+      "importance": 3,
       "generality": 1,
       "epistemicStatus": "Candidate",
       "attrs": {
@@ -681,29 +726,10 @@
       }
     },
     {
-      "id": "ultralight_mass",
-      "type": "conditions",
-      "label": "Ultralight mass",
-      "generality": 2,
-      "attrs": {
-        "description": "The assumption that the dark matter particle is extremely light (around 10⁻²² eV), so its de Broglie wavelength reaches galactic scales.",
-        "domain": "Cosmology"
-      }
-    },
-    {
-      "id": "linear_potential",
-      "type": "conditions",
-      "label": "Linear Potential",
-      "generality": 3,
-      "attrs": {
-        "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow.",
-        "domain": "Cosmology"
-      }
-    },
-    {
       "id": "pdf",
       "type": "formalism",
       "label": "PDF",
+      "importance": 2,
       "generality": 3,
       "attrs": {
         "description": "Probability density function: a function whose integral over a range gives the probability of a value falling in that range.",
@@ -715,6 +741,7 @@
       "id": "airy_solution",
       "type": "formalism",
       "label": "Airy solution",
+      "importance": 2,
       "generality": 3,
       "attrs": {
         "description": "Solutions built from the Airy function Ai(x), which solves y'' − xy = 0 — the universal wave pattern near a fold caustic.",
@@ -800,13 +827,13 @@
       "id": "e13",
       "source": "einstein_eq",
       "target": "newtonian_gravity",
-      "relationship": "Leads to"
-    },
-    {
-      "id": "e14",
-      "source": "newtonian_gravity",
-      "target": "weak_field_limit",
-      "relationship": "Depends on"
+      "relationship": "Leads to",
+      "conditions": [
+        {
+          "label": "weak-field low-velocity limit",
+          "description": "The regime where gravitational fields are weak and velocities are much smaller than the speed of light, so spacetime curvature can be treated as a small perturbation on flat space."
+        }
+      ]
     },
     {
       "id": "e15",
@@ -1058,12 +1085,6 @@
       "relationship": "relates"
     },
     {
-      "id": "e56",
-      "source": "decay_equation",
-      "target": "large_number",
-      "relationship": "assumes a"
-    },
-    {
       "id": "e57",
       "source": "exponentials",
       "target": "decay_equation",
@@ -1074,7 +1095,13 @@
       "id": "e58",
       "source": "decay_equation",
       "target": "alpha_decay",
-      "relationship": "describes"
+      "relationship": "describes",
+      "conditions": [
+        {
+          "label": "large number",
+          "description": "The large-sample condition under which radioactive decay is well described statistically."
+        }
+      ]
     },
     {
       "id": "e59",
@@ -1106,13 +1133,13 @@
       "id": "e63",
       "source": "zeldovich_approximation",
       "target": "structure_formation",
-      "relationship": "approximates"
-    },
-    {
-      "id": "e64",
-      "source": "zeldovich_approximation",
-      "target": "linear_potential",
-      "relationship": "assumes"
+      "relationship": "approximates",
+      "conditions": [
+        {
+          "label": "linear potential",
+          "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow."
+        }
+      ]
     },
     {
       "id": "e65",
@@ -1124,13 +1151,14 @@
       "id": "e66",
       "source": "wave_dark_matter",
       "target": "interference",
-      "relationship": "exhibits"
-    },
-    {
-      "id": "e67",
-      "source": "wave_dark_matter",
-      "target": "ultralight_mass",
-      "relationship": "assumes"
+      "relationship": "exhibits",
+      "conditions": [
+        {
+          "label": "ultralight mass",
+          "description": "The assumption that the dark matter particle is extremely light (around 10⁻²² eV), so its de Broglie wavelength reaches galactic scales."
+        }
+      ],
+      "review": "Ultralight mass was a separate node that Wave Dark Matter 'assumes'; it is attached here because the long de Broglie wavelength is what makes interference visible. Sophie to confirm it belongs on this edge rather than on 'is a class of Dark Matter'."
     },
     {
       "id": "e68",

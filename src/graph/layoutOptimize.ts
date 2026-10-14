@@ -1,7 +1,7 @@
 // Pure geometry for the concept-map layout search (no Cytoscape here):
 // cytoscape draws edges as straight lines between node centres, so crossings
-// are counted geometrically — dagre's own objective only sees adjacent ranks
-// and misses long edges.
+// are counted geometrically. Edge direction plays no part in the layout — a
+// relation may point any way on screen; only legibility is scored.
 
 export interface Pos {
   x: number;
@@ -13,7 +13,7 @@ export type Positions = Record<string, Pos>;
 export type Segment = [string, string];
 
 export interface NodeBox {
-  /** Circle radius — what an edge must not pass through */
+  /** Circle radius */
   radius: number;
   /** Label-inclusive extent, as offsets from the node centre (left/top ≤ 0) */
   left: number;
@@ -21,6 +21,11 @@ export interface NodeBox {
   top: number;
   bottom: number;
 }
+
+const BOX_MARGIN = 10;
+/** Free length an edge gets beyond its two nodes' footprints — room for the relation name. */
+const EDGE_ROOM = 90;
+const FORCE_ITERATIONS = 400;
 
 const ccw = (a: Pos, b: Pos, c: Pos) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
 
@@ -38,7 +43,29 @@ export function countCrossings(segments: Segment[], pos: Positions): number {
   return n;
 }
 
-/** Edges that pass through a circle they don't end at — they read as false connections. */
+/** Liang–Barsky: does segment a→b pass through the rectangle? */
+function segmentHitsRect(a: Pos, b: Pos, x1: number, y1: number, x2: number, y2: number): boolean {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let t0 = 0, t1 = 1;
+  const clip = (p: number, q: number) => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  return clip(-dx, a.x - x1) && clip(dx, x2 - a.x) && clip(-dy, a.y - y1) && clip(dy, y2 - a.y) && t0 < t1;
+}
+
+/**
+ * Edges that pass through a node (circle or name) they don't end at — they
+ * read as false connections or cover the name.
+ */
 export function countNodeOverlaps(
   segments: Segment[],
   pos: Positions,
@@ -47,15 +74,34 @@ export function countNodeOverlaps(
   let n = 0;
   for (const [s, t] of segments) {
     const a = pos[s], b = pos[t];
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len2 = dx * dx + dy * dy || 1;
     for (const id in pos) {
       if (id === s || id === t) continue;
-      const p = pos[id];
-      const u = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-      if (Math.hypot(a.x + u * dx - p.x, a.y + u * dy - p.y) < boxes[id].radius + 4) n++;
+      const p = pos[id], box = boxes[id];
+      if (segmentHitsRect(a, b, p.x + box.left - 4, p.y + box.top - 4, p.x + box.right + 4, p.y + box.bottom + 4))
+        n++;
     }
   }
+  return n;
+}
+
+/** x/y overlap of two nodes' margin-padded boxes (both > 0 means they overlap). */
+function overlapOf(a: string, b: string, pos: Positions, boxes: Record<string, NodeBox>, margin: number) {
+  const pa = pos[a], pb = pos[b], ba = boxes[a], bb = boxes[b];
+  return {
+    x: Math.min(pa.x + ba.right, pb.x + bb.right) - Math.max(pa.x + ba.left, pb.x + bb.left) + margin,
+    y: Math.min(pa.y + ba.bottom, pb.y + bb.bottom) - Math.max(pa.y + ba.top, pb.y + bb.top) + margin,
+  };
+}
+
+/** Pairs of nodes whose label-inclusive boxes (plus a margin) overlap. */
+export function countBoxOverlaps(pos: Positions, boxes: Record<string, NodeBox>, margin = BOX_MARGIN): number {
+  const ids = Object.keys(pos);
+  let n = 0;
+  for (let i = 0; i < ids.length; i++)
+    for (let j = i + 1; j < ids.length; j++) {
+      const o = overlapOf(ids[i], ids[j], pos, boxes, margin);
+      if (o.x > 0 && o.y > 0) n++;
+    }
   return n;
 }
 
@@ -75,7 +121,8 @@ export function scoreLayout(
   boxes: Record<string, NodeBox>,
 ): LayoutScore {
   return {
-    tangles: countCrossings(segments, pos) + countNodeOverlaps(segments, pos, boxes),
+    tangles:
+      countCrossings(segments, pos) + countNodeOverlaps(segments, pos, boxes) + countBoxOverlaps(pos, boxes),
     length: edgeLength(segments, pos),
   };
 }
@@ -83,65 +130,177 @@ export function scoreLayout(
 export const better = (a: LayoutScore, b: LayoutScore) =>
   a.tangles < b.tangles || (a.tangles === b.tangles && a.length < b.length - 1e-6);
 
+const copy = (pos: Positions): Positions =>
+  Object.fromEntries(Object.entries(pos).map(([id, p]) => [id, { ...p }]));
+
+/** Half-diagonal of a node's label-inclusive box: how much room it claims. */
+const reach = (b: NodeBox) => Math.hypot(b.right - b.left, b.bottom - b.top) / 2;
+
 /**
- * Greedy clean-up after dagre: swap neighbours within a rank whenever that
- * lowers the score. The pair is re-packed inside its old outer extent, so a
- * swap never pushes into the next node.
+ * Spring-electrical layout (Fruchterman–Reingold) of one connected
+ * component. Each pair's ideal distance grows with the two label boxes, so
+ * long names get the room they need.
  */
-export function sweepRanks(
+export function forceLayout(
+  ids: string[],
+  segments: Segment[],
+  boxes: Record<string, NodeBox>,
+  rng: () => number,
+  iterations = FORCE_ITERATIONS,
+): Positions {
+  const n = ids.length;
+  const r = ids.map((id) => reach(boxes[id]));
+  const k = (i: number, j: number) => EDGE_ROOM + r[i] + r[j];
+  const meanK = EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1);
+  const side = meanK * Math.sqrt(n);
+  const x = ids.map(() => (rng() - 0.5) * side);
+  const y = ids.map(() => (rng() - 0.5) * side);
+  const at = new Map(ids.map((id, i) => [id, i]));
+  const links = segments.map(([s, t]) => [at.get(s)!, at.get(t)!] as const);
+  const t0 = side / 4;
+  for (let it = 0; it < iterations; it++) {
+    const temp = t0 * (1 - it / iterations) + 1;
+    const fx = new Array<number>(n).fill(0);
+    const fy = new Array<number>(n).fill(0);
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++) {
+        let dx = x[i] - x[j], dy = y[i] - y[j];
+        let d = Math.hypot(dx, dy);
+        if (d < 1e-3) {
+          dx = rng() - 0.5;
+          dy = rng() - 0.5;
+          d = Math.hypot(dx, dy);
+        }
+        // Repulsion k²/d, applied along the unit vector (dx, dy) / d.
+        const f = (k(i, j) * k(i, j)) / (d * d);
+        fx[i] += dx * f;
+        fy[i] += dy * f;
+        fx[j] -= dx * f;
+        fy[j] -= dy * f;
+      }
+    for (const [i, j] of links) {
+      if (i === j) continue;
+      const dx = x[i] - x[j], dy = y[i] - y[j];
+      // Attraction d²/k along the unit vector.
+      const f = Math.hypot(dx, dy) / k(i, j);
+      fx[i] -= dx * f;
+      fy[i] -= dy * f;
+      fx[j] += dx * f;
+      fy[j] += dy * f;
+    }
+    for (let i = 0; i < n; i++) {
+      const m = Math.hypot(fx[i], fy[i]);
+      if (m < 1e-9) continue;
+      const step = Math.min(m, temp) / m;
+      x[i] += fx[i] * step;
+      y[i] += fy[i] * step;
+    }
+  }
+  return Object.fromEntries(ids.map((id, i) => [id, { x: x[i], y: y[i] }]));
+}
+
+/** Rotates a component so its long axis runs horizontally — it then packs well into a wide viewport. */
+export function alignWide(pos: Positions): Positions {
+  const ids = Object.keys(pos);
+  if (ids.length < 2) return copy(pos);
+  const mx = ids.reduce((s, id) => s + pos[id].x, 0) / ids.length;
+  const my = ids.reduce((s, id) => s + pos[id].y, 0) / ids.length;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (const id of ids) {
+    const dx = pos[id].x - mx, dy = pos[id].y - my;
+    sxx += dx * dx;
+    syy += dy * dy;
+    sxy += dx * dy;
+  }
+  const angle = -0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return Object.fromEntries(
+    ids.map((id) => {
+      const dx = pos[id].x - mx, dy = pos[id].y - my;
+      return [id, { x: dx * c - dy * s, y: dx * s + dy * c }];
+    }),
+  );
+}
+
+/** Pushes overlapping label boxes apart along their smaller overlap axis. */
+export function removeOverlaps(pos: Positions, boxes: Record<string, NodeBox>, maxPasses = 60): Positions {
+  const out = copy(pos);
+  const ids = Object.keys(out);
+  const centre = (id: string) => ({
+    x: out[id].x + (boxes[id].left + boxes[id].right) / 2,
+    y: out[id].y + (boxes[id].top + boxes[id].bottom) / 2,
+  });
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let moved = false;
+    for (let i = 0; i < ids.length; i++)
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = ids[i], b = ids[j];
+        const o = overlapOf(a, b, out, boxes, BOX_MARGIN);
+        if (o.x <= 0 || o.y <= 0) continue;
+        moved = true;
+        const ca = centre(a), cb = centre(b);
+        if (o.x < o.y) {
+          const dir = ca.x <= cb.x ? -1 : 1;
+          out[a].x += (dir * o.x) / 2;
+          out[b].x -= (dir * o.x) / 2;
+        } else {
+          const dir = ca.y <= cb.y ? -1 : 1;
+          out[a].y += (dir * o.y) / 2;
+          out[b].y -= (dir * o.y) / 2;
+        }
+      }
+    if (!moved) break;
+  }
+  return out;
+}
+
+/**
+ * Greedy clean-up: swap the positions of any two nodes whenever that lowers
+ * the score — untangles crossings the force layout settled into.
+ */
+export function swapNodes(
   segments: Segment[],
   start: Positions,
   boxes: Record<string, NodeBox>,
-  maxPasses = 12,
+  maxPasses = 4,
 ): { pos: Positions; score: LayoutScore } {
-  const pos: Positions = Object.fromEntries(Object.entries(start).map(([id, p]) => [id, { ...p }]));
-  const ranks = new Map<number, string[]>();
-  for (const id in pos) {
-    const y = Math.round(pos[id].y);
-    ranks.set(y, [...(ranks.get(y) ?? []), id]);
-  }
+  const pos = copy(start);
+  const ids = Object.keys(pos);
   let score = scoreLayout(segments, pos, boxes);
   for (let pass = 0, improved = true; improved && pass < maxPasses; pass++) {
     improved = false;
-    for (const ids of ranks.values()) {
-      ids.sort((a, b) => pos[a].x - pos[b].x);
-      for (let i = 0; i + 1 < ids.length; i++) {
-        const a = ids[i], b = ids[i + 1];
-        const wa = boxes[a].right - boxes[a].left, wb = boxes[b].right - boxes[b].left;
-        const oldA = pos[a].x, oldB = pos[b].x;
-        const gap = oldB - wb / 2 - (oldA + wa / 2);
-        const left = oldA - wa / 2;
-        pos[b] = { ...pos[b], x: left + wb / 2 };
-        pos[a] = { ...pos[a], x: left + wb + gap + wa / 2 };
+    for (let i = 0; i < ids.length; i++)
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = ids[i], b = ids[j];
+        [pos[a], pos[b]] = [pos[b], pos[a]];
         const next = scoreLayout(segments, pos, boxes);
         if (better(next, score)) {
           score = next;
           improved = true;
-          ids[i] = b;
-          ids[i + 1] = a;
         } else {
-          pos[a] = { ...pos[a], x: oldA };
-          pos[b] = { ...pos[b], x: oldB };
+          [pos[a], pos[b]] = [pos[b], pos[a]];
         }
       }
-    }
   }
   return { pos, score };
+}
+
+/** One full arrangement of a component: force layout → widen → de-overlap → swap clean-up. */
+export function arrangeComponent(
+  ids: string[],
+  segments: Segment[],
+  boxes: Record<string, NodeBox>,
+  rng: () => number,
+): { pos: Positions; score: LayoutScore } {
+  const spread = removeOverlaps(alignWide(forceLayout(ids, segments, boxes, rng)), boxes);
+  const pos = removeOverlaps(swapNodes(segments, spread, boxes).pos, boxes);
+  return { pos, score: scoreLayout(segments, pos, boxes) };
 }
 
 /** Deterministic PRNG (Park–Miller) so the search is reproducible. */
 export function createRng(seed: number) {
   let s = seed % 2147483647 || 1;
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
-}
-
-export function shuffled<T>(items: T[], rng: () => number): T[] {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 interface Rect {
@@ -185,9 +344,8 @@ const rowSize = (row: number[], rects: Rect[], gap: number) => ({
 /**
  * Lays separately-arranged components out side by side so unrelated
  * sub-graphs never interleave. Shelf packing, largest first (as given),
- * rows bottom-aligned — fundamentals sit at the bottom of every component
- * (rankDir BT). Every possible row break is tried; the one that fits a
- * viewport of the given aspect (width / height) at the largest scale wins.
+ * rows bottom-aligned. Every possible row break is tried; the one that fits
+ * a viewport of the given aspect (width / height) at the largest scale wins.
  */
 export function packComponents(
   components: Positions[],

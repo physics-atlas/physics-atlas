@@ -44,6 +44,20 @@ const EDGE_TEMPLATES = vocab.edgeTemplates ?? {};
 const MEDIA_TYPES = vocab.mediaTypes ?? [];
 const EPISTEMIC_STATUSES = vocab.epistemicStatuses ?? [];
 
+const TYPE_DEFINITIONS = vocab.nodeTypeDefinitions ?? {};
+for (const [type, def] of Object.entries(TYPE_DEFINITIONS)) {
+  const where = `conceptVocabulary.json nodeTypeDefinitions.${type}`;
+  if (!NODE_TYPES.includes(type)) errors.push(`${where}: "${type}" is not a node type in nodeTypes`);
+  for (const key of ['term', 'definition'])
+    if (typeof def?.[key] !== 'string' || !def[key].trim()) errors.push(`${where}: "${key}" must be a non-empty string`);
+  for (const key of ['examples', 'distinctions'])
+    if (!Array.isArray(def?.[key]) || def[key].some((v) => typeof v !== 'string'))
+      errors.push(`${where}: "${key}" must be an array of strings`);
+}
+for (const type of NODE_TYPES)
+  if (!(type in TYPE_DEFINITIONS))
+    warn.push(`node type "${type}" has no entry in nodeTypeDefinitions — the legend says "not defined yet"`);
+
 function normalizeRelationship(raw) {
   const key = String(raw).trim().replace(/\s+/g, ' ').toLowerCase();
   return key in EDGE_TEMPLATES ? key : null;
@@ -136,12 +150,10 @@ for (const n of data.nodes) {
     errors.push(`${where}: type "${n.type}" not one of ${NODE_TYPES.join(', ')}`);
   else checkNodeAttrs(where, n);
 
-  if (n.generality !== undefined) {
-    if (!Number.isInteger(n.generality) || n.generality < 1 || n.generality > 5)
-      errors.push(`${where}: generality must be an integer 1–5`);
-    if (n.type === 'learning_goal')
-      warn.push(`${where}: generality set on a learning_goal (ignored — learning goals always render minimal)`);
-  }
+  if (n.importance !== undefined && (!Number.isInteger(n.importance) || n.importance < 1 || n.importance > 5))
+    errors.push(`${where}: importance must be an integer 1–5`);
+  if (n.generality !== undefined && (!Number.isInteger(n.generality) || n.generality < 1 || n.generality > 5))
+    errors.push(`${where}: generality must be an integer 1–5`);
   if (n.epistemicStatus !== undefined) {
     if (typeof n.epistemicStatus !== 'string' || !n.epistemicStatus.trim())
       errors.push(`${where}: epistemicStatus must be a non-empty string (delete the field if unknown)`);
@@ -193,6 +205,17 @@ for (const e of data.edges) {
     }
   }
 
+  if (e.conditions !== undefined) {
+    if (!Array.isArray(e.conditions) || e.conditions.length === 0)
+      errors.push(`${where}: conditions must be a non-empty array (delete the field if there are none)`);
+    else
+      e.conditions.forEach((c, i) => {
+        if (!c || typeof c.label !== 'string' || !c.label.trim())
+          errors.push(`${where}: conditions[${i}].label must be a non-empty string`);
+        if (c?.description !== undefined && typeof c.description !== 'string')
+          errors.push(`${where}: conditions[${i}].description must be a string`);
+      });
+  }
   if (e.review !== undefined) warn.push(`${where}: open review — ${e.review}`);
 }
 
@@ -216,8 +239,9 @@ if (errors.length === 0) {
   if (stuck.length) errors.push(`cycle among "strict prerequisite for" edges involving: ${stuck.join(', ')}`);
 }
 
-const noGenerality = data.nodes.filter((n) => n.generality === undefined).length;
-warn.push(`${noGenerality} of ${data.nodes.length} nodes have no authored generality yet — size falls back to connection count`);
+const noImportance = data.nodes.filter((n) => n.importance === undefined).length;
+if (noImportance)
+  warn.push(`${noImportance} of ${data.nodes.length} nodes have no importance yet — size and zoom visibility fall back to generality, then connection count`);
 const noStatus = data.nodes.filter((n) => n.epistemicStatus === undefined).length;
 warn.push(`${noStatus} of ${data.nodes.length} nodes have no epistemicStatus yet — the card shows "To-do"`);
 

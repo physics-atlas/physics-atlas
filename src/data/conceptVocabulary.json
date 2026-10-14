@@ -3,15 +3,137 @@
     "physical_system": "Physical system",
     "property": "Property/quantity",
     "phenomenon": "Phenomenon",
+    "process": "Process/dynamics",
     "model_regime": "Model/behaviour regime",
-    "conditions": "Conditions/assumptions",
+    "theory": "Theory/framework",
     "formalism": "Mathematical formalism",
     "equation": "Law/equation",
     "method": "Method/technique",
     "experiment": "Experiment/evidence",
+    "dataset": "Data/dataset",
+    "claim": "Claim/hypothesis",
+    "finding": "Finding/result",
     "learning_goal": "Learning goal",
     "resource": "Educational resource",
     "misconception": "Misconception"
+  },
+  "nodeTypeDefinitions": {
+    "physical_system": {
+      "term": "System / entity",
+      "definition": "An identifiable object, substance, organism, structure, or collection of interacting components that can be studied.",
+      "examples": ["Electron", "neutron star", "pendulum", "protein", "ecosystem", "semiconductor", "galaxy"],
+      "distinctions": []
+    },
+    "property": {
+      "term": "Property / quantity",
+      "definition": "An attribute of a system or process that can be defined, measured, calculated, or otherwise characterised.",
+      "examples": ["Mass", "entropy", "temperature", "electric charge", "gene expression level", "biodiversity index"],
+      "distinctions": []
+    },
+    "phenomenon": {
+      "term": "Phenomenon",
+      "definition": "An empirically observed or theoretically characterised effect or pattern that requires description or explanation.",
+      "examples": ["Interference", "superconductivity", "gravitational lensing", "natural selection", "the greenhouse effect"],
+      "distinctions": [
+        "Phenomenon versus process: interference is a phenomenon; diffusion is a process. Some concepts can legitimately fit both descriptions depending on how they are represented."
+      ]
+    },
+    "process": {
+      "term": "Process / dynamics",
+      "definition": "A change, evolution, or sequence of interactions occurring in a system over time or across space.",
+      "examples": ["Diffusion", "chemical reaction", "galaxy formation", "radioactive decay", "protein folding"],
+      "distinctions": [
+        "Phenomenon versus process: interference is a phenomenon; diffusion is a process. Some concepts can legitimately fit both descriptions depending on how they are represented."
+      ]
+    },
+    "theory": {
+      "term": "Theory / conceptual framework",
+      "definition": "An organised body of concepts and principles that provides a systematic account of a class of phenomena and constrains possible explanations or predictions.",
+      "examples": ["General relativity", "quantum field theory", "evolutionary theory", "plate tectonics"],
+      "distinctions": [
+        "Model versus theory: a model is a particular representation; a theory or framework can organise multiple models, laws, and explanatory principles. The boundary is not absolute in scientific practice."
+      ]
+    },
+    "dataset": {
+      "term": "Data / dataset",
+      "definition": "Recorded measurements, observations, simulations, or other outputs organised for analysis or reuse.",
+      "examples": ["CMB maps", "galaxy catalogue", "gene-expression matrix", "climate time series", "Monte Carlo samples"],
+      "distinctions": [
+        "Observation versus data: an observation is an investigative event or act; a dataset is a recorded information product. They should be linked, not conflated."
+      ]
+    },
+    "claim": {
+      "term": "Claim / hypothesis",
+      "definition": "A proposition about the world, a model, or a relationship that can be examined through argument, evidence, or testing.",
+      "examples": ["A particular dark-matter mass range is excluded", "a drug reduces infection risk", "a material exhibits a phase transition"],
+      "distinctions": [
+        "Claim versus finding: a hypothesis can precede testing; a finding is a reported outcome. A finding is not automatically established fact."
+      ]
+    },
+    "finding": {
+      "term": "Finding / result",
+      "definition": "A reported outcome of an analysis, experiment, observation, or proof, interpreted relative to its method and evidence.",
+      "examples": ["A measured value of the Hubble constant", "a detected spectral line", "a proved theorem", "a statistically significant treatment effect"],
+      "distinctions": [
+        "Claim versus finding: a hypothesis can precede testing; a finding is a reported outcome. A finding is not automatically established fact."
+      ]
+    },
+    "model_regime": {
+      "term": "Model · State / regime",
+      "definition": "A model is a deliberately simplified representation of a system, process, or phenomenon used to describe, explain, predict, or calculate its behaviour. A state or regime is a condition or mode of a system characterised by a particular set of properties or dynamical behaviour.",
+      "examples": ["Ising model", "Zel’dovich approximation", "ΛCDM cosmological model", "Lotka–Volterra model", "ideal-gas model", "thermal equilibrium", "superfluid phase", "laminar flow", "chaotic regime", "epidemic phase"],
+      "distinctions": [
+        "Model versus theory: a model is a particular representation; a theory or framework can organise multiple models, laws, and explanatory principles. The boundary is not absolute in scientific practice."
+      ]
+    },
+    "formalism": {
+      "term": "Mathematical structure / formalism",
+      "definition": "A mathematical language, structure, or set of tools used to formulate, analyse, or solve scientific problems.",
+      "examples": ["Hilbert space", "differential geometry", "group theory", "Fourier analysis", "probability theory"],
+      "distinctions": [
+        "Law versus mathematical formalism: Maxwell's equations are specific relations; differential geometry is mathematical machinery used to formulate theories."
+      ]
+    },
+    "equation": {
+      "term": "Law / equation",
+      "definition": "A specific mathematical or logical relation expressing a constraint, regularity, or dynamical relationship within a stated domain of applicability.",
+      "examples": ["Schrödinger equation", "Maxwell's equations", "Navier–Stokes equations", "Hardy–Weinberg principle"],
+      "distinctions": [
+        "Law versus mathematical formalism: Maxwell's equations are specific relations; differential geometry is mathematical machinery used to formulate theories."
+      ]
+    },
+    "method": {
+      "term": "Method / technique",
+      "definition": "A defined procedure for obtaining, analysing, modelling, or interpreting scientific information.",
+      "examples": ["Molecular dynamics", "finite-element analysis", "perturbation theory", "PCR", "Bayesian inference"],
+      "distinctions": []
+    },
+    "experiment": {
+      "term": "Experiment / observation",
+      "definition": "A planned intervention or systematic observation used to investigate a question, test a prediction, or characterise a system.",
+      "examples": ["Double-slit experiment", "LIGO observation", "controlled clinical trial", "field survey"],
+      "distinctions": [
+        "Observation versus data: an observation is an investigative event or act; a dataset is a recorded information product. They should be linked, not conflated."
+      ]
+    },
+    "learning_goal": {
+      "term": "Learning goal",
+      "definition": "An explicitly stated, assessable capability or understanding that a learner is expected to demonstrate.",
+      "examples": ["Derive the Friedmann equations under stated assumptions", "interpret a confidence interval", "distinguish genotype from phenotype"],
+      "distinctions": []
+    },
+    "resource": {
+      "term": "Educational resource",
+      "definition": "An artefact or activity intentionally designed or selected to support teaching, learning, assessment, or communication.",
+      "examples": ["Interactive simulation", "worked example", "lecture video", "laboratory worksheet", "concept inventory"],
+      "distinctions": []
+    },
+    "misconception": {
+      "term": "Misconception",
+      "definition": "A documented, recurrent conception or reasoning pattern that conflicts with a specified scientific account, model, or body of evidence.",
+      "examples": ["Confusing temperature with heat", "believing seasons are caused by Earth's changing distance from the Sun", "assuming heavier objects fall faster in a vacuum"],
+      "distinctions": []
+    }
   },
   "edgeTemplates": {
     "strict prerequisite for": "{s} is a strict prerequisite for {t}.",

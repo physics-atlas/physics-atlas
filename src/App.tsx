@@ -14,9 +14,18 @@ import { expandedCurriculumFor, parseUnitId } from './graph/dag';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
+import { useMotion } from './lib/motion';
 import './App.css';
 
 type Mode = 'home' | 'map' | 'goal' | 'topic' | 'concepts';
+
+const VIEW_TITLES: Record<Mode, string> = {
+  home: 'Learn by prerequisites',
+  map: 'Topic map',
+  goal: 'Learning goal',
+  topic: 'Topic',
+  concepts: 'Concept map',
+};
 
 function initialMode(): Mode {
   const m = new URLSearchParams(window.location.search).get('mode');
@@ -70,18 +79,44 @@ export default function App() {
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
+  const motion = useMotion();
   // The home hero is intentionally dark-only; every other view honors the choice.
   useEffect(() => {
     document.documentElement.dataset.theme = mode === 'home' ? 'dark' : theme;
   }, [mode, theme]);
-  const themeButton = (extra = '') => (
+
+  // Each view is a page to assistive tech: its own title (WCAG 2.4.2), and
+  // focus moves to the new view on navigation so a screen reader starts
+  // reading there instead of staying on the button that was pressed.
+  const mainRef = useRef<HTMLElement>(null);
+  const firstView = useRef(true);
+  useEffect(() => {
+    document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    mainRef.current?.focus({ preventScroll: true });
+  }, [mode]);
+
+  const themeButton = (
     <button
-      className={`theme-toggle ${extra}`}
+      className="theme-toggle"
       onClick={toggleTheme}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
     >
-      {theme === 'dark' ? '☀' : '🌙'}
+      <span aria-hidden>{theme === 'dark' ? '☀' : '🌙'}</span>
+    </button>
+  );
+  const motionButton = (
+    <button
+      className="theme-toggle motion-toggle"
+      onClick={motion.toggle}
+      aria-pressed={motion.reduced}
+      title="Stop the moving background and smooth map animations"
+    >
+      Reduce motion
     </button>
   );
 
@@ -182,15 +217,20 @@ export default function App() {
 
   return (
     <div className="app">
-      <Starfield />
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
+      <Starfield still={motion.reduced} />
       <div className="nebula nebula-a" aria-hidden />
       <div className="nebula nebula-b" aria-hidden />
       <div className="nebula nebula-c" aria-hidden />
       {mode !== 'home' && (
         <header className="app-header">
-          <button className="app-wordmark" onClick={() => setMode('home')}>
-            <h1 className="app-title">Physics Atlas</h1>
-          </button>
+          <p className="app-heading">
+            <button className="app-wordmark" onClick={() => setMode('home')} aria-label="Physics Atlas, home">
+              <span className="app-title">Physics Atlas</span>
+            </button>
+          </p>
           {mode === 'concepts' ? (
             <SearchBox
               key="concepts"
@@ -202,87 +242,97 @@ export default function App() {
           ) : (
             <SearchBox key="topics" topics={data.topics} onPick={headerSearchPick} />
           )}
-          <nav className="mode-tabs" aria-label="View mode">
+          <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
+              aria-current={mode === 'concepts' ? 'page' : undefined}
               onClick={() => setMode('concepts')}
             >
               Concept map
             </button>
             <button
               className={`mode-tab ${mode === 'goal' ? 'mode-tab-active' : ''}`}
+              aria-current={mode === 'goal' ? 'page' : undefined}
               onClick={() => setMode('goal')}
             >
               Learning goal
             </button>
           </nav>
-          {themeButton()}
+          <div className="header-settings" role="group" aria-label="Display settings">
+            {motionButton}
+            {themeButton}
+          </div>
         </header>
       )}
-      {mode === 'home' && (
-        <Home
-          topics={data.topics}
-          onSearchPick={homeSearchPick}
-          onExplore={() => setMode('concepts')}
-          onPickGoal={pickGoal}
-        />
-      )}
-      {mode === 'map' && (
-        <MapView
-          topics={data.topics}
-          progress={progress}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onMakeGoal={pickGoal}
-          onOpenTopic={openTopic}
-          focus={focus}
-          theme={theme}
-        />
-      )}
-      {mode === 'goal' && (
-        <GoalView
-          topics={data.topics}
-          skills={data.skills ?? []}
-          progress={progress}
-          goalRef={goalRef}
-          onPickGoal={(ref) => {
-            setGoalRef(ref);
-            setSelectedId(null);
-          }}
-          onOpenTopic={openTopic}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          focus={focus}
-          theme={theme}
-        />
-      )}
-      {mode === 'topic' && (
-        <TopicPage
-          topics={data.topics}
-          progress={progress}
-          topicId={topicPageId}
-          onOpenTopic={openTopic}
-          onMakeGoal={pickGoal}
-          onShowOnMap={(id) => {
-            setMode('map');
-            focusOn(id);
-          }}
-          theme={theme}
-        />
-      )}
-      {mode === 'concepts' && (
-        <ConceptMapView
-          graph={concepts}
-          progress={progress}
-          goalId={conceptGoal}
-          onGoalChange={setConceptGoal}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onFocus={focusOn}
-          focus={focus}
-          theme={theme}
-        />
-      )}
+      <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
+        {mode !== 'home' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
+        {mode === 'home' && (
+          <Home
+            topics={data.topics}
+            onSearchPick={homeSearchPick}
+            onExplore={() => setMode('concepts')}
+            onPickGoal={pickGoal}
+            motionButton={motionButton}
+            still={motion.reduced}
+          />
+        )}
+        {mode === 'map' && (
+          <MapView
+            topics={data.topics}
+            progress={progress}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onMakeGoal={pickGoal}
+            onOpenTopic={openTopic}
+            focus={focus}
+            theme={theme}
+          />
+        )}
+        {mode === 'goal' && (
+          <GoalView
+            topics={data.topics}
+            skills={data.skills ?? []}
+            progress={progress}
+            goalRef={goalRef}
+            onPickGoal={(ref) => {
+              setGoalRef(ref);
+              setSelectedId(null);
+            }}
+            onOpenTopic={openTopic}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            focus={focus}
+            theme={theme}
+          />
+        )}
+        {mode === 'topic' && (
+          <TopicPage
+            topics={data.topics}
+            progress={progress}
+            topicId={topicPageId}
+            onOpenTopic={openTopic}
+            onMakeGoal={pickGoal}
+            onShowOnMap={(id) => {
+              setMode('map');
+              focusOn(id);
+            }}
+            theme={theme}
+          />
+        )}
+        {mode === 'concepts' && (
+          <ConceptMapView
+            graph={concepts}
+            progress={progress}
+            goalId={conceptGoal}
+            onGoalChange={setConceptGoal}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onFocus={focusOn}
+            focus={focus}
+            theme={theme}
+          />
+        )}
+      </main>
     </div>
   );
 }

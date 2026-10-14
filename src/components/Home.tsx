@@ -8,14 +8,18 @@ interface HomeProps {
   onSearchPick: (id: string) => void;
   onExplore: () => void;
   onPickGoal: (id: string) => void;
+  /** The reduce-motion switch — the galaxy animates indefinitely, so it must be stoppable here too */
+  motionButton: React.ReactNode;
+  still: boolean;
 }
 
-export default function Home({ topics, onSearchPick, onExplore, onPickGoal }: HomeProps) {
+export default function Home({ topics, onSearchPick, onExplore, onPickGoal, motionButton, still }: HomeProps) {
   const featured = topics.filter((t) => t.featured);
 
   return (
     <div className="home">
-      <Galaxy />
+      <Galaxy still={still} />
+      <div className="home-settings">{motionButton}</div>
       <div className="home-content">
         <p className="home-eyebrow">An atlas of physics</p>
         <h1 className="home-title">

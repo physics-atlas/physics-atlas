@@ -16,7 +16,8 @@ export function normalizeRelationship(raw: string): EdgeType | null {
 }
 
 /**
- * The edge's sentence ({s}/{t} filled with node labels) split into text runs
+ * The edge's sentence ({s}/{t} filled with node labels, plus "under the
+ * assumption of …" when the edge has conditions) split into text runs
  * and node references, so a view can render the other node's label as a
  * control. Falls back to a plain "{s} — {raw} — {t}" reading only for an
  * unknown relationship type — a case the validator already rejects, so this
@@ -25,15 +26,30 @@ export function normalizeRelationship(raw: string): EdgeType | null {
 export function sentenceParts(
   edge: GraphEdge,
   byId: ConceptMap,
+  withConditions = true,
 ): (string | { id: string; label: string })[] {
   const s = { id: edge.source, label: byId.get(edge.source)?.label ?? edge.source };
   const t = { id: edge.target, label: byId.get(edge.target)?.label ?? edge.target };
   const type = normalizeRelationship(edge.relationship);
-  const template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} — ${edge.relationship} — {t}`;
+  let template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} — ${edge.relationship} — {t}`;
+  const clause = withConditions ? conditionClause(edge) : null;
+  if (clause) template = `${template.replace(/\.$/, '')} ${clause}.`;
   return template
     .split(/(\{s\}|\{t\})/)
     .filter((part) => part !== '')
     .map((part) => (part === '{s}' ? s : part === '{t}' ? t : part));
+}
+
+/** "a", "a and b", "a, b and c" */
+export function joinList(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** "under the assumption(s) of …" for an edge with conditions, else null. */
+export function conditionClause(edge: GraphEdge): string | null {
+  const labels = (edge.conditions ?? []).map((c) => c.label);
+  if (labels.length === 0) return null;
+  return `under the assumption${labels.length > 1 ? 's' : ''} of ${joinList(labels)}`;
 }
 
 export interface ConceptIndex {
@@ -64,37 +80,30 @@ export function buildConceptIndex(graph: ConceptGraph): ConceptIndex {
 }
 
 /**
- * The single place for the generality fallback: learning goals are always
- * the most specific (1), an authored value wins, otherwise the node's degree
- * stands in until Sophie authors one.
+ * 1–5: authored importance, else authored generality, else a degree estimate
+ * (learning goals 1). Drives circle size and the zoom level a node appears at.
  */
-export function effectiveGenerality(node: GraphNode, degree: number): number {
+export function effectiveImportance(node: GraphNode, degree: number): number {
+  if (node.importance !== undefined) return node.importance;
   if (node.type === 'learning_goal') return 1;
-  return node.generality ?? degree;
+  if (node.generality !== undefined) return node.generality;
+  return Math.min(5, 1 + Math.round(Math.sqrt(degree)));
 }
 
-/** On-canvas circle radius: authored 1–5 → 8…24; degree fallback matches the seed preview. */
+/** On-canvas circle radius: importance 1–5 → 7…27. */
 export function nodeRadius(node: GraphNode, degree: number): number {
-  if (node.type === 'learning_goal') return 7;
-  if (node.generality !== undefined) return 8 + (node.generality - 1) * 4;
-  return Math.min(24, 7 + 5.7 * Math.sqrt(degree));
+  return 7 + (effectiveImportance(node, degree) - 1) * 5;
 }
 
 /**
- * The node plus every parent reachable against the edge direction (any
- * relation type), up to the last one, nearest first — the click sub-graph.
+ * The node plus its first-degree connections in both directions (any
+ * relation type) — the click sub-graph.
  */
-export function upstreamOf(id: string, index: ConceptIndex): string[] {
-  const order = [id];
-  const seen = new Set(order);
-  for (let i = 0; i < order.length; i++) {
-    for (const e of index.incoming.get(order[i]) ?? []) {
-      if (seen.has(e.source)) continue;
-      seen.add(e.source);
-      order.push(e.source);
-    }
-  }
-  return order;
+export function neighborsOf(id: string, index: ConceptIndex): string[] {
+  const ids = new Set([id]);
+  for (const e of index.incoming.get(id) ?? []) ids.add(e.source);
+  for (const e of index.outgoing.get(id) ?? []) ids.add(e.target);
+  return [...ids];
 }
 
 /**

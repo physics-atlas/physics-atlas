@@ -17,7 +17,6 @@ const ICON_MARKUP: Partial<Record<NodeType, string>> = {
     '<circle cx="8" cy="6" r="1.6" fill="currentColor"/>' +
     '<circle cx="16" cy="12" r="1.6" fill="currentColor"/>' +
     '<circle cx="12" cy="18" r="1.6" fill="currentColor"/>',
-  conditions: '<path d="M3 12h18M7.5 7.5 3 12l4.5 4.5M16.5 7.5 21 12l-4.5 4.5"/>',
   formalism:
     '<path d="M9.1 5.2C7.7 4.2 6.1 5 5.9 7.2L5.1 17.6C4.9 19.6 3.7 20.2 2.5 19.6M3.3 10.2h5.2' +
     'M11.7 6.5Q9.3 12 11.7 17.5M20.3 6.5Q22.7 12 20.3 17.5M13.5 9.5l5 5M18.5 9.5l-5 5"/>',

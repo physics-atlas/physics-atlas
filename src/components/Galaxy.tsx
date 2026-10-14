@@ -48,7 +48,8 @@ function makeParticles(def: GalaxyDef): Particle[] {
   });
 }
 
-export default function Galaxy() {
+/** `still`: draw one frame and stop (reduced motion). */
+export default function Galaxy({ still }: { still: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function Galaxy() {
     resize();
     window.addEventListener('resize', resize);
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = still;
 
     const draw = (t: number) => {
       ctx.clearRect(0, 0, w, h);
@@ -118,7 +119,7 @@ export default function Galaxy() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [still]);
 
   return <canvas ref={ref} className="galaxy-canvas" aria-hidden />;
 }

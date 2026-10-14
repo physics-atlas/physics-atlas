@@ -5,8 +5,8 @@ import type { Topic, TopicCategory } from '../data/types';
 // method 5.34/3.38, math-concept 5.41/3.34, uncategorized 5.38/3.35). Worst
 // adjacent CVD pair (Machado matrices, ΔE76 in Lab) is Protanopie
 // field/method at 14.4 — every node also carries a visible label, so color
-// never encodes alone. The neutral is the light theme's existing --muted
-// tone, not a darker grey: it must stay clearly brighter than the 0.16
+// never encodes alone. The neutral is a mid grey (#7a86a0, a node fill —
+// not text), not a darker one: it must stay clearly brighter than the 0.16
 // opacity of the `dimmed` state, or "not yet categorized" would read as
 // "disabled".
 export const CATEGORY_COLORS: Record<TopicCategory | 'uncategorized', string> = {

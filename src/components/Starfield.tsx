@@ -10,7 +10,8 @@ interface Star {
   drift: number;
 }
 
-export default function Starfield() {
+/** `still`: draw one frame and stop (reduced motion). */
+export default function Starfield({ still }: { still: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function Starfield() {
     resize();
     window.addEventListener('resize', resize);
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = still;
 
     const draw = (t: number) => {
       ctx.clearRect(0, 0, w, h);
@@ -66,7 +67,7 @@ export default function Starfield() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [still]);
 
   return <canvas ref={ref} className="starfield" aria-hidden />;
 }

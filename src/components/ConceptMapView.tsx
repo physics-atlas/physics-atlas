@@ -1,13 +1,14 @@
-import { Fragment, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge } from '../data/types';
-import { buildConceptIndex, conceptPathFor, upstreamOf, sentenceParts } from '../graph/concepts';
+import { buildConceptIndex, conceptPathFor, neighborsOf } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import { TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
-import ConceptCard from './ConceptCard';
+import ConceptCard, { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
 import GraphView from './GraphView';
 import Legend from './Legend';
+import RelationSentence from './RelationSentence';
 import TypeBadge from './TypeBadge';
 
 const PROGRESS_PREFIX = 'concept:';
@@ -15,8 +16,15 @@ const PROGRESS_PREFIX = 'concept:';
 // path open on the left, the map card on the right, the type legend along the
 // bottom — mirrored in App.css.
 const PATH_PANEL_INSET = 304;
-const CARD_INSET = 412;
 const LEGEND_INSET = 110;
+const CARD_MIN_WIDTH = 380;
+const CARD_MARGIN = 16;
+
+/** The card's on-screen footprint: at least half the screen wide (.concept-map-card). */
+const cardInset = () => {
+  const w = window.innerWidth;
+  return Math.min(Math.max(w / 2, CARD_MIN_WIDTH), w - 2 * CARD_MARGIN) + 2 * CARD_MARGIN;
+};
 
 interface ConceptMapViewProps {
   graph: ConceptGraph;
@@ -45,14 +53,14 @@ export default function ConceptMapView({
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
   const path = useMemo(() => (goalId ? conceptPathFor(goalId, index) : null), [goalId, index]);
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
-  const upstream = useMemo(
-    () => (selected ? upstreamOf(selected.id, index) : null),
+  const neighbors = useMemo(
+    () => (selected ? new Set(neighborsOf(selected.id, index)) : null),
     [selected, index],
   );
-  const highlightIds = useMemo(
-    () => path?.highlight ?? (upstream ? new Set(upstream) : null),
-    [path, upstream],
-  );
+  // A goal path owns the highlight; otherwise a click shows the concept's
+  // direct connections (GraphView's directional select colours them).
+  const highlightIds = path?.highlight ?? null;
+  const fitIds = path?.highlight ?? neighbors;
   // Concept progress shares the topic store; the prefix keeps the id spaces apart.
   const doneIds = useMemo(
     () =>
@@ -64,6 +72,24 @@ export default function ConceptMapView({
     [progress.done],
   );
   const goal = path && goalId ? index.byId.get(goalId) : undefined;
+
+  // The card behaves like a non-modal panel: opening it moves focus in (so a
+  // keyboard or screen-reader user lands on what they picked), Escape or ×
+  // closes it and returns focus to where they came from.
+  const cardRef = useRef<HTMLElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!selectedId) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !cardRef.current?.contains(active) && active !== document.body)
+      returnFocusRef.current = active;
+    cardRef.current?.focus({ preventScroll: true });
+  }, [selectedId]);
+  const closeCard = () => {
+    onSelect(null);
+    returnFocusRef.current?.focus({ preventScroll: true });
+    returnFocusRef.current = null;
+  };
   const learnedCount = path ? path.order.filter((id) => doneIds.has(id)).length : 0;
 
   const byType = useMemo(
@@ -86,26 +112,6 @@ export default function ConceptMapView({
   return (
     <div className="view map-view concept-map-view">
       <div className="graph-pane">
-        <GraphView
-          concepts={graph}
-          selectedId={selectedId}
-          highlightIds={highlightIds}
-          doneIds={doneIds}
-          directionalSelect={false}
-          focus={focus}
-          onSelect={onSelect}
-          large
-          theme={theme}
-          goalId={goal ? goal.id : null}
-          fitIds={highlightIds}
-          fitInsets={{
-            left: goal ? PATH_PANEL_INSET : 0,
-            right: selected ? CARD_INSET : 0,
-            bottom: LEGEND_INSET,
-          }}
-        />
-        <Legend variant="type" />
-
         {goal && path && (
           <div className="goal-bar" role="status" aria-live="polite">
             <span className="goal-bar-title">★ Goal: {goal.label}</span>
@@ -120,7 +126,7 @@ export default function ConceptMapView({
 
         <div className="concept-side">
           <details className="concept-index">
-            <summary className="concept-index-summary">Browse by type</summary>
+            <summary className="concept-index-summary">All concepts as a list</summary>
             {byType.map(({ type, nodes }) => (
               <div key={type} className="concept-index-group">
                 <h3 className="block-heading">
@@ -212,13 +218,24 @@ export default function ConceptMapView({
 
         {!selected && !goal && (
           <p className="map-hint">
-            Colour = kind of concept, size = how general it is. Each line names its relation —
-            hover one to highlight the two concepts it joins. Click a concept to see everything it builds on.
+            Colour = kind of concept, size = how important it is — zoom in to reveal finer
+            detail. Each line names its relation —
+            hover one to highlight the two concepts it joins. Click a concept to see its direct
+            connections — <span className="ink-pre">silver</span> leads into it,{' '}
+            <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
+            it means.
           </p>
         )}
 
         {selected && (
-          <aside className="map-card concept-map-card" key={selected.id}>
+          <aside
+            className="map-card concept-map-card"
+            key={selected.id}
+            ref={cardRef}
+            tabIndex={-1}
+            aria-labelledby={CONCEPT_CARD_TITLE_ID}
+            onKeyDown={(e) => e.key === 'Escape' && closeCard()}
+          >
             <ConceptCard node={selected} index={index} onPick={onFocus}>
               {selected.type === 'equation' && (
                 <div className="rel-block concept-equation">
@@ -321,11 +338,35 @@ export default function ConceptMapView({
               </div>
             )}
 
-            <button className="map-card-close" onClick={() => onSelect(null)} aria-label="Close">
+            <button className="map-card-close" onClick={closeCard} aria-label="Close concept card">
               ×
             </button>
           </aside>
         )}
+
+        {/* Canvas, map controls and legend come last in the DOM so keyboard
+            users reach the concept list, path and card first; CSS keeps the
+            canvas underneath. */}
+        <GraphView
+          concepts={graph}
+          selectedId={selectedId}
+          highlightIds={highlightIds}
+          doneIds={doneIds}
+          directionalSelect={!goal}
+          focus={focus}
+          onSelect={onSelect}
+          large
+          theme={theme}
+          label={`Concept map, ${graph.nodes.length} concepts. Drawn visually; to reach every concept by keyboard, use the search box or the "All concepts as a list" panel.`}
+          goalId={goal ? goal.id : null}
+          fitIds={fitIds}
+          fitInsets={{
+            left: goal ? PATH_PANEL_INSET : 0,
+            right: selected ? cardInset() : 0,
+            bottom: LEGEND_INSET,
+          }}
+        />
+        <Legend variant="type" />
       </div>
     </div>
   );
@@ -350,17 +391,7 @@ function RelationGroup({
       <ul className="concept-relations">
         {edges.map((e) => (
           <li key={e.id}>
-            {sentenceParts(e, index.byId).map((part, i) =>
-              typeof part === 'string' ? (
-                <Fragment key={i}>{part}</Fragment>
-              ) : part.id === selfId ? (
-                <strong key={i}>{part.label}</strong>
-              ) : (
-                <button key={i} className="concept-relation-link" onClick={() => onPick(part.id)}>
-                  {part.label}
-                </button>
-              ),
-            )}
+            <RelationSentence edge={e} byId={index.byId} selfId={selfId} onPick={onPick} />
           </li>
         ))}
       </ul>

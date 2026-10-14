@@ -68,8 +68,10 @@ sophie_scicom/
   magic hex values in components; app-chrome tokens in `App.css :root`.
 - **`GraphView.tsx`** — the only place that touches Cytoscape. Selection/
   highlight via classes (`chosen`, `dimmed`, `onpath`) without re-layout.
-- **Layout convention:** dagre `rankDir: 'BT'` — goals at the top, fundamentals
-  at the bottom. Edges point from prerequisite → dependent topic.
+- **Layout convention:** topic maps use dagre `rankDir: 'BT'` — goals at the top,
+  fundamentals at the bottom. Edges point from prerequisite → dependent topic.
+  The concept map is direction-free: a force layout scored for legibility
+  (`src/graph/layoutOptimize.ts`, Decision 15).
 
 ## Subsystems (scope selection for the live-qa agent)
 
@@ -87,7 +89,10 @@ sophie_scicom/
 - No comments by default; only non-obvious WHYs.
 - Edit > Write: modify existing files.
 - a11y-first: semantic HTML, visible labels (node colours never carry meaning
-  alone — legend + ink labels are mandatory).
+  alone — legend + ink labels are mandatory). The bar is **WCAG 2.2 AA**, and the
+  design principle is **UDL**: offer more than one way to perceive, act and stay
+  engaged. Rules, measured tokens and known gaps: `docs/ACCESSIBILITY.md`.
+  Animations go through `reducedMotion()` in `src/lib/motion.ts`.
 - Content changes (topics.json) need `npm run validate` as a gate.
 - Don't generate design assets — the user supplies assets.
 

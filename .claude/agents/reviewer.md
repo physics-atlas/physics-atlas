@@ -30,11 +30,12 @@ changed.
 | Law | What you grep for |
 |---|---|
 | **a11y: colour never alone** | a new state communicated only through colour/opacity — without a label, badge, shape or legend entry. `dimmed`/`chosen`/`onpath`/category colours each need an ink anchor |
+| **a11y: WCAG 2.2 AA + UDL** (`docs/ACCESSIBILITY.md`) | a hard-coded text colour instead of a measured token; de-emphasis by a dimmer/grey colour or reduced opacity on text instead of the typographic cues; text under 12px; a control under 24×24px; an `outline: none` without a `:focus-visible` replacement; an action only reachable by mouse, drag or wheel; an animation that doesn't check `reducedMotion()` / isn't covered by the `data-motion` rules; a toggle whose label changes instead of using `aria-pressed`; ARIA that contradicts the APG pattern (e.g. buttons inside `role="option"`); a new view without `document.title` + one `h1`; an overlay placed before the canvas visually but after it in tab order |
 | **No magic hex** | `#[0-9a-f]{3,6}` or `rgb(` in `src/components/**` — level/category colours belong in `src/graph/levelColors.ts`, app-chrome tokens in `src/App.css :root` |
 | **Graph logic in `dag.ts`** | ancestor/topology/curriculum computation that landed in a component instead of `src/graph/dag.ts` |
 | **Cytoscape only in `GraphView`** | a `cytoscape` import or `cy.` outside `src/components/GraphView.tsx` |
 | **No re-layout for viewport work** | `layout(...).run()` or an `expandedIds` change where `cy.animate({fit})` would have been enough |
-| **Layout convention** | dagre `rankDir` ≠ `'BT'`, or edges in the wrong direction (prerequisite → dependent topic) |
+| **Layout convention** | topic maps: dagre `rankDir` ≠ `'BT'`, or edges in the wrong direction (prerequisite → dependent topic). The concept map is deliberately direction-free (force layout, Decision 15) |
 | **Motion** | a new animation/transition without a `prefers-reduced-motion` guard |
 | **Schema = three places** | a field/rule change in `src/data/types.ts` or the resolution path that isn't mirrored in `scripts/validate-topics.mjs` **and** `docs/AUTHORING.md` |
 | **Content stays data** | topic/content values hard-coded in `.ts`/`.tsx` instead of `src/data/topics.json` or the content Markdown |

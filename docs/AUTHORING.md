@@ -182,7 +182,7 @@ collapsible "Skills to practice along the way" panel under every curriculum
 
 `src/data/concepts.json` is a **second, independent dataset** — it does not
 replace `topics.json`; it renders in its own view, the "Concept map" tab
-(`?mode=concepts`). It models Sophie's pilot CSVs: concept-level nodes with 12 types and
+(`?mode=concepts`). It models Sophie's pilot CSVs: concept-level nodes with 16 types and
 typed, directional edges that read as sentences, rather than topics.json's
 course-level `Topic`/`Subtopic` shape.
 
@@ -202,22 +202,45 @@ course-level `Topic`/`Subtopic` shape.
 
 ### Node types
 
-The 12 types (key → what it means), from `src/data/conceptVocabulary.json`:
+The 16 types (key → what it means), from `src/data/conceptVocabulary.json`:
 
 | Type | Meaning |
 |---|---|
 | `physical_system` | Physical system — a thing being modeled (spacetime, a nucleus, a plasma). |
 | `property` | Property/quantity — an attribute of a system (curvature, half-life, four-velocity). |
 | `phenomenon` | Phenomenon — an observed effect (gravitational lensing, alpha decay). |
+| `process` | Process/dynamics — a change or evolution over time or space (diffusion, radioactive decay). |
 | `model_regime` | Model/behaviour regime — a simplified theory valid in some limit (Newtonian gravity, special relativity). |
-| `conditions` | Conditions/assumptions — the regime a model or equation requires (weak-field limit, Lorentz invariance). |
+| `theory` | Theory/framework — an organised body of concepts and principles (general relativity, quantum field theory). |
 | `formalism` | Mathematical formalism — the math machinery used (linear algebra, differential geometry). |
 | `equation` | Law/equation — a named equation, with its own attribute shape (below). |
 | `method` | Method/technique — a technique applied to get a result (parallel transport, orthogonal projection). |
 | `experiment` | Experiment/evidence — an observation or apparatus (the 1919 eclipse expedition, RHIC). |
+| `dataset` | Data/dataset — recorded measurements or simulation output (CMB maps, a galaxy catalogue). |
+| `claim` | Claim/hypothesis — a proposition that can be tested (a dark-matter mass range is excluded). |
+| `finding` | Finding/result — a reported outcome (a measured Hubble constant, a detected spectral line). |
 | `learning_goal` | Learning goal — a "can do X" outcome; a small, minimal node (no `domain`). |
 | `resource` | Educational resource — a book/video/quiz (no `description`/`domain`). |
 | `misconception` | Misconception — a common wrong idea, linked to the concept it's about. |
+
+**What learners see.** Clicking a type in the concept map's legend opens its
+definition from `conceptVocabulary.json` → `nodeTypeDefinitions`, keyed by the
+type key above:
+
+```json
+"phenomenon": {
+  "term": "Phenomenon",
+  "definition": "An empirically observed or theoretically characterised effect …",
+  "examples": ["Interference", "superconductivity"],
+  "distinctions": ["Phenomenon versus process: …"]
+}
+```
+
+`term` is the ontology's name for the type (shown when it differs from the short
+label), `examples` is a list of short names, and `distinctions` spells out types
+that are easy to confuse with this one (use `[]` when there are none). A type
+with no entry shows "no agreed definition yet", and `npm run validate` warns about
+it. Every type currently has one.
 
 ### Per-type `attrs`
 
@@ -277,10 +300,8 @@ validator):
 | Source type | Relationship | Target type |
 |---|---|---|
 | Physical system | `exhibits` | Phenomenon |
-| Physical system | `under` | Conditions |
 | Model | `explains` / `predicts` | Phenomenon |
 | Model | `applies to` | Physical system |
-| Model | `valid under` | Conditions |
 | Model | `uses` | Mathematical formalism |
 | Model | `expressed by` | Law/equation |
 | Model | `tested by` | Experiment |
@@ -296,6 +317,38 @@ The full sentence appears in each concept's card under **Relations**.
 
 Adding a new relationship type means adding a row to `conceptVocabulary.json`
 first — the validator refuses any edge whose relationship isn't in the table.
+
+### Conditions and assumptions — on the edge, not a node
+
+A condition is not a concept of its own: it qualifies a relation. Write it as
+an optional `conditions` list on the edge it applies to:
+
+```json
+{
+  "id": "e63",
+  "source": "zeldovich_approximation",
+  "target": "structure_formation",
+  "relationship": "approximates",
+  "conditions": [
+    {
+      "label": "linear potential",
+      "description": "The assumption that the gravitational potential keeps its initial, linear-theory form …"
+    }
+  ]
+}
+```
+
+This reads *"Zel'dovich approximation approximates Structure Formation under the
+assumption of linear potential."* Several conditions read *"under the assumptions
+of A and B"*. `label` is required and sits mid-sentence, so write it in lower case
+unless it's a name. `description` is optional and shows on the card. On the map the
+edge label gets a second line, *"assuming linear potential"*. Cards list the
+conditions under a type-specific heading (e.g. **Valid under** for a model,
+**Applies under** for a phenomenon). Leave the field out when there are none, since
+an empty list fails validation.
+
+An equation's own `attrs.conditions` (plain strings, see above) stays as it is.
+That list describes the equation itself, not one of its relations.
 
 ### How the concept curriculum is built
 
@@ -314,19 +367,34 @@ path (just the goal) with a "No prerequisites are linked to this goal yet"
 note — currently `lg_alpha_decay_nucleons` and
 `lg_alpha_radiation_properties`.
 
+### `importance` (1–5)
+
+An optional integer, 1 (minor detail) to 5 (landmark). It sets the circle's
+size and its name's size, and how far out the concept stays visible: the map
+works like a street map, where zoomed out you see only the landmarks, and zooming in
+reveals more detail. On the whole-map overview, concepts of importance 4 and 5
+show. Importance 3 appears at about 1.5× that zoom, 2 at about 2×, and 1 at about
+3×. Importance 5 never disappears. A concept you've selected, its direct
+connections, and every step of an active goal path always stay visible,
+whatever their importance. Hovering a concept also shows its hidden neighbours.
+
+Every concept currently has a **placeholder** importance assigned by Claude
+(landmark theories and frameworks 5, learning goals and resources 1–2). Change
+them freely. A missing value falls back to `generality`, then to a
+connection-count estimate (learning goals 1).
+
 ### `generality` (1–5)
 
-An optional integer, 1 (most specific) to 5 (most general) — drives node
-size on the map once feature-16 renders it. **Leave it out** until you've
-decided; a missing value falls back to a connection-count heuristic.
-Learning goals are always drawn smallest, regardless of `generality`.
+An optional integer, 1 (most specific) to 5 (most general). It no longer drives
+size directly; it's the fallback when `importance` is missing.
 
 ### What a concept's card shows
 
-Clicking a concept highlights everything it builds on and opens its card: the
+Clicking a concept highlights its direct connections in both directions (silver
+leads into it, gold leads out of it) and opens its card: the
 description, the epistemic status, then sections that depend on its type —
-e.g. a phenomenon lists the conditions it applies under (directly linked, or
-through the system/model that exhibits it), where it is seen and what explains
+e.g. a phenomenon lists the conditions it applies under (the `conditions` on its
+own relations, or on the relations of the system/model that exhibits it), where it is seen and what explains
 it, plus its learning goals (still TBD). The sections are configured per type in
 `src/graph/cardSections.ts`; they list linked concepts of the right type in
 either edge direction, so they fill in as you add edges. Every relation is

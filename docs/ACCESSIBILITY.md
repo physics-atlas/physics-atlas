@@ -1,0 +1,135 @@
+# Accessibility and Universal Design for Learning
+
+Physics Atlas follows two standards:
+
+- **Universal Design for Learning (UDL 3.0, CAST)** — the design principle. Learners
+  differ in how they take in information, how they act on it, and what keeps them
+  going. The atlas offers more than one way through each of these instead of a single
+  "standard" path.
+- **WCAG 2.2, level AA** — the minimum technical standard for every view.
+
+Every new UI element has to meet the rules below. The reviewer agent checks them
+(see the a11y laws in `.claude/agents/reviewer.md`).
+
+## UDL in the atlas
+
+### Multiple means of representation (the "what" of learning)
+
+| Practice | Where |
+|---|---|
+| Every visual encoding has a text equivalent | Node colour → type name in the label, legend and card; size → importance, explained in the legend; silver/gold direction → "From this concept" / "Into this concept" in the card's text |
+| The graph has a non-visual equivalent | **All concepts as a list** panel; every relation as a full sentence ("Zel'dovich approximation approximates Structure Formation under the assumption of linear potential.") in the card |
+| Vocabulary is defined where it's used | Clicking a type in the legend opens its definition, examples and "not to be confused with" notes |
+| The display can be adjusted | Light/dark theme; **Reduce motion**; **Show all concepts** (turns off zoom level of detail); browser zoom up to 400% |
+| Information comes in layers | Zoom level of detail shows landmarks first; the card opens with a description and leaves the full relation list collapsed |
+
+### Multiple means of action and expression (the "how")
+
+| Practice | Where |
+|---|---|
+| Everything works from the keyboard | Skip link, search (combobox), list panel, card, legend, map controls; Escape closes the card and the type definition |
+| No action needs a precise gesture | Zoom-in / zoom-out / whole-map buttons alongside wheel, pinch and drag |
+| More than one way to find a concept | Search, the list by type, goal paths, clicking a neighbour in the card |
+| Learners can plan and track their work | Goal paths with an ordered list of steps; "Learned" checkboxes and progress count |
+
+### Multiple means of engagement (the "why")
+
+| Practice | Where |
+|---|---|
+| Learners choose the goal | Any concept can become a goal ("Show path to this") |
+| Self-paced, no time limits | Nothing advances or expires on its own |
+| Distraction can be switched off | **Reduce motion** stops the animated starfield, galaxy and map glides |
+| Progress is visible | Path progress ("3 of 8 learned"), learned markers on the map |
+
+## WCAG 2.2 AA rules for contributors
+
+**Perceivable**
+
+- **Text contrast ≥ 4.5:1** against the panel and page backgrounds in *both* themes,
+  and **≥ 3:1** for large text, icons, borders and focus indicators. Use the
+  `App.css :root` tokens (`--ink`, `--ink-2`, `--muted`, `--accent-ink`, `--gold`,
+  `--silver`). They are measured; don't add hard-coded text colours.
+
+  | Token | Dark (page / panel) | Light (page / white) |
+  |---|---|---|
+  | `--ink-2` | 15.15 / 13.75 | 10.42 / 11.36 |
+  | `--muted` | 13.50 / 12.26 | 8.75 / 9.55 |
+  | `--gold` | 10.46 / 9.50 | 4.87 / 5.31 |
+  | `--silver` | 13.48 / 12.24 | 4.97 / 5.42 |
+
+- **No grey text for de-emphasis.** `--ink-2` and `--muted` are high-contrast
+  (≥ 8.7:1). Secondary text is marked by typography, using the shared rules
+  under "secondary text" in `App.css`:
+
+  | Meaning | Cue |
+  |---|---|
+  | Label / metadata (section headings, a card's type line) | uppercase + letter-spacing + semibold |
+  | Count | outlined pill |
+  | Note, hint, empty state, secondary context ("via …", "— parent topic") | italic |
+  | Done / learned | strikethrough, beside the ticked checkbox or ✓ |
+  | Relation name on the map | italic on a background plate (concept names are upright) |
+  | Placeholder | italic |
+
+  Add a new secondary element to the matching group instead of picking a dimmer
+  colour.
+- **Colour never carries meaning alone** — pair it with text, a glyph, a shape, a
+  pattern (dashed = optional) or position. Links in running text are underlined.
+- **Minimum text size 12px** in the UI; canvas labels drop out below 9px on screen
+  instead of rendering unreadably small.
+- **Images and canvases have a text alternative.** The graph canvas is
+  `role="img"` with a name that points to the keyboard route; decorative canvases
+  (starfield, galaxy) are `aria-hidden`.
+
+**Operable**
+
+- **Keyboard:** every action is reachable with Tab / Shift+Tab / Enter / Space /
+  arrows / Escape, with no keyboard traps. DOM order is the reading and tab order, so
+  overlays go before the canvas in the DOM.
+- **Visible focus:** the global `:focus-visible` ring (3px, `--accent-ink`). Never
+  remove an outline without replacing it.
+- **Target size ≥ 24×24 CSS px** for every control (inline links in a sentence are
+  exempt). Close buttons are 32px; map controls 36px.
+- **No dragging-only actions:** offer a button for anything done by drag, wheel or
+  pinch.
+- **Motion:** every animation must stop under `reducedMotion()` (`src/lib/motion.ts`)
+  — the OS setting or the in-app toggle. CSS animations are covered globally by the
+  `data-motion` rules in `App.css`; JS animations must call `reducedMotion()` when
+  they run, not once at load.
+- **Bypass blocks and page titles:** the skip link targets `<main id="main">`; every
+  view sets `document.title` and has one `h1` (visually hidden where the design
+  has no visible one).
+
+**Understandable**
+
+- **Focus follows intent:** changing view moves focus to `<main>`. Opening a concept
+  card moves focus into it, and closing it returns focus to where the user came
+  from.
+- **Predictable:** controls keep their place and meaning across views. A toggle keeps
+  a fixed label and exposes its state with `aria-pressed`.
+- **Plain language:** labels say what happens ("Show path to this", "Show the
+  whole map"), not just an icon.
+
+**Robust**
+
+- Native elements first (`button`, `a`, `input`, `details`); ARIA only where HTML
+  has no equivalent.
+- Follow the WAI-ARIA Authoring Practices patterns exactly: the search is a
+  **combobox** (role on the input, `aria-controls`, `aria-activedescendant`,
+  `aria-expanded`); options never contain other interactive elements.
+- Status changes that aren't focus moves are announced with a polite live
+  region (search result counts, the goal bar).
+- Landmarks: `header`, `nav` ("Views"), `main`, `aside` (the card, named by its
+  heading), named groups for the legend, map controls and display settings.
+
+## Known gaps
+
+- **The graph canvas itself is not keyboard-operable.** Nodes on a Cytoscape canvas
+  can't take focus. The equivalent route is search, the list panel and the card's
+  relation links. A keyboard-navigable canvas (arrow keys between neighbours) is a
+  possible next step.
+- **Nine of the sixteen node types have no glyph yet.** Their type is still named in
+  text everywhere, but the glyph would add a second non-colour cue on the canvas.
+- **Not yet tested with assistive technology.** A pass with NVDA + Firefox and
+  VoiceOver + Safari, and an automated axe check in `npm run smoke`, are still to do.
+- **Topic views (goal, topic page, hidden topic map)** got the global fixes (tokens,
+  focus ring, target sizes, motion, landmarks, titles) but no view-specific review.

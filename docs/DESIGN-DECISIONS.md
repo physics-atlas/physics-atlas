@@ -253,6 +253,76 @@ zooms out further (0.57 → 0.37 at 1440×900). **Open paths:** a compound
 minimisation (new dependency), orthogonal/bundled edge routing, or
 precomputing the layout at build time instead of searching in the browser.
 
+## Decision 15 — Concept layout: direction-free force layout (2026-10)
+
+Supersedes Decision 14's per-component dagre run. Dagre ranked every concept
+graph bottom-to-top, so all edges pointed upward even where the relation has no
+"up" (e.g. "is one property of") — the layout spent its freedom on direction
+instead of legibility. Each connected component is now arranged by a seeded
+spring-electrical (Fruchterman–Reingold) layout in which edge direction plays no
+part: each pair's ideal distance grows with both nodes' label boxes, the result is
+rotated so its long axis runs horizontally, overlapping names are pushed apart,
+and a greedy clean-up swaps node positions while that lowers the score. The score
+counts edge crossings + edges passing through another node's circle *or name* +
+overlapping name boxes (tie-break: total edge length). The background search,
+component packing, glide and cache from Decision 14 are kept (search over 24
+seeds per component; cache key bumped to `-v2`). Pure geometry in
+`src/graph/layoutOptimize.ts`. The topic maps keep dagre `BT`.
+
+**Cost:** "fundamentals at the bottom" no longer holds on the concept map — the
+arrowheads carry direction. **Open paths:** `fcose`/ELK stress layouts (new
+dependency), keeping dagre as one more candidate in the search, or a learner
+toggle between a layered and a free layout.
+
+## Decision 16 — Conditions are edge attributes; 16 node types (2026-10)
+
+A condition only means something relative to a relation: the Zel'dovich
+approximation approximates structure formation *under the assumption of* a
+linear potential. As a `conditions` node it was joined to only one end of that
+claim ("Zel'dovich approximation assumes Linear Potential"), and the relation it
+qualified didn't show it at all. The `conditions` node type is gone. An edge can carry
+`conditions: [{label, description?}]`, which the sentence renders as "under the
+assumption(s) of …", the map label shows as a second line ("assuming …"), and the
+card lists by type (Valid under / Applies under / Conditions / Linked conditions).
+Migrated: linear potential → e63 (approximates), weak-field low-velocity limit
+→ e13 (Einstein eqs. leads to Newtonian gravity), large number → e58 (decay
+equation describes alpha decay), ultralight mass → e66 (wave dark matter exhibits
+interference, `review` open). Lorentz invariance had no relation to qualify and
+stays a node, retyped to `property` (`review` open).
+
+The node-type ontology's five types without a counterpart were added:
+`process`, `theory`, `dataset`, `claim`, `finding`. Their colours are
+placeholders in the validated contrast band (`typeColors.ts`); they have no
+glyph yet and no nodes yet.
+
+**Cost:** an edge now carries more text, so labels on conditional edges take two
+lines. **Open paths:** conditions as reusable shared entities (e.g. one "weak-field
+limit" referenced by many edges), a "condition" relation from an edge to a node
+(reification), or conditions on nodes as well as edges.
+
+## Decision 17 — Importance drives size and a map-style zoom level of detail (2026-10)
+
+Supersedes Decision 13's "size = generality" and "zoom-linked fade" rows. A new
+node field `importance` (1–5) sets the circle radius (7…27) and the label size
+(12…18 px). Zooming works like a street map: a concept of importance *i* is shown
+only once the zoom reaches a multiple of the whole-map overview zoom (5 always,
+4 from 0.8×, 3 from 1.45×, 2 from 2.2×, 1 from 3.2×). Edges to a hidden concept
+hide with it, and hidden concepts are fully transparent and can't be clicked,
+rather than faded to 0.3. Because the thresholds are relative to the overview, they
+keep working as the graph grows. The selected concept, its neighbours, the goal and
+the goal path are pinned and always show, and hovering a concept briefly reveals
+its hidden neighbours. Names too small to read on screen are dropped
+(`min-zoomed-font-size`). The fallback chain is importance → generality → a degree
+estimate. Every node got a placeholder importance (7 × 5, 11 × 4, 18 × 3,
+13 × 2, 15 × 1) for Sophie to revise.
+
+The mouse-wheel zoom also got faster: `wheelSensitivity` went from 0.3 to 1, Cytoscape's default.
+
+**Cost:** zoomed out, whole sub-graphs can drop to their landmark (or vanish
+if they have none), and the overview shows fewer lines. **Open paths:**
+hiding by on-screen collision instead of fixed thresholds (Google Maps' actual rule),
+a "show everything" toggle, or clustering hidden concepts into a count badge.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):

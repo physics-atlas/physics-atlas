@@ -6,6 +6,24 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-26: Concept click shows direct connections, wide card, direction-free layout
+
+**Status:** ✅ Implemented <!-- status-line: feature-26 -->
+**Planned:** — (direct session, no plan)
+**Implemented:** 2026-10-14
+
+### Implemented
+- `src/graph/concepts.ts` — `neighborsOf()` replaces `upstreamOf()`: the click sub-view is the concept plus its first-degree connections in both directions
+- `src/components/GraphView.tsx` — directional select is 1 hop for concepts (silver = into it, gold = out of it), stronger fade for the rest; concept components laid out by `arrangeComponent()` instead of dagre; fit drops the left panel inset before the card's
+- `src/graph/layoutOptimize.ts` — force layout, long-axis rotation, name-box overlap removal, position-swap clean-up; edges through names and overlapping names now count as tangles
+- `src/components/ConceptMapView.tsx`, `src/App.css` — concept card at least half the screen wide (`cardInset()` mirrors the CSS)
+- `docs/DESIGN-DECISIONS.md` — Decision 15
+
+### Review
+Not run — direct session.
+
+<!-- impl-marker: feature-26 -->
+
 ## feature-25: Concept layout with minimal crossings
 
 **Status:** ✅ Implemented <!-- status-line: feature-25 -->
@@ -29,7 +47,7 @@ Not run — direct session; validate/build/lint clean, smoke shows only the 2 pr
 **Implemented:** 2026-10-13
 
 ### Implemented
-- `src/graph/concepts.ts` — `upstreamOf()` (click sub-graph: every parent up to the last)
+- `src/graph/concepts.ts` — `upstreamOf()` (click sub-graph: every parent up to the last; replaced by `neighborsOf()` in feature-26)
 - `src/graph/cardSections.ts`, `src/components/ConceptCard.tsx` — per-type card sections, Learning goals TBD, collapsed All relations
 - `src/graph/typeIcons.ts`, `src/components/TypeBadge.tsx` — Sophie's type glyphs in nodes, legend and card
 - `src/components/GraphView.tsx` — `fitIds`/`fitInsets` sub-view fit, icons, highlight/fit survive theme toggle
