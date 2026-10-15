@@ -41,7 +41,7 @@ orientation in the graph) and a11y polish. Don't invent new physics content
 - [ ] feature-31: Accessibility follow-ups — screen-reader pass (NVDA + Firefox, VoiceOver + Safari), axe check in `npm run smoke`, keyboard navigation on the canvas (arrow keys between neighbours), glyphs for the 9 types without one, a view-specific review of GoalView / TopicPage / MapView.
 
 ### Epic: community proposals & expert review — plan `.claude/plans/epic-community-review.md`
-- [ ] feature-33: Phase 0 — groundwork: Decision 18 (GitHub-based backend; lifts "no backend, no accounts" in CLAUDE.md), Vitest for pure logic, `concepts.json` split into one file per node/edge (compiled, golden-file test), controlled `domain` vocabulary.
+- [x] feature-33: Phase 0 — groundwork: Decision 18 (GitHub-based backend; lifts "no backend, no accounts" in CLAUDE.md), Vitest for pure logic, `concepts.json` split into one file per node/edge (compiled, golden-file test), controlled `domain` vocabulary.
 - [ ] feature-34: Phase 1 — read-only proposed layer from fixtures: `ProposalStore`, proposed/contested by outline + badge + text, "Show confirmed / Show proposed" toggles, proposal card (claim with KaTeX, evidence), others' proposals placed with confirmed nodes fixed.
 - [ ] feature-35: Phase 2 — staging-area editor: drag a ghost to see where an idea fits (session-only position, never saved), "nearby concepts → Connect?" suggestions, edge drawing + search-based keyboard route, live conflict detection (`conflicts.ts`), local drafts, export without positions.
 - [ ] feature-36: Phase 3 — identity + submit: serverless OAuth proxy, `GitHubStore` (one PR per proposal), proposed layer from open PRs, ORCID linking, test repo. Needs D2, D6.

@@ -1,0 +1,7 @@
+{
+  "id": "e7",
+  "source": "curvature",
+  "target": "parallel_transport",
+  "relationship": "Is derived from",
+  "review": "‘Is derived from’ (e7) and ‘Is derived by’ (e39, e40) read in opposite senses for what looks like the same underlying relationship. Sophie to confirm the intended direction for all three, and whether they should collapse to a single edge type (migration brief §3.3)."
+}

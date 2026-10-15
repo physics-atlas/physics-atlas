@@ -1,0 +1,6 @@
+{
+  "id": "e2",
+  "source": "vector_space",
+  "target": "diff_geometry",
+  "relationship": "Strict Prerequisite for"
+}

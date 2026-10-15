@@ -1,0 +1,9 @@
+{
+  "id": "lg_pt_3",
+  "type": "learning_goal",
+  "label": "Interpret geometrically the action of parallel transport on a vector.",
+  "importance": 1,
+  "attrs": {
+    "description": "Describe, in words and pictures, what happens to a vector as it is parallel-transported along a path on a curved manifold."
+  }
+}

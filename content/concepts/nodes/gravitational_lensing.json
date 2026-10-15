@@ -1,0 +1,10 @@
+{
+  "id": "gravitational_lensing",
+  "type": "phenomenon",
+  "label": "Gravitational lensing",
+  "importance": 4,
+  "attrs": {
+    "description": "The bending of light from a distant source as it passes near a massive object, caused by the curvature of spacetime around that mass.",
+    "domain": "General relativity / Astrophysics"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "bec",
+  "type": "physical_system",
+  "label": "BEC",
+  "importance": 3,
+  "generality": 5,
+  "attrs": {
+    "description": "Bose–Einstein condensate: a state in which a large fraction of bosons occupy the same lowest-energy quantum state and behave as one coherent matter wave.",
+    "domain": "Quantum mechanics"
+  }
+}

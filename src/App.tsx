@@ -63,12 +63,15 @@ function initialConceptGoal(): string | null {
   return concepts.nodes.some((n) => n.id === g) ? g : null;
 }
 
-const conceptSearchEntries: SearchEntry[] = concepts.nodes.map((n) => ({
-  ref: n.id,
-  title: n.label,
-  context: NODE_TYPE_LABELS[n.type],
-  color: TYPE_COLORS[n.type],
-}));
+// Alphabetical: the source files are ordered by id, which means nothing to a reader.
+const conceptSearchEntries: SearchEntry[] = concepts.nodes
+  .map((n) => ({
+    ref: n.id,
+    title: n.label,
+    context: NODE_TYPE_LABELS[n.type],
+    color: TYPE_COLORS[n.type],
+  }))
+  .sort((a, b) => a.title.localeCompare(b.title));
 
 export default function App() {
   const [mode, setMode] = useState<Mode>(initialMode);

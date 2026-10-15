@@ -6,7 +6,7 @@ Content lives in **two places**:
 |---|---|---|
 | A **learning goal** ("be able to derive X") with its subgoals + prerequisites | `content/goals/<name>.md` | Markdown outline — [see below](#learning-goals-markdown) |
 | A **topic / area** on the map, or resources (books, videos) | [`src/data/topics.json`](../src/data/topics.json) | JSON |
-| A **concept-graph node/edge** (pilot, "Concept map" tab) | [`src/data/concepts.json`](../src/data/concepts.json) | JSON — [see below](#concept-graph-pilot) |
+| A **concept-graph node/edge** (pilot, "Concept map" tab) | [`content/concepts/`](../content/concepts/) — one file per node / edge | JSON — [see below](#where-concepts-live-one-file-each) |
 
 Either way: edit, run `npm run validate`, done. The site rebuilds the graph
 automatically.
@@ -180,25 +180,69 @@ collapsible "Skills to practice along the way" panel under every curriculum
 
 ## Concept graph (pilot)
 
-`src/data/concepts.json` is a **second, independent dataset** — it does not
-replace `topics.json`; it renders in its own view, the "Concept map" tab
-(`?mode=concepts`). It models Sophie's pilot CSVs: concept-level nodes with 16 types and
-typed, directional edges that read as sentences, rather than topics.json's
-course-level `Topic`/`Subtopic` shape.
+The concept graph is a **second, independent dataset**: it doesn't replace `topics.json`,
+and it renders in its own view, the "Concept map" tab (`?mode=concepts`). It models Sophie's
+pilot CSVs: concept-level nodes with 16 types and typed, directional edges that read as
+sentences, rather than topics.json's course-level `Topic`/`Subtopic` shape.
+
+### Where concepts live: one file each
+
+Every concept and every relation is its own small file in `content/concepts/`:
+
+```
+content/concepts/
+├── graph.json                    { "version": 1 }
+├── nodes/parallel_transport.json one concept
+└── edges/e6.json                 one relation
+```
 
 ```json
+// content/concepts/nodes/parallel_transport.json
 {
-  "version": 1,
-  "nodes": [
-    { "id": "parallel_transport", "type": "method", "label": "Parallel transport",
-      "attrs": { "description": "…", "domain": "General relativity" } }
-  ],
-  "edges": [
-    { "id": "e6", "source": "tangent_vector", "target": "parallel_transport",
-      "relationship": "Strict Prerequisite for" }
-  ]
+  "id": "parallel_transport",
+  "type": "method",
+  "label": "Parallel Transport",
+  "importance": 4,
+  "attrs": { "description": "…", "domain": "General relativity" }
 }
 ```
+
+```json
+// content/concepts/edges/e6.json
+{
+  "id": "e6",
+  "source": "tangent_vector",
+  "target": "parallel_transport",
+  "relationship": "Strict Prerequisite for"
+}
+```
+
+- **To add a concept or relation, add a file; to change one, edit its file; to remove one,
+  delete its file.** The file name must be the `id` plus `.json`, and the validator refuses
+  a mismatch.
+- **Why one file each:** every concept gets its own history (`git log content/concepts/nodes/parallel_transport.json`
+  shows who changed it and when), and two people editing different concepts never conflict.
+  The community-review work builds on this.
+- **`src/data/concepts.json` is generated** from these files by `npm run build:content`
+  (which `dev`, `build`, `validate` and `test` all run first). It isn't in git. Don't edit it:
+  your changes would be overwritten. While `npm run dev` is running, saving a concept file
+  recompiles automatically and the map reloads.
+- Keep the files in the standard format: 2-space indentation, as above. The validator warns
+  about a hand-formatted file. It still works, but its history becomes harder to read.
+- The order of files doesn't matter. The map, the search and the lists sort concepts
+  themselves.
+
+### Domains
+
+`attrs.domain` names the research area(s) a concept belongs to. It must come from the
+`domains` list in `src/data/conceptVocabulary.json`, so the same field is always spelled the
+same way. That matters: the community-review work will route proposals to experts by domain.
+Separate several with " / ", for example `"General relativity / Astrophysics"`. To use a new
+domain, add it to the list first, and `npm run validate` points out any typo.
+
+> **Open for Sophie:** the list contains both `Relativity` (4 concepts) and the more specific
+> `Special relativity` / `General relativity`. They were kept exactly as authored, so nothing
+> changed meaning, but you may want to settle on one.
 
 ### Node types
 

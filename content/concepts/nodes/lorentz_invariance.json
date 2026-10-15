@@ -1,0 +1,11 @@
+{
+  "id": "lorentz_invariance",
+  "type": "property",
+  "label": "Lorentz invariance",
+  "importance": 4,
+  "review": "Was a 'conditions' node. Conditions are now edge attributes, but this one has no edge to qualify (it only 'is a condition of' Coordinate Transformations and Special Relativity), so it was kept as a node and retyped to property. Sophie to confirm the type, or turn it into a condition on an edge into Special Relativity once one exists.",
+  "attrs": {
+    "description": "The requirement that physical laws take the same form in all inertial frames related by Lorentz transformations.",
+    "domain": "Special relativity"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "vlasov_equation",
+  "type": "equation",
+  "label": "Vlasov eq.",
+  "importance": 3,
+  "generality": 2,
+  "attrs": {
+    "description": "Describes the phase-space evolution of a particle gas.",
+    "equation": "∂f/∂t + v·∇ₓf − ∇Φ·∇ᵥf = 0",
+    "variables": [
+      {
+        "symbol": "f",
+        "meaning": "Phase-space distribution function f(x, v, t)"
+      },
+      {
+        "symbol": "v",
+        "meaning": "Velocity"
+      },
+      {
+        "symbol": "Φ",
+        "meaning": "Gravitational potential"
+      }
+    ],
+    "conditions": [
+      "Collisionless system"
+    ],
+    "representations": [],
+    "domain": "Cosmology"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "tangent_vector",
+  "type": "property",
+  "label": "Tangent vector",
+  "importance": 3,
+  "attrs": {
+    "description": "A vector that lives in the tangent space at a single point of a manifold, representing an instantaneous direction and rate of change at that point.",
+    "domain": "Differential geometry"
+  }
+}

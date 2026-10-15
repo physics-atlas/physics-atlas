@@ -1,0 +1,9 @@
+{
+  "id": "lg_tv_1",
+  "type": "learning_goal",
+  "label": "Explain why vectors at different points belong to different tangent spaces.",
+  "importance": 1,
+  "attrs": {
+    "description": "Explain why two tangent vectors defined at different points of a manifold cannot be compared or added directly without first specifying a way to transport one to the other."
+  }
+}

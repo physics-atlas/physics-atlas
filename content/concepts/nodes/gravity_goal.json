@@ -1,0 +1,9 @@
+{
+  "id": "gravity_goal",
+  "type": "learning_goal",
+  "label": "Understand why planets orbit the Sun",
+  "importance": 2,
+  "attrs": {
+    "description": "Understand why planets orbit the Sun, from both the classical (force-based) and relativistic (geometric) points of view."
+  }
+}

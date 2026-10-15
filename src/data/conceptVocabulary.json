@@ -170,5 +170,21 @@
     "is a class of": "{s} is a class of {t}."
   },
   "mediaTypes": ["text", "video", "quiz"],
-  "epistemicStatuses": ["Candidate"]
+  "epistemicStatuses": ["Candidate"],
+  "domains": [
+    "Astrophysics",
+    "Classical mechanics",
+    "Cosmology",
+    "Differential geometry",
+    "General relativity",
+    "Kinetic theory",
+    "Mathematics",
+    "Nuclear physics",
+    "Quantum mechanics",
+    "Relativistic fluid dynamics",
+    "Relativity",
+    "Special relativity",
+    "Statistical physics",
+    "Wave physics"
+  ]
 }

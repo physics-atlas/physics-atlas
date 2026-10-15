@@ -1,0 +1,10 @@
+{
+  "id": "linear_algebra",
+  "type": "formalism",
+  "label": "Linear Algebra",
+  "importance": 5,
+  "attrs": {
+    "description": "The study of vector spaces and the linear maps between them: vectors, matrices, bases, eigenvalues, and linear transformations.",
+    "domain": "Mathematics"
+  }
+}

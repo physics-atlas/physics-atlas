@@ -1,0 +1,6 @@
+{
+  "id": "e42",
+  "source": "dissipative_fields",
+  "target": "charge_diffusion",
+  "relationship": "Relates"
+}

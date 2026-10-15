@@ -26,3 +26,7 @@ dist-ssr
 # Agent-System runtime artifacts
 .claude/settings.local.json
 .claude/.preflight-github-ready
+
+# Generated from content/concepts/** by scripts/compile-concepts.mjs —
+# edit the per-entity files instead (docs/AUTHORING.md)
+src/data/concepts.json

@@ -1,0 +1,13 @@
+{
+  "id": "res_pt_concepttest",
+  "type": "resource",
+  "label": "Concept test: parallel transport",
+  "importance": 1,
+  "attrs": {
+    "link": "https://example.com/quizzes/parallel-transport-concept-test",
+    "mediaType": "quiz",
+    "estimatedMinutes": 10,
+    "rating": 4.4,
+    "reviewCount": 76
+  }
+}

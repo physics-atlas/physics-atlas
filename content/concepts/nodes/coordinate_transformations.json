@@ -1,0 +1,10 @@
+{
+  "id": "coordinate_transformations",
+  "type": "formalism",
+  "label": "Coordinate Transformations",
+  "importance": 3,
+  "attrs": {
+    "description": "Changes between coordinate descriptions used to express physical quantities without changing the underlying physics.",
+    "domain": "Relativity"
+  }
+}

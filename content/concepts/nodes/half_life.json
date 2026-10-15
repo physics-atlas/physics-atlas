@@ -1,0 +1,10 @@
+{
+  "id": "half_life",
+  "type": "property",
+  "label": "Half life",
+  "importance": 3,
+  "attrs": {
+    "description": "The time required for half of the unstable nuclei in a sample to decay.",
+    "domain": "Nuclear physics"
+  }
+}

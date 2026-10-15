@@ -1,0 +1,6 @@
+{
+  "id": "e44",
+  "source": "conservation_equations",
+  "target": "particle_charge_current",
+  "relationship": "Relates"
+}

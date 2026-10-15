@@ -108,6 +108,12 @@ export interface NodeTypeDefinition {
   distinctions: string[];
 }
 
+/**
+ * The controlled list of research domains a concept's `attrs.domain` may name
+ * ("A / B" for several) — what routes proposals to the right stewards.
+ */
+export const CONCEPT_DOMAINS: string[] = vocab.domains;
+
 /** Partial: a type without an agreed definition shows a "not defined yet" note. */
 export const NODE_TYPE_DEFINITIONS: Partial<Record<NodeType, NodeTypeDefinition>> =
   vocab.nodeTypeDefinitions;

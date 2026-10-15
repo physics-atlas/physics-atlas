@@ -33,7 +33,8 @@ backlog/roadmap entries and commit messages.
 | Build | `npm run build` | **Hard gate** — tsc + vite build, must run clean |
 | Typecheck | `npx tsc -b` | Typecheck gate |
 | Lint | `npm run lint` | oxlint |
-| Validate | `npm run validate` | Data gate: topics.json (ids, refs, cycles) — there are no unit tests (yet) |
+| Validate | `npm run validate` | Data gate: topics.json + content/concepts/** (ids, refs, cycles, vocabularies) |
+| Test | `npm test` | Vitest unit tests (`src/**/*.test.ts`, `scripts/**/*.test.mjs`) — pure logic: layout geometry, sentences, the concept file format |
 | Smoke | `CHROME_BIN=/usr/bin/google-chrome npm run smoke` | Browser smoke via puppeteer; needs a running dev server |
 | Dev server | `npm run dev` | Vite |
 | Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=explore` for the explorer view |
@@ -43,21 +44,26 @@ backlog/roadmap entries and commit messages.
 
 ```
 sophie_scicom/
+├── content/
+│   ├── concepts/     # THE concept graph: graph.json + nodes/<id>.json + edges/<id>.json
+│   └── goals/        # Markdown learning-goal maps (compiled into generated-units.json)
 ├── src/
-│   ├── data/         # topics.json (THE database) + types.ts (schema)
+│   ├── data/         # topics.json + types.ts (schema); concepts.json is GENERATED (gitignored)
 │   ├── graph/        # dag.ts (ancestors, topological curriculum ordering), levelColors.ts
 │   ├── components/   # GraphView (Cytoscape wrapper), GoalView, ExplorerView,
 │   │                 # ContentList, Legend
 │   ├── App.tsx       # mode switch (goal | explore), reads ?mode= from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
-├── scripts/          # validate-topics.mjs (+ template scripts)
+├── scripts/          # compile-*.mjs (content → src/data), validate-*.mjs, lib/concept-files.mjs
 └── docs/             # DESIGN-DECISIONS.md, AUTHORING.md
 ```
 
 ## Key Patterns / Modules
 
-- **`src/data/topics.json`** — the only data source. Schema rules in
-  `docs/AUTHORING.md`. Run `npm run validate` after every data change.
+- **`src/data/topics.json`** — the topic data. **`content/concepts/`** — the concept graph, one
+  file per node and edge (each concept has its own git history; parallel proposals never touch
+  the same file), compiled into the generated `src/data/concepts.json`. Never edit the generated
+  file. Schema rules in `docs/AUTHORING.md`. Run `npm run validate` after every data change.
 - **`src/graph/dag.ts`** — `ancestorsOf()` (transitive prerequisites),
   `curriculumFor()` (topologically sorted curriculum),
   `expandedCurriculumFor()` (unit granularity: unit refs are `topicId` or
@@ -122,7 +128,8 @@ second place for the same truth. No agent pushes; you do that by hand.
 
 ## Deliberately not now
 
-- No backend, no accounts, no CMS — data upkeep via topics.json + git.
+- No own server or database. The community-review epic (`.claude/plans/epic-community-review.md`,
+  Decision 18) adds GitHub as the backend plus a tiny serverless proxy — nothing beyond that.
 - No native mobile app.
 - No D3/React Flow rewrite (deliberate paths, see DESIGN-DECISIONS.md).
 - Agents don't invent new physics *content* — Sophie curates content.

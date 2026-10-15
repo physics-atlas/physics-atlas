@@ -1,0 +1,6 @@
+{
+  "id": "e5",
+  "source": "diff_geometry",
+  "target": "parallel_transport",
+  "relationship": "Strict Prerequisite for"
+}

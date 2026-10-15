@@ -12,6 +12,7 @@ import RelationSentence from './RelationSentence';
 import TypeBadge from './TypeBadge';
 
 const PROGRESS_PREFIX = 'concept:';
+const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label);
 // Overlay sizes (px) the sub-view fit keeps clear: .concept-side with a goal
 // path open on the left, the map card on the right, the type legend along the
 // bottom — mirrored in App.css.
@@ -96,7 +97,7 @@ export default function ConceptMapView({
     () =>
       TYPE_ORDER.map((type) => ({
         type,
-        nodes: graph.nodes.filter((n) => n.type === type),
+        nodes: graph.nodes.filter((n) => n.type === type).sort(byLabel),
       })).filter((g) => g.nodes.length > 0),
     [graph],
   );

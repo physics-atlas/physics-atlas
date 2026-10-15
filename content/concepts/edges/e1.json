@@ -1,0 +1,6 @@
+{
+  "id": "e1",
+  "source": "linear_algebra",
+  "target": "vector_space",
+  "relationship": "Strict Prerequisite for"
+}

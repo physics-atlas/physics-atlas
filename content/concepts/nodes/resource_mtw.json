@@ -1,0 +1,13 @@
+{
+  "id": "resource_mtw",
+  "type": "resource",
+  "label": "Intro to the Einstein Field Equations (sample resource)",
+  "importance": 1,
+  "attrs": {
+    "link": "https://example.com/learn/einstein-field-equations",
+    "mediaType": "text",
+    "estimatedMinutes": 45,
+    "rating": 4.6,
+    "reviewCount": 128
+  }
+}

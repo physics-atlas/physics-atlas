@@ -1,0 +1,6 @@
+{
+  "id": "e15",
+  "source": "einstein_eq",
+  "target": "gravity_goal",
+  "relationship": "Strict Prerequisite for"
+}

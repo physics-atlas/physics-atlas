@@ -1,0 +1,13 @@
+{
+  "id": "decay_equation",
+  "type": "equation",
+  "label": "Decay equation",
+  "importance": 3,
+  "attrs": {
+    "description": "An equation describing the exponential decrease of the number of undecayed nuclei over time.",
+    "equation": "N(t) = N₀e^(−λt)",
+    "variables": [],
+    "conditions": [],
+    "representations": []
+  }
+}

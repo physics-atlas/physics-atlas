@@ -1,0 +1,7 @@
+{
+  "id": "e62",
+  "source": "structure_formation",
+  "target": "vlasov_equation",
+  "relationship": "relates",
+  "review": "Unlabelled in the sketch (arrow Structure Formation → Vlasov eq.) — which relationship? \"relates\" is a placeholder."
+}

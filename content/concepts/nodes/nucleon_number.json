@@ -1,0 +1,10 @@
+{
+  "id": "nucleon_number",
+  "type": "property",
+  "label": "Nucleon number",
+  "importance": 2,
+  "attrs": {
+    "description": "The total number of protons and neutrons in a nucleus.",
+    "domain": "Nuclear physics"
+  }
+}

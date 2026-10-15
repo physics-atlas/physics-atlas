@@ -1,0 +1,10 @@
+{
+  "id": "nucleus",
+  "type": "physical_system",
+  "label": "Nucleus",
+  "importance": 4,
+  "attrs": {
+    "description": "The compact, positively charged core of an atom containing protons and neutrons.",
+    "domain": "Nuclear physics"
+  }
+}

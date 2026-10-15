@@ -323,6 +323,58 @@ if they have none), and the overview shows fewer lines. **Open paths:**
 hiding by on-screen collision instead of fixed thresholds (Google Maps' actual rule),
 a "show everything" toggle, or clustering hidden concepts into a count badge.
 
+## Decision 18 — GitHub as the backend for community review (2026-10)
+
+Overrides "no backend, no accounts" from the v1 constraints, for one purpose: letting experts
+propose, review and confirm concepts with a public, immutable history
+(`.claude/plans/epic-community-review.md`). The git repository stays the **only source of
+truth**:
+
+- a proposal is a branch + pull request (one proposal per PR);
+- votes are structured PR reviews (Verify / Dispute / Needs clarification), not commits;
+- the quorum rule is a required GitHub Action check;
+- the merge commit records who approved.
+
+The app stays a static SPA on GitHub Pages. The only addition is a tiny serverless proxy for
+the OAuth token exchange and cached API reads, with no database.
+
+Also decided: keep Cytoscape (no React Flow); show status by outline + badge + text, never by
+colour; Markdown + LaTeX (KaTeX) instead of TipTap; dragging a ghost node is a visual aid
+whose position is never saved; a curator approves expertise tags; quorum has a bootstrapping
+mode for domains with few experts.
+
+**Cost:** contributors need a GitHub account; we depend on GitHub's API and its rate limits
+(mitigated by the proxy cache, plus a build-time snapshot so the map always works). **Open
+paths:** an own backend (a Postgres event log + server-side git) behind the same
+`ProposalStore` interface, if GitHub accounts or public votes become a barrier.
+
+## Decision 19 — The concept graph is stored one file per node and edge (2026-10)
+
+`src/data/concepts.json` was one 1,200-line file. For per-concept history ("blame") and
+proposals that never collide, every node and edge is now its own file in
+`content/concepts/{nodes,edges}/<id>.json`, plus `graph.json` for top-level fields. The files
+are compiled into a generated, gitignored `src/data/concepts.json`, so the app and its types
+are unchanged. The format lives in one module, `scripts/lib/concept-files.mjs`, which the
+compiler, the validator and the tests share. The validator checks file name = id and
+canonical formatting.
+
+The output is **ordered by id**, never by authoring order. A shared order file would put every
+proposal back into conflict. The two lists that showed authored order ("All concepts as a
+list", concept search) now sort alphabetically by label. Edges were already in id order; node
+order changed, so a first-time visitor's layout search starts differently (the layout cache is
+keyed by the sorted id set, and its key was bumped to v4 for the overlap fix below).
+
+`attrs.domain` is now a **controlled vocabulary** (`conceptVocabulary.json` → `domains`,
+several as "A / B"), because steward routing and quorum need exact domain names. The 14
+values were kept exactly as authored.
+
+Found by the first unit tests: `removeOverlaps()` stopped pushing at exactly the margin, so
+floating-point residue (~1e-15 px) counted as phantom overlaps in the layout score. It now
+pushes 1 px past the margin.
+
+**Open paths:** per-domain folders (if `CODEOWNERS` routing is wanted; today the quorum
+Action can read `domain` directly), YAML instead of JSON for easier hand-editing.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):

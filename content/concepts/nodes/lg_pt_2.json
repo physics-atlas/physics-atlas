@@ -1,0 +1,9 @@
+{
+  "id": "lg_pt_2",
+  "type": "learning_goal",
+  "label": "Differentiate between the geodesic equation and parallel transport",
+  "importance": 1,
+  "attrs": {
+    "description": "Explain how the geodesic equation is the special case of parallel-transporting a curve's own tangent vector along itself."
+  }
+}

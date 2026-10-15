@@ -1,0 +1,12 @@
+{
+  "id": "wave_dark_matter",
+  "type": "physical_system",
+  "label": "Wave Dark Matter",
+  "importance": 3,
+  "generality": 2,
+  "epistemicStatus": "Candidate",
+  "attrs": {
+    "description": "Bosonic matter which behaves like a wave on sub-galactic scales due to coherence of wave functions at cold temperatures with a small mass.",
+    "domain": "Cosmology"
+  }
+}

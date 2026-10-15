@@ -1,0 +1,10 @@
+{
+  "id": "kinetic_theory",
+  "type": "formalism",
+  "label": "Kinetic theory",
+  "importance": 3,
+  "attrs": {
+    "description": "A microscopic description of matter in terms of distribution functions and particle interactions.",
+    "domain": "Statistical physics"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "alpha_particle",
+  "type": "property",
+  "label": "alpha particle",
+  "importance": 2,
+  "attrs": {
+    "description": "A helium-4 nucleus consisting of two protons and two neutrons.",
+    "domain": "Nuclear physics"
+  }
+}

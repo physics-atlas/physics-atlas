@@ -6,6 +6,27 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-33: Community review, Phase 0 — groundwork
+
+**Status:** ✅ Implemented <!-- status-line: feature-33 -->
+**Planned:** 2026-10-15 — [.claude/plans/epic-community-review.md](.claude/plans/epic-community-review.md) (Phase 0)
+**Implemented:** 2026-10-15
+
+### Implemented
+- `content/concepts/{graph.json,nodes/*.json,edges/*.json}` — the concept graph, one file per entity (64 + 66 files); `src/data/concepts.json` is now generated and gitignored
+- `scripts/lib/concept-files.mjs` — the file format (read, order by id, id = file name, canonical formatting), shared by `scripts/compile-concepts.mjs`, `scripts/validate-concepts.mjs` and the tests
+- `src/data/conceptVocabulary.json` → `domains` (controlled, "A / B" for several), checked by the validator; `domainsOf()` in `src/graph/concepts.ts`
+- Vitest: `npm test` (in CI too), 32 tests: concept file format and real content, sentences/conditions/importance/domains, layout geometry
+- `src/graph/layoutOptimize.ts` — `removeOverlaps()` floating-point fix found by the tests; layout cache key v4
+- `vite.config.ts` — the dev server recompiles concepts when a file in `content/concepts/` changes
+- `docs/TESTING-COMMUNITY-REVIEW.md` — hands-on test guide, Phase 0 section (commands, validator messages, the failing-test example and the live recompile verified; the by-eye browser steps not yet)
+- Concept list and search sorted by label; `docs/AUTHORING.md`, `CLAUDE.md`, Decisions 18 + 19
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke shows only the 2 pre-existing feature-20 failures (concept map 64 nodes / 66 edges).
+
+<!-- impl-marker: feature-33 -->
+
 ## feature-26: Concept click shows direct connections, wide card, direction-free layout
 
 **Status:** ✅ Implemented <!-- status-line: feature-26 -->

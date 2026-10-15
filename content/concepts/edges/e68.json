@@ -1,0 +1,6 @@
+{
+  "id": "e68",
+  "source": "schrodinger_poisson_equation",
+  "target": "wave_dark_matter",
+  "relationship": "describes"
+}

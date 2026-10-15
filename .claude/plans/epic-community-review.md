@@ -73,7 +73,7 @@ Every concept of the brief maps onto something GitHub already does reliably:
 | A proposal creates a branch | A branch + pull request with the new or changed node and edge files (one proposal per PR) |
 | Comment directly on the node | A PR review comment anchored to that node's file. Our UI shows them as a thread on the node |
 | Verify / Dispute / Needs clarification | A PR review with a structured first line (`verify` / `dispute` / `clarify`); Dispute = "Request changes" |
-| Domain stewards merge | `CODEOWNERS` per domain folder (`content/concepts/cosmology/` → `@stewards-cosmology`) + branch protection |
+| Domain stewards merge | Stewards per domain in `community/experts.json`; the "Quorum" Action reads each changed node's `domain` and requires a steward of that domain (folders stay flat, Decision 19) + branch protection |
 | Quorum, and no unresolved disputes | A GitHub Action reads `policy.json` + `experts.json` and the reviews, and reports a **required status check** "Quorum" |
 | Contested | A label `contested` → on merge, it writes `status: contested` + a thread link into the node |
 | Immutable history, blame | `git log --follow` on the node's own file; signed merge commits |
@@ -105,7 +105,7 @@ Every concept of the brief maps onto something GitHub already does reliably:
  │  contested ─ double + ⚑               │  │       │ reviews  = votes + threads   │
  │  draft     ─ ghost (local only)       │  │       │ labels   = contested, …      │
  │ Staging editor · Proposal card        │  │       │ Action "Quorum" (policy.json,│
- │ Review queue · Blame · Audit log      │  │       │   experts.json, CODEOWNERS)  │
+ │ Review queue · Blame · Audit log      │  │       │   experts.json, node domains)│
  │ ProposalStore interface ──────────────┼──┼──────▶│ signed merge commits         │
  └───────────────────────────────────────┘  │       └──────────────────────────────┘
                      ▲                      │                    ▲
@@ -120,7 +120,7 @@ Every concept of the brief maps onto something GitHub already does reliably:
 ## Data model changes
 
 - **One file per entity:** `content/concepts/nodes/<id>.json`, `content/concepts/edges/<id>.json`
-  (optionally grouped by domain folder for `CODEOWNERS`). They're compiled into
+  (flat folders; stewards are routed by the `domain` field, not by path). They're compiled into
   `src/data/concepts.json` at build time, which reuses the `compile-content.mjs` pattern. The
   benefits:
   - per-node blame;
@@ -138,7 +138,7 @@ Every concept of the brief maps onto something GitHub already does reliably:
 - **Community data:**
   - `community/experts.json` — ORCID, GitHub handle, expertise tags, and who attested them;
   - `community/policy.json` — quorum rules per domain;
-  - `.github/CODEOWNERS` — stewards per domain.
+  - stewards per domain live in `experts.json` (roles), not in `CODEOWNERS`.
 - **Migration:** `epistemicStatus` stays (the author's certainty); `status` is the
   community's verdict. Open `review` notes become the first threads.
 
@@ -149,7 +149,10 @@ Every concept of the brief maps onto something GitHub already does reliably:
 Each phase can be shipped on its own and tested in the browser. Each one is worth keeping even
 if we stopped after it. Phases 1–5 run behind `?community=1` until Phase 5 is complete.
 
-### Phase 0 — Decisions and groundwork *(no visible change)*
+**Hands-on testing:** `docs/TESTING-COMMUNITY-REVIEW.md` has a step-by-step check for every
+built phase. Each phase's work isn't done until its section there is written and verified.
+
+### Phase 0 — Decisions and groundwork *(no visible change)* — ✅ done 2026-10-15 (feature-33)
 
 - **Scope:**
   - Decisions D1–D7 (below); Decision 18 in `DESIGN-DECISIONS.md`; update `CLAUDE.md`
@@ -161,7 +164,7 @@ if we stopped after it. Phases 1–5 run behind `?community=1` until Phase 5 is 
   - The controlled `domain` vocabulary.
 - **Exit:**
   - `npm run validate && npm run build && npm test` are green.
-  - The compiled `concepts.json` is byte-identical to today's (a golden-file test).
+  - The compiled graph equals today's by id (nodes and edges identical; node order is now by id).
   - The smoke test still reports 64 nodes and 66 edges.
 - **Value if we stop here:** cleaner diffs and per-node blame for Sophie's own edits.
 
@@ -266,8 +269,7 @@ form is the accessible equivalent, not a replacement.
 ### Phase 5 — Moderation: roles, review queue, merge
 
 - **Scope:**
-  - Roles from `CODEOWNERS` (stewards per domain) and an `experts.json` role field
-    (curators).
+  - Roles from `experts.json` (stewards per domain, curators).
   - A **Review queue** view (a new mode, `?mode=review`): pending proposals filtered by the
     steward's domains, each with a **mini-graph** of the affected neighbourhood (`GraphView`
     + `fitIds`), the discussion, and the quorum status.

@@ -1,0 +1,7 @@
+{
+  "id": "e57",
+  "source": "exponentials",
+  "target": "decay_equation",
+  "relationship": "has a",
+  "review": "Reads ‘Exponentials has a Decay equation’; the other ‘has a’ edges point from the whole to its part — source/target may be swapped. Sophie to confirm (migration brief §3.2)."
+}

@@ -23,6 +23,9 @@ export interface NodeBox {
 }
 
 const BOX_MARGIN = 10;
+// Pushed-apart boxes end 1px past the margin: stopping exactly on it leaves a
+// floating-point overlap (~1e-15) that the score would count as a tangle.
+const SLACK = 1;
 /** Free length an edge gets beyond its two nodes' footprints — room for the relation name. */
 const EDGE_ROOM = 90;
 const FORCE_ITERATIONS = 400;
@@ -241,12 +244,12 @@ export function removeOverlaps(pos: Positions, boxes: Record<string, NodeBox>, m
         const ca = centre(a), cb = centre(b);
         if (o.x < o.y) {
           const dir = ca.x <= cb.x ? -1 : 1;
-          out[a].x += (dir * o.x) / 2;
-          out[b].x -= (dir * o.x) / 2;
+          out[a].x += (dir * (o.x + SLACK)) / 2;
+          out[b].x -= (dir * (o.x + SLACK)) / 2;
         } else {
           const dir = ca.y <= cb.y ? -1 : 1;
-          out[a].y += (dir * o.y) / 2;
-          out[b].y -= (dir * o.y) / 2;
+          out[a].y += (dir * (o.y + SLACK)) / 2;
+          out[b].y -= (dir * (o.y + SLACK)) / 2;
         }
       }
     if (!moved) break;

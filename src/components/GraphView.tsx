@@ -488,7 +488,7 @@ const layoutFor = (large: boolean) =>
 const SEARCH_SEEDS = 24;
 const COMPONENT_GAP = 120;
 const LONE_NODE_GAP = 40;
-const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v3';
+const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v4';
 const layoutCache = new Map<string, Positions>();
 
 interface ConceptComponent {

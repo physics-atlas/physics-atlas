@@ -1,20 +1,22 @@
 #!/usr/bin/env node
-// Validates src/data/concepts.json (the concept graph pilot): schema shape,
-// unique snake_case ids, node type/attrs shape per the 12 types in
-// conceptVocabulary.json, resolvable edges, and acyclicity of "strict
-// prerequisite for" edges. Also surfaces the data-quality issues from
-// docs/physics-atlas-migration-brief.md §3 as warnings (never auto-fixed):
-// casing variants, open `review` items, orphan nodes/learning goals, and
-// example-domain resource links.
+// Validates the concept graph from its source files, content/concepts/**
+// (one file per node and edge, see scripts/lib/concept-files.mjs): file names
+// match ids, schema shape, unique snake_case ids, node type/attrs shape per
+// conceptVocabulary.json, domains from the controlled vocabulary, resolvable
+// edges, and acyclicity of "strict prerequisite for" edges. Also surfaces the
+// data-quality issues from docs/physics-atlas-migration-brief.md §3 as
+// warnings (never auto-fixed): casing variants, open `review` items, orphan
+// nodes/learning goals, and example-domain resource links.
 // normalizeRelationship mirrors src/graph/concepts.ts — keep in sync.
 // Run via `npm run validate`.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { findCycle } from './lib/find-cycle.mjs';
+import { readConceptSources, unformattedFiles } from './lib/concept-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DATA_PATH = join(ROOT, 'src/data/concepts.json');
+const SOURCE_DIR = join(ROOT, 'content/concepts');
 const VOCAB_PATH = join(ROOT, 'src/data/conceptVocabulary.json');
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
@@ -24,14 +26,12 @@ const EXAMPLE_DOMAIN = /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i;
 const errors = [];
 const warn = [];
 
-let data;
+const { graph: data, problems } = readConceptSources(SOURCE_DIR);
+errors.push(...problems.map((p) => p.replaceAll(ROOT + sep, '')));
+for (const path of unformattedFiles(SOURCE_DIR))
+  warn.push(`${relative(ROOT, path)}: not in canonical formatting (2-space JSON) — it works, but diffs read best formatted`);
+
 let vocab;
-try {
-  data = JSON.parse(readFileSync(DATA_PATH, 'utf8'));
-} catch (e) {
-  console.error(`✗ Cannot read/parse ${DATA_PATH}: ${e.message}`);
-  process.exit(1);
-}
 try {
   vocab = JSON.parse(readFileSync(VOCAB_PATH, 'utf8'));
 } catch (e) {
@@ -43,6 +43,13 @@ const NODE_TYPES = Object.keys(vocab.nodeTypes ?? {});
 const EDGE_TEMPLATES = vocab.edgeTemplates ?? {};
 const MEDIA_TYPES = vocab.mediaTypes ?? [];
 const EPISTEMIC_STATUSES = vocab.epistemicStatuses ?? [];
+const DOMAINS = vocab.domains ?? [];
+
+// Mirrors domainsOf() in src/graph/concepts.ts — keep in sync.
+const domainsOf = (domain) => domain.split(' / ').map((d) => d.trim());
+if (!Array.isArray(DOMAINS) || DOMAINS.some((d) => typeof d !== 'string' || !d.trim() || d.includes('/')))
+  errors.push('conceptVocabulary.json "domains" must be a list of non-empty names without "/"');
+else if (new Set(DOMAINS).size !== DOMAINS.length) errors.push('conceptVocabulary.json "domains" lists a domain twice');
 
 const TYPE_DEFINITIONS = vocab.nodeTypeDefinitions ?? {};
 for (const [type, def] of Object.entries(TYPE_DEFINITIONS)) {
@@ -122,6 +129,10 @@ function checkNodeAttrs(where, node) {
     errors.push(`${where}: attrs.description is required`);
   if (attrs.domain !== undefined && typeof attrs.domain !== 'string')
     errors.push(`${where}: attrs.domain must be a string`);
+  else if (attrs.domain !== undefined)
+    for (const d of domainsOf(attrs.domain))
+      if (!DOMAINS.includes(d))
+        errors.push(`${where}: unknown domain "${d}" — use one from conceptVocabulary.json "domains" (several: "A / B"), or add it there first`);
 
   if (node.type === 'equation') {
     if (typeof attrs.equation !== 'string' || !attrs.equation.trim())
@@ -255,5 +266,5 @@ if (errors.length) {
 const usedNodeTypes = new Set(data.nodes.map((n) => n.type)).size;
 const usedEdgeTypes = casingByType.size;
 console.log(
-  `✓ concepts.json valid — ${data.nodes.length} nodes (${usedNodeTypes} types), ${data.edges.length} edges (${usedEdgeTypes} types), strict prerequisites acyclic`,
+  `✓ content/concepts valid — ${data.nodes.length} nodes (${usedNodeTypes} types), ${data.edges.length} edges (${usedEdgeTypes} types), strict prerequisites acyclic`,
 );

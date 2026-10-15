@@ -1,0 +1,7 @@
+{
+  "id": "e35",
+  "source": "quark_gluon_plasma",
+  "target": "rhic",
+  "relationship": "Described by",
+  "review": "RHIC is the experimental apparatus, not obviously a description of Quark-Gluon-Plasma; ‘Studied by’ or a dedicated Physical system↔Experiment edge type might fit better. Sophie to confirm (migration brief §3.4)."
+}

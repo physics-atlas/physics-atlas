@@ -1,0 +1,9 @@
+{
+  "id": "lg_pt_1",
+  "type": "learning_goal",
+  "label": "Explain all the elements of the equation.",
+  "importance": 1,
+  "attrs": {
+    "description": "Given the parallel transport equation, name and explain the role of each term (the components, the connection coefficients, the tangent vector to the curve)."
+  }
+}

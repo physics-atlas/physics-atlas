@@ -1,0 +1,12 @@
+{
+  "id": "e63",
+  "source": "zeldovich_approximation",
+  "target": "structure_formation",
+  "relationship": "approximates",
+  "conditions": [
+    {
+      "label": "linear potential",
+      "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "e16",
+  "source": "newtonian_gravity",
+  "target": "gravity_goal",
+  "relationship": "Strict Prerequisite for"
+}

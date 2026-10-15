@@ -1,0 +1,6 @@
+{
+  "id": "e69",
+  "source": "schrodinger_poisson_equation",
+  "target": "vlasov_equation",
+  "relationship": "approximates"
+}

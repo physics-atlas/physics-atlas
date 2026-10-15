@@ -1,0 +1,45 @@
+{
+  "id": "einstein_eq",
+  "type": "equation",
+  "label": "Einstein Field Equations",
+  "importance": 5,
+  "attrs": {
+    "description": "Relate the curvature of spacetime directly to the energy and momentum of whatever matter and radiation are present, forming the core field equation of general relativity.",
+    "equation": "Gμν + Λgμν = (8πG / c⁴) Tμν",
+    "variables": [
+      {
+        "symbol": "Gμν",
+        "meaning": "Einstein tensor (spacetime curvature)"
+      },
+      {
+        "symbol": "gμν",
+        "meaning": "Metric tensor"
+      },
+      {
+        "symbol": "Λ",
+        "meaning": "Cosmological constant"
+      },
+      {
+        "symbol": "Tμν",
+        "meaning": "Stress-energy tensor"
+      },
+      {
+        "symbol": "G",
+        "meaning": "Newtonian constant of gravitation"
+      },
+      {
+        "symbol": "c",
+        "meaning": "Speed of light in vacuum"
+      }
+    ],
+    "conditions": [
+      "Valid in any smooth Lorentzian spacetime manifold",
+      "Assumes a classical (non-quantum) description of matter and gravity"
+    ],
+    "representations": [
+      "Tensor (index) notation",
+      "Component form for a specific metric, e.g. Schwarzschild or FLRW",
+      "Linearized weak-field approximation"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "e13",
+  "source": "einstein_eq",
+  "target": "newtonian_gravity",
+  "relationship": "Leads to",
+  "conditions": [
+    {
+      "label": "weak-field low-velocity limit",
+      "description": "The regime where gravitational fields are weak and velocities are much smaller than the speed of light, so spacetime curvature can be treated as a small perturbation on flat space."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "res_pt_video",
+  "type": "resource",
+  "label": "Video: visualising parallel transport",
+  "importance": 1,
+  "attrs": {
+    "link": "https://example.com/videos/visualising-parallel-transport",
+    "mediaType": "video",
+    "estimatedMinutes": 12,
+    "rating": 4.7,
+    "reviewCount": 210
+  }
+}

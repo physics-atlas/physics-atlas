@@ -1,0 +1,9 @@
+{
+  "id": "lg_tv_2",
+  "type": "learning_goal",
+  "label": "Construct tangent vectors as derivatives of curves.",
+  "importance": 1,
+  "attrs": {
+    "description": "Given a parametrized curve on a manifold, construct its tangent vector at a point as the derivative of the curve with respect to its parameter."
+  }
+}

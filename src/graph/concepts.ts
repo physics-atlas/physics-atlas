@@ -96,6 +96,15 @@ export function nodeRadius(node: GraphNode, degree: number): number {
 }
 
 /**
+ * The research domains a concept belongs to: `attrs.domain` lists them as
+ * "A / B". Mirrored in scripts/validate-concepts.mjs.
+ */
+export function domainsOf(node: GraphNode): string[] {
+  const domain = 'domain' in node.attrs ? node.attrs.domain : undefined;
+  return domain ? domain.split(' / ').map((d) => d.trim()) : [];
+}
+
+/**
  * The node plus its first-degree connections in both directions (any
  * relation type) — the click sub-graph.
  */

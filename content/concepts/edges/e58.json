@@ -1,0 +1,12 @@
+{
+  "id": "e58",
+  "source": "decay_equation",
+  "target": "alpha_decay",
+  "relationship": "describes",
+  "conditions": [
+    {
+      "label": "large number",
+      "description": "The large-sample condition under which radioactive decay is well described statistically."
+    }
+  ]
+}

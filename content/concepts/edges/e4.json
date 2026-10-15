@@ -1,0 +1,6 @@
+{
+  "id": "e4",
+  "source": "diff_geometry",
+  "target": "tangent_vector",
+  "relationship": "Strict Prerequisite for"
+}

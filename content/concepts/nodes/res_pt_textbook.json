@@ -1,0 +1,13 @@
+{
+  "id": "res_pt_textbook",
+  "type": "resource",
+  "label": "Textbook page: parallel transport",
+  "importance": 1,
+  "attrs": {
+    "link": "https://example.com/learn/parallel-transport-ch4",
+    "mediaType": "text",
+    "estimatedMinutes": 30,
+    "rating": 4.3,
+    "reviewCount": 64
+  }
+}

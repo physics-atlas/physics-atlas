@@ -1,0 +1,12 @@
+{
+  "id": "pdf",
+  "type": "formalism",
+  "label": "PDF",
+  "importance": 2,
+  "generality": 3,
+  "attrs": {
+    "description": "Probability density function: a function whose integral over a range gives the probability of a value falling in that range.",
+    "domain": "Mathematics"
+  },
+  "review": "Which PDF is meant here — the one-point density PDF of the dark matter field, or the phase-space distribution function f(x, v)? The description is a generic placeholder until this is settled."
+}

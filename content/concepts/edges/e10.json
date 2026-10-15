@@ -1,0 +1,6 @@
+{
+  "id": "e10",
+  "source": "diff_geometry",
+  "target": "einstein_eq",
+  "relationship": "Strict Prerequisite for"
+}
