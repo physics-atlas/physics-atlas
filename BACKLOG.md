@@ -40,6 +40,16 @@ orientation in the graph) and a11y polish. Don't invent new physics content
 - [x] feature-32: No grey text — `--ink-2` / `--muted` raised to 12–15:1 (dark) and 8.7–11:1 (light), canvas relation names to full-contrast ink. "Secondary" is now carried by typography: labels uppercase + tracking + semibold, counts as outlined pills, notes / hints / empty states / context in italics, done items struck through (stronger strike colour), relation names italic, placeholders italic. Badge borders raised from hairline to border. Rules in docs/ACCESSIBILITY.md.
 - [ ] feature-31: Accessibility follow-ups — screen-reader pass (NVDA + Firefox, VoiceOver + Safari), axe check in `npm run smoke`, keyboard navigation on the canvas (arrow keys between neighbours), glyphs for the 9 types without one, a view-specific review of GoalView / TopicPage / MapView.
 
+### Epic: community proposals & expert review — plan `.claude/plans/epic-community-review.md`
+- [ ] feature-33: Phase 0 — groundwork: Decision 18 (GitHub-based backend; lifts "no backend, no accounts" in CLAUDE.md), Vitest for pure logic, `concepts.json` split into one file per node/edge (compiled, golden-file test), controlled `domain` vocabulary.
+- [ ] feature-34: Phase 1 — read-only proposed layer from fixtures: `ProposalStore`, proposed/contested by outline + badge + text, "Show confirmed / Show proposed" toggles, proposal card (claim with KaTeX, evidence), others' proposals placed with confirmed nodes fixed.
+- [ ] feature-35: Phase 2 — staging-area editor: drag a ghost to see where an idea fits (session-only position, never saved), "nearby concepts → Connect?" suggestions, edge drawing + search-based keyboard route, live conflict detection (`conflicts.ts`), local drafts, export without positions.
+- [ ] feature-36: Phase 3 — identity + submit: serverless OAuth proxy, `GitHubStore` (one PR per proposal), proposed layer from open PRs, ORCID linking, test repo. Needs D2, D6.
+- [ ] feature-37: Phase 4 — review: Verify / Dispute / Needs clarification as structured PR reviews, node threads, `quorum.ts` + "Quorum" Action (bootstrap policy), Contested status.
+- [ ] feature-38: Phase 5 — moderation: stewards via CODEOWNERS, curators, `?mode=review` queue with mini-graph, merge / contest / duplicate-merge. Needs D5.
+- [ ] feature-39: Phase 6 — accountability: per-node blame timeline, public audit log, verified-expert badges. Needs D7.
+- [ ] feature-40: Phase 7 — hardening: abuse limits, GDPR review, scale, expert docs, AT testing.
+
 ## Client feedback (2026-07-20) — deferred
 
 - [ ] feature-8: Interactive simulations — new content type `simulation` + optional `codeUrl` field ("what the code does"); pilot: link the Franck–Hertz applet on Quantum Mechanics. Later: in-page embedding. Ref: https://mintapps.org/html/mint-franckhertz.html
