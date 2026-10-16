@@ -168,7 +168,25 @@ built phase. Each phase's work isn't done until its section there is written and
   - The smoke test still reports 64 nodes and 66 edges.
 - **Value if we stop here:** cleaner diffs and per-node blame for Sophie's own edits.
 
-### Phase 1 — The proposed layer, read-only *(fixtures, no backend)*
+### Phase 1 — The proposed layer, read-only *(fixtures, no backend)* — ✅ done 2026-10-15 (feature-34)
+
+> **As built** (differences from the scope below, all deliberate):
+> - Proposals are an **overlay** (`ConceptOverlay`, `src/community/proposals.ts`), added
+>   *after* the confirmed layout instead of being merged into `conceptElements()`, so they
+>   can't enter the layout search or its cache. `placeNew()` (layoutOptimize.ts) places them
+>   with every confirmed node fixed. When the background search improves the confirmed
+>   layout, the overlay is re-placed and glides along.
+> - The proposal card is its own component (`ProposalCard.tsx`), lazy-loaded together with
+>   KaTeX, and reuses `RelationSentence` and the card styles. Claims are written in a small
+>   tested Markdown subset (`richText.ts`).
+> - The toggles sit in the map's control bar (bottom right), not at the top. A toggle
+>   never moves the view (changed after testing: it used to re-frame). With confirmed hidden, the concepts a proposal
+>   attaches to stay as faint context.
+> - Keyboard route: a "Proposed — not yet confirmed" group in the concept list. A confirmed
+>   concept's card lists the open proposals about it.
+> - Gotchas found and fixed: Cytoscape doesn't support `:not(...)` selectors (it silently
+>   matches everything; use `.not()`); Vitest 5's on-disk module cache kept stale
+>   `import.meta.glob` results (`fsModuleCache: false`).
 
 - **Scope:**
   - A `ProposalStore` interface plus a `FixtureStore` (2–3 hand-written proposals in
@@ -192,7 +210,34 @@ built phase. Each phase's work isn't done until its section there is written and
 - **Value:** we can test the visual language with Sophie and experts before writing any
   backend.
 
-### Phase 2 — Staging-area editor *(local drafts, export)*
+### Phase 2 — Staging-area editor *(local drafts, export)* — ✅ done 2026-10-15 (feature-35)
+
+> **As built** (differences from the scope below, all deliberate):
+> - **No `cytoscape-edgehandles`.** While drafting, *clicking* any confirmed concept connects
+>   it to the ghost, and the nearest ones carry "＋ Connect?" in their label. That's simpler
+>   than drawing an edge and isn't a dragging-only action (WCAG 2.5.7), so the dependency
+>   wasn't needed. Relations between two existing concepts are added from the form.
+> - **One draft per browser** (`src/community/useDraft.ts`, localStorage). The ghost's
+>   position lives only in `GraphView` (`draftPlaceRef`), never in the draft, so it can't be
+>   exported. The draft's relations point at a placeholder (`NEW_CONCEPT`) until export, so
+>   renaming the concept never re-creates the ghost.
+> - **Suggestions:** after a drag, the concepts within reach of the ghost on the map; before
+>   any drag, the graph neighbours of what's connected (the keyboard route); none before
+>   either. A keyboard connection glides the ghost next to its anchors (`placeNew`) and frames
+>   them if they're off screen. **Bring the draft into view** recovers a ghost left behind by a
+>   search jump.
+> - **Opening the editor zooms in** (never out) to a level where mid-importance names are
+>   readable. The ghost is drawn mid-sized; that size is display only.
+> - **Conflicts are hints, never blocks:** `src/graph/conflicts.ts` (similar names via
+>   normalisation + trigram Dice + an abbreviation list; duplicate / reversed relations against
+>   the map, the draft and other open proposals; strict-prerequisite loops with their path).
+>   Only missing fields and malformed evidence stop an export (`draftProblems`).
+> - **Export:** the node file + one file per relation (formatted like `formatEntity`), the
+>   pull-request text, and the whole proposal as one fixture-format file. An end-to-end test
+>   (`scripts/export-draft.test.mjs`) runs the real validator on an exported draft;
+>   `validate-concepts.mjs` gained `CONCEPTS_DIR` for that.
+> - Found while testing Phase 1: the display toggles no longer move the view, and zooming
+>   with the + / − buttons now counts as the user moving the view.
 
 The editor is canvas-first: its job is to help the proposer *see* where an idea fits. The
 form is the accessible equivalent, not a replacement.

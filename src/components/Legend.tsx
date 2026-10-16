@@ -7,8 +7,16 @@ import TypeBadge from './TypeBadge';
 
 const DEFINITION_ID = 'type-definition';
 
+/** Outline swatches matching the canvas: solid, dashed (proposed), double (contested). */
+const STATUSES = [
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'proposed', label: 'Proposed — dashed outline' },
+  { key: 'contested', label: '⚑ Contested — double outline' },
+  { key: 'draft', label: 'Your draft — dashed, glowing' },
+] as const;
+
 /** Concept-type legend: each type is a button that opens what the type means. */
-function TypeLegend() {
+function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) {
   const [open, setOpen] = useState<NodeType | null>(null);
   const def = open ? NODE_TYPE_DEFINITIONS[open] : undefined;
 
@@ -78,12 +86,32 @@ function TypeLegend() {
         </button>
       ))}
       <span className="legend-entry legend-size-note">larger circle = more important · zoom in for more</span>
+      {statuses && (
+        <span className="legend-statuses">
+          {STATUSES.filter((s) => draft || s.key !== 'draft').map((s) => (
+            <span key={s.key} className="legend-entry">
+              <span className={`status-swatch status-swatch-${s.key}`} aria-hidden />
+              {s.label}
+            </span>
+          ))}
+        </span>
+      )}
     </div>
   );
 }
 
-export default function Legend({ variant = 'category' }: { variant?: 'category' | 'type' }) {
-  if (variant === 'type') return <TypeLegend />;
+export default function Legend({
+  variant = 'category',
+  statuses = false,
+  draft = false,
+}: {
+  variant?: 'category' | 'type';
+  /** Also explain the proposal outlines (community preview) */
+  statuses?: boolean;
+  /** Also explain the draft's outline (while the proposal editor is open) */
+  draft?: boolean;
+}) {
+  if (variant === 'type') return <TypeLegend statuses={statuses} draft={draft} />;
   return (
     <div className="legend" role="group" aria-label="Legend: topic categories">
       {CATEGORY_ORDER.map((category) => (

@@ -477,6 +477,24 @@ delete it once you've decided. Current open items from the migration:
 Ids stay **snake_case**, exactly as exported from Sophie's CSVs
 (`quark_gluon_plasma`, `lg_pt_3`) — they're a different id space from
 topics.json's kebab-case ids, kept for traceability back to her source files.
+Concepts added through the proposal editor get a slug of their name plus a short
+random suffix (`jeans_scale_k3f9`), so two proposals never pick the same id.
+
+### Taking in a proposal from the editor
+
+The proposal editor (`?mode=concepts&community=1` → **Propose a concept**) exports
+exactly the files a merge adds:
+
+1. **Download the files** gives `<id>.json` for the concept and `<id>_e1.json`, `<id>_e2.json`, …
+   for its relations. Put the first into `content/concepts/nodes/` and the rest into
+   `content/concepts/edges/`.
+2. Run `npm run validate`. The files are already in the canonical format and carry no
+   positions; the map lays the concept out like any other.
+3. The proposer's **pull-request text** (title, claim, what it adds, evidence) is the
+   description for the commit or pull request. The claim and evidence are for reviewers and
+   stay out of the concept files.
+4. Set `importance` yourself. The editor doesn't ask for it, so a new concept starts at the
+   fallback size until you do.
 
 ## Before committing
 

@@ -7,6 +7,7 @@ import {
   countNodeOverlaps,
   createRng,
   layoutKey,
+  placeNew,
   removeOverlaps,
 } from './layoutOptimize';
 import type { NodeBox, Positions, Segment } from './layoutOptimize';
@@ -87,5 +88,76 @@ describe('layoutKey', () => {
     const k2 = layoutKey(['b', 'a'], [['b', 'c'], ['a', 'b']], 'v');
     expect(k1).toBe(k2);
     expect(layoutKey(['a', 'b'], [['a', 'b']], 'other')).not.toBe(layoutKey(['a', 'b'], [['a', 'b']], 'v'));
+  });
+});
+
+describe('removeOverlaps with a movable set', () => {
+  it('moves only the movable node, the whole way', () => {
+    const pos: Positions = { fixed: { x: 0, y: 0 }, mover: { x: 4, y: 2 } };
+    const boxes = { fixed: box(), mover: box() };
+    const out = removeOverlaps(pos, boxes, 60, new Set(['mover']));
+    expect(out.fixed).toEqual({ x: 0, y: 0 });
+    expect(countBoxOverlaps(out, boxes)).toBe(0);
+  });
+
+  it('leaves a pair alone when neither may move', () => {
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 4, y: 2 } };
+    const out = removeOverlaps(pos, { a: box(), b: box() }, 60, new Set());
+    expect(out).toEqual(pos);
+  });
+});
+
+describe('placeNew', () => {
+  // A confirmed row a — b — c — d, 200px apart, plus a far-away z.
+  const fixed: Positions = {
+    a: { x: 0, y: 0 },
+    b: { x: 200, y: 0 },
+    c: { x: 400, y: 0 },
+    d: { x: 600, y: 0 },
+    z: { x: 3000, y: 3000 },
+  };
+  const ids = [...Object.keys(fixed), 'n1', 'n2', 'lone'];
+  const boxes = Object.fromEntries(ids.map((id) => [id, box()]));
+  const confirmed: Segment[] = [
+    ['a', 'b'],
+    ['b', 'c'],
+    ['c', 'd'],
+  ];
+  // n1 hangs off c; n2 hangs off n1 (a chain of two new nodes); lone has no edges.
+  const segments: Segment[] = [...confirmed, ['c', 'n1'], ['n1', 'n2']];
+  const place = () => placeNew(fixed, ['n1', 'n2', 'lone'], segments, boxes, createRng(3));
+
+  it('never moves an existing node and returns only the new ones', () => {
+    const before = structuredClone(fixed);
+    const out = place();
+    expect(fixed).toEqual(before);
+    expect(Object.keys(out).sort()).toEqual(['lone', 'n1', 'n2']);
+  });
+
+  it('puts a new node near the concept it connects to', () => {
+    const out = place();
+    const dist = (p: { x: number; y: number }, q: { x: number; y: number }) => Math.hypot(p.x - q.x, p.y - q.y);
+    expect(dist(out.n1, fixed.c)).toBeLessThan(dist(out.n1, fixed.a));
+    expect(dist(out.n1, fixed.c)).toBeLessThan(500);
+    // the chained node follows its new anchor rather than drifting off
+    expect(dist(out.n2, out.n1)).toBeLessThan(500);
+  });
+
+  it('keeps every name clear of every other name', () => {
+    const out = place();
+    expect(countBoxOverlaps({ ...fixed, ...out }, boxes)).toBe(0);
+  });
+
+  it('puts an unconnected new node to the right of the graph', () => {
+    const out = place();
+    expect(out.lone.x).toBeGreaterThan(fixed.z.x);
+  });
+
+  it('is deterministic for a seed', () => {
+    expect(place()).toEqual(place());
+  });
+
+  it('does nothing when there is nothing new', () => {
+    expect(placeNew(fixed, [], segments, boxes, createRng(1))).toEqual({});
   });
 });

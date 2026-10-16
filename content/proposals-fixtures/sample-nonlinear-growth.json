@@ -1,0 +1,50 @@
+{
+  "id": "sample-nonlinear-growth",
+  "title": "Sample: the Zel'dovich approximation predicts non-linear structure growth",
+  "state": "open",
+  "author": {
+    "name": "Sample expert B",
+    "orcid": "0000-0000-0000-0000",
+    "verified": true
+  },
+  "createdAt": "2026-10-03T14:30:00Z",
+  "claim": "**Sample data for testing.** The Zel'dovich approximation predicts the onset of non-linear structure growth, up to the first shell crossing:\n\n$$\\mathbf{x}(\\mathbf{q}, t) = \\mathbf{q} + D(t)\\, \\boldsymbol{\\psi}(\\mathbf{q})$$",
+  "evidence": [
+    {
+      "kind": "url",
+      "ref": "https://en.wikipedia.org/wiki/Zeldovich_pancake",
+      "note": "Background reading"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "nonlinear_growth_s2",
+      "type": "process",
+      "label": "Non-linear structure growth",
+      "importance": 3,
+      "attrs": {
+        "description": "Sample: growth of density perturbations once they are no longer small.",
+        "domain": "Cosmology"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "s2_e1",
+      "source": "zeldovich_approximation",
+      "target": "nonlinear_growth_s2",
+      "relationship": "predicts"
+    },
+    {
+      "id": "s2_e2",
+      "source": "nonlinear_growth_s2",
+      "target": "structure_formation",
+      "relationship": "relates"
+    }
+  ],
+  "tally": {
+    "verify": 1,
+    "dispute": 0,
+    "clarify": 0
+  }
+}

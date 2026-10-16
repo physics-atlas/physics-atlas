@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -29,4 +30,10 @@ function recompileConcepts(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), recompileConcepts()],
+  test: {
+    // Vitest 5 caches transformed modules on disk, keyed by their own content,
+    // so an import.meta.glob (the proposal fixtures) keeps the file list it was
+    // first expanded with: an added or broken fixture would go unnoticed.
+    fsModuleCache: false,
+  },
 })

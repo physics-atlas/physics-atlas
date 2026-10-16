@@ -16,7 +16,8 @@ import { findCycle } from './lib/find-cycle.mjs';
 import { readConceptSources, unformattedFiles } from './lib/concept-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SOURCE_DIR = join(ROOT, 'content/concepts');
+// CONCEPTS_DIR points the validator at another copy (tests check exported proposals that way).
+const SOURCE_DIR = process.env.CONCEPTS_DIR ?? join(ROOT, 'content/concepts');
 const VOCAB_PATH = join(ROOT, 'src/data/conceptVocabulary.json');
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;

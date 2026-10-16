@@ -17,7 +17,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 
 | Practice | Where |
 |---|---|
-| Every visual encoding has a text equivalent | Node colour → type name in the label, legend and card; size → importance, explained in the legend; silver/gold direction → "From this concept" / "Into this concept" in the card's text |
+| Every visual encoding has a text equivalent | Node colour → type name in the label, legend and card; size → importance, explained in the legend; silver/gold direction → "From this concept" / "Into this concept" in the card's text; proposal status → dashed / double outline **plus** "Proposed · ✓2 ✗0 ?1" / "⚑ Contested" in the label, card, list and legend; the editor's glows → "Draft · not submitted", "＋ Connect?" and "≈ Similar name" in the labels, repeated as lists in the editor |
 | The graph has a non-visual equivalent | **All concepts as a list** panel; every relation as a full sentence ("Zel'dovich approximation approximates Structure Formation under the assumption of linear potential.") in the card |
 | Vocabulary is defined where it's used | Clicking a type in the legend opens its definition, examples and "not to be confused with" notes |
 | The display can be adjusted | Light/dark theme; **Reduce motion**; **Show all concepts** (turns off zoom level of detail); browser zoom up to 400% |
@@ -27,8 +27,9 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 
 | Practice | Where |
 |---|---|
-| Everything works from the keyboard | Skip link, search (combobox), list panel, card, legend, map controls; Escape closes the card and the type definition |
-| No action needs a precise gesture | Zoom-in / zoom-out / whole-map buttons alongside wheel, pinch and drag |
+| Everything works from the keyboard | Skip link, search (combobox), list panel, card, legend, map controls, the whole proposal editor; Escape closes the card and the type definition |
+| No action needs a precise gesture | Zoom-in / zoom-out / whole-map buttons alongside wheel, pinch and drag. In the proposal editor, dragging the ghost is only a thinking aid: connecting is a click (on the map or a "＋ Connect to …" button) or a search, and suggestions also come from what's already connected |
+| Writing is supported, not policed | The proposal editor names each kind of concept with its definition, reads every relation back as a sentence, previews LaTeX, and turns problems into a list of links to the field; conflicts are hints ("Did you mean …?"), never blocks |
 | More than one way to find a concept | Search, the list by type, goal paths, clicking a neighbour in the card |
 | Learners can plan and track their work | Goal paths with an ordered list of steps; "Learned" checkboxes and progress count |
 
@@ -68,6 +69,9 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   | Note, hint, empty state, secondary context ("via …", "— parent topic") | italic |
   | Done / learned | strikethrough, beside the ticked checkbox or ✓ |
   | Relation name on the map | italic on a background plate (concept names are upright) |
+  | Proposed / contested concept | dashed / double outline + the status and tally in words in its label ("Proposed · ✓2 ✗0 ?1"); never a status colour |
+  | Draft (editor) | dashed outline with a steady glow + "Draft · not submitted"; concepts offered or flagged say "＋ Connect?" / "≈ Similar name"; warnings carry ⚠ / ≈ and a gold border, not gold text |
+  | Optional field | the word *optional*, in italic, after the label |
   | Placeholder | italic |
 
   Add a new secondary element to the matching group instead of picking a dimmer
@@ -103,9 +107,16 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 
 - **Focus follows intent:** changing view moves focus to `<main>`. Opening a concept
   card moves focus into it, and closing it returns focus to where the user came
-  from.
+  from. The proposal editor does the same, returning focus to "Propose a concept";
+  "Show on map" from inside the editor highlights the concept but leaves focus there.
 - **Predictable:** controls keep their place and meaning across views. A toggle keeps
-  a fixed label and exposes its state with `aria-pressed`.
+  a fixed label and exposes its state with `aria-pressed`. A display toggle (Show all
+  concepts, Show confirmed, Show proposed) changes what's drawn, never where the view
+  is.
+- **Forms:** every field has a visible `<label>`; hints are tied to their field with
+  `aria-describedby`; groups of checkboxes are a `fieldset` with a `legend`; problems are
+  listed in words, each a button that moves focus to its field. Destructive actions ask
+  first ("Discard everything? Discard / Keep it").
 - **Plain language:** labels say what happens ("Show path to this", "Show the
   whole map"), not just an icon.
 
@@ -131,5 +142,9 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   text everywhere, but the glyph would add a second non-colour cue on the canvas.
 - **Not yet tested with assistive technology.** A pass with NVDA + Firefox and
   VoiceOver + Safari, and an automated axe check in `npm run smoke`, are still to do.
+  The proposal editor is the most form-heavy part, so it should come first.
+- **The ghost can't be moved by keyboard.** By design: its position is a sketch,
+  not data, and the keyboard route gets the same help another way (the ghost follows
+  what's connected, and suggestions come from those concepts' neighbours).
 - **Topic views (goal, topic page, hidden topic map)** got the global fixes (tokens,
   focus ring, target sizes, motion, landmarks, titles) but no view-specific review.

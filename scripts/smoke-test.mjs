@@ -327,6 +327,206 @@ if (!conceptProgress.includes('"concept:linear_algebra"'))
   errors.push('ticking the first concept step did not store concept:linear_algebra');
 await page.screenshot({ path: `${OUT}/concepts-goal.png` });
 
+// --- Community preview, Phase 1: proposed layer from the sample fixtures ---
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const confirmedPositions = () =>
+  page.evaluate(() =>
+    Object.fromEntries(window.__cy.nodes().not('.overlay').map((n) => [n.id(), { ...n.position() }])),
+  );
+// Clicks a map control by its text; returns its aria-pressed once React has re-rendered.
+const clickControl = (text) =>
+  page.evaluate(async (t) => {
+    const find = () => [...document.querySelectorAll('.graph-control')].find((el) => el.textContent.trim() === t);
+    find()?.click();
+    await new Promise((r) => setTimeout(r, 100));
+    return find()?.getAttribute('aria-pressed');
+  }, text);
+
+// The confirmed layout first settles and is cached; then the same map with proposals.
+await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v4')), { timeout: 60000 });
+await page.reload({ waitUntil: 'networkidle0' });
+await wait(500);
+const layoutBefore = await confirmedPositions();
+await page.goto(`${URL}/?mode=concepts&community=1`, { waitUntil: 'networkidle0' });
+await page.waitForFunction(() => window.__cy?.nodes('.overlay').length > 0, { timeout: 10000 });
+await wait(500);
+const layoutAfter = await confirmedPositions();
+const moved = Object.keys(layoutBefore).filter(
+  (id) => !layoutAfter[id] || Math.hypot(layoutAfter[id].x - layoutBefore[id].x, layoutAfter[id].y - layoutBefore[id].y) > 0.5,
+);
+const layer = await page.evaluate(() => {
+  const cy = window.__cy;
+  return {
+    nodes: cy.nodes('.overlay').map((n) => n.id()),
+    edges: cy.edges('.overlay').length,
+    contested: cy.nodes('.status-contested').map((n) => n.id()),
+    jeansLabel: cy.$id('jeans_scale_s1').data('label'),
+    url: window.location.search,
+    // Each proposal sits next to the confirmed concept it connects to: that
+    // concept ranks among the nearest confirmed ones (1 = the nearest).
+    anchorRanks: [
+      ['jeans_scale_s1', 'structure_formation'],
+      ['nonlinear_growth_s2', 'zeldovich_approximation'],
+      ['ultralight_bound_s3', 'wave_dark_matter'],
+    ].map(([a, b]) => {
+      const p = cy.$id(a).position();
+      const d = (n) => Math.hypot(n.position().x - p.x, n.position().y - p.y);
+      const nearest = cy.nodes().not('.overlay').sort((m, n) => d(m) - d(n)).map((n) => n.id());
+      return nearest.indexOf(b) + 1;
+    }),
+  };
+});
+console.log('rank of each proposal\'s anchor among the nearest confirmed concepts:', layer.anchorRanks);
+if (layer.anchorRanks.some((r) => r < 1 || r > 3))
+  errors.push(`a proposal was placed away from its connection (anchor ranks ${layer.anchorRanks})`);
+console.log(
+  `proposed layer: ${layer.nodes.length} concepts, ${layer.edges} relations, contested ${layer.contested}; confirmed nodes moved: ${moved.length}`,
+);
+if (layer.nodes.length !== 3 || layer.edges !== 4)
+  errors.push(`expected 3 proposed concepts / 4 relations, got ${layer.nodes.length}/${layer.edges}`);
+if (layer.contested.join() !== 'ultralight_bound_s3') errors.push(`expected one contested proposal, got ${layer.contested}`);
+if (moved.length) errors.push(`proposals moved confirmed concepts: ${moved.slice(0, 5).join(', ')}`);
+if (!layer.jeansLabel?.includes('Proposed · ✓2 ✗0 ?1')) errors.push(`proposal badge missing: ${layer.jeansLabel}`);
+if (!layer.url.includes('community=1')) errors.push(`community flag dropped from the URL: ${layer.url}`);
+await page.screenshot({ path: `${OUT}/community-layer.png` });
+
+await page.evaluate(() => window.__cy.$id('jeans_scale_s1').emit('tap'));
+await page.waitForSelector('.map-card .proposal-claim .katex', { timeout: 10000 });
+const proposalCard = await page.$eval('.map-card', (el) => el.textContent ?? '');
+const cardChecks = {
+  proposedBy: proposalCard.includes('Proposed by Sample contributor A'),
+  sentence: proposalCard.includes('Jeans scale is a condition of Structure Formation'),
+  tally: proposalCard.includes('Needs clarification'),
+};
+console.log('proposal card:', cardChecks);
+if (!Object.values(cardChecks).every(Boolean)) errors.push(`proposal card incomplete: ${JSON.stringify(cardChecks)}`);
+await page.screenshot({ path: `${OUT}/community-card.png` });
+await page.keyboard.press('Escape');
+
+// The toggles change what's drawn, never the view: zoom in, then flip them all.
+const viewport = () => page.evaluate(() => ({ zoom: window.__cy.zoom(), ...window.__cy.pan() }));
+await wait(1000);
+await page.evaluate(() => [...document.querySelectorAll('.graph-control')].find((el) => el.getAttribute('aria-label') === 'Zoom in').click());
+await wait(500);
+const viewBefore = await viewport();
+const proposedOff = await clickControl('Show proposed');
+await wait(200);
+const overlayHidden = await page.evaluate(() =>
+  window.__cy.elements('.overlay').every((el) => el.style('display') === 'none'),
+);
+await clickControl('Show proposed');
+const confirmedOff = await clickControl('Show confirmed');
+await wait(200);
+const context = await page.evaluate(() => ({
+  hiddenConfirmed: window.__cy.nodes().not('.overlay').filter((n) => n.style('display') === 'none').length,
+  anchorShown: window.__cy.$id('structure_formation').style('display') !== 'none',
+}));
+await clickControl('Show confirmed');
+await clickControl('Show all concepts');
+await clickControl('Show all concepts');
+await wait(800);
+const viewAfter = await viewport();
+const viewKept =
+  Math.abs(viewAfter.zoom - viewBefore.zoom) < 1e-6 && Math.hypot(viewAfter.x - viewBefore.x, viewAfter.y - viewBefore.y) < 0.5;
+console.log('view kept through the toggles:', viewKept);
+if (!viewKept) errors.push(`a display toggle moved the view: ${JSON.stringify(viewBefore)} → ${JSON.stringify(viewAfter)}`);
+console.log('layer toggles:', { proposedOff, overlayHidden, confirmedOff, ...context });
+if (proposedOff !== 'false' || !overlayHidden) errors.push('"Show proposed" did not hide the proposed layer');
+if (confirmedOff !== 'false' || context.hiddenConfirmed < 50 || !context.anchorShown)
+  errors.push('"Show confirmed" did not hide confirmed concepts while keeping the ones proposals attach to');
+
+// --- Community preview, Phase 2: the proposal editor ---
+// Keyboard first (form + search alone), then the pointer (drag the ghost).
+await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-draft-v1'));
+await page.goto(`${URL}/?mode=concepts&community=1`, { waitUntil: 'networkidle0' });
+await page.waitForFunction(() => window.__cy?.nodes('.overlay').length > 0, { timeout: 10000 });
+await wait(500);
+const beforeDraft = await confirmedPositions();
+await page.focus('.concept-propose');
+await page.keyboard.press('Enter');
+await page.waitForSelector('.draft-editor', { timeout: 10000 });
+await wait(300);
+const editorFocused = await page.evaluate(() => document.activeElement?.classList.contains('draft-card'));
+await page.focus('.draft-editor input.draft-input');
+await page.keyboard.type('Smoke test concept');
+await page.focus('.draft-search input');
+await page.keyboard.type("Zel'dovich");
+await wait(150);
+await page.keyboard.press('Enter');
+// The ghost glides next to its connection (0.4 s), then the view frames both (0.7 s).
+await wait(1600);
+const keyboardDraft = await page.evaluate(() => {
+  const cy = window.__cy;
+  const g = cy.$id('@new');
+  const p = g.position();
+  const d = (n) => Math.hypot(n.position().x - p.x, n.position().y - p.y);
+  const nearest = cy.nodes().not('.overlay, .draft').sort((a, b) => d(a) - d(b)).map((n) => n.id());
+  return {
+    rank: nearest.indexOf('zeldovich_approximation') + 1,
+    draftEdges: cy.edges('.draft').length,
+    suggestions: document.querySelector('.draft-suggestions')?.textContent ?? '',
+  };
+});
+console.log('editor, keyboard:', { editorFocused, ...keyboardDraft });
+if (!editorFocused) errors.push('opening the proposal editor did not move focus into it');
+if (keyboardDraft.draftEdges !== 1 || keyboardDraft.rank < 1 || keyboardDraft.rank > 3)
+  errors.push(`keyboard connection did not place the draft next to it: ${JSON.stringify(keyboardDraft)}`);
+if (!keyboardDraft.suggestions.includes('Near what you connected'))
+  errors.push('no suggestions from what the draft is connected to');
+
+// Pointer: bring Structure Formation into view, drag the ghost next to it.
+await page.evaluate(() => {
+  const cy = window.__cy;
+  const p = cy.$id('structure_formation').position();
+  cy.pan({ x: 250 - p.x * cy.zoom(), y: 380 - p.y * cy.zoom() });
+});
+await wait(200);
+const drag = await page.evaluate(() => {
+  const r = document.querySelector('.graph-canvas').getBoundingClientRect();
+  const g = window.__cy.$id('@new').renderedPosition();
+  return { x: r.x + g.x, y: r.y + g.y, tx: r.x + 330, ty: r.y + 470 };
+});
+await page.mouse.move(drag.x, drag.y);
+await page.mouse.down();
+for (let i = 1; i <= 15; i++) {
+  await page.mouse.move(drag.x + ((drag.tx - drag.x) * i) / 15, drag.y + ((drag.ty - drag.y) * i) / 15);
+  await wait(16);
+}
+await page.mouse.up();
+await wait(400);
+const offered = await page.$$eval('.draft-suggestion', (b) => b.map((x) => x.textContent.trim()));
+await page.evaluate(() => [...document.querySelectorAll('.draft-suggestion')].find((b) => b.textContent.includes('Structure Formation'))?.click());
+await wait(200);
+await page.evaluate(() => window.__cy.$id('structure_formation').emit('tap'));
+await wait(300);
+const pointerDraft = await page.evaluate(() => ({
+  relations: document.querySelectorAll('.draft-relation .draft-sentence').length,
+  duplicate: [...document.querySelectorAll('.draft-warning')].some((w) => w.textContent.includes('already added this relation')),
+  ghostLabel: window.__cy.$id('@new').data('label'),
+}));
+const afterDraft = await confirmedPositions();
+const movedByDraft = Object.keys(beforeDraft).filter(
+  (id) => Math.hypot(afterDraft[id].x - beforeDraft[id].x, afterDraft[id].y - beforeDraft[id].y) > 0.5,
+);
+console.log('editor, pointer:', { offered, ...pointerDraft, confirmedMoved: movedByDraft.length });
+if (!offered.some((o) => o.includes('Structure Formation'))) errors.push('dragging the draft next to Structure Formation did not offer it');
+if (pointerDraft.relations !== 3 || !pointerDraft.duplicate) errors.push(`expected 3 relations and a duplicate warning: ${JSON.stringify(pointerDraft)}`);
+if (movedByDraft.length) errors.push(`drafting moved confirmed concepts: ${movedByDraft.slice(0, 5).join(', ')}`);
+await page.screenshot({ path: `${OUT}/community-draft.png` });
+
+await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Close')).click());
+await wait(300);
+const closed = await page.evaluate(() => ({
+  ghostGone: window.__cy.$id('@new').empty(),
+  focusOnButton: document.activeElement?.classList.contains('concept-propose'),
+  button: document.querySelector('.concept-propose')?.textContent,
+}));
+console.log('editor closed:', closed);
+if (!closed.ghostGone || !closed.focusOnButton || !closed.button?.includes('Continue'))
+  errors.push(`closing the editor: ${JSON.stringify(closed)}`);
+await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-draft-v1'));
+
 console.log('console errors:', errors.length ? errors : 'none');
 await browser.close();
 process.exit(errors.length ? 1 : 0);

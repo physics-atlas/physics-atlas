@@ -59,7 +59,7 @@ npm run lint
 | Command | You should see |
 |---|---|
 | `npm run validate` | `✓ compiled 64 concepts, 66 relations` … `✓ content/concepts valid — 64 nodes (11 types), 66 edges (18 types), strict prerequisites acyclic`. The ⚠ lines are pre-existing content notes (open reviews, example links). |
-| `npm test` | `Test Files 3 passed (3)` · `Tests 32 passed (32)` |
+| `npm test` | All tests pass (`Tests 32 passed` at Phase 0; later phases add more — 63 after Phase 1) |
 | `npm run build` | `✓ built in …`, no TypeScript errors. A "chunks larger than 500 kB" note is pre-existing. |
 | `npm run lint` | No output after `> oxlint`, which means no warnings. |
 
@@ -68,7 +68,7 @@ something on purpose: in `src/graph/concepts.ts`, in `joinList`, change the word
 `` `${items.slice(0, -1).join(', ')} and ${…}` `` to `&`, and save. Two tests fail and say
 exactly what broke: **joinList reads naturally** (`expected 'a & b' to be 'a and b'`) and
 **conditionClause is singular or plural** (the sentence "… under the assumptions of x and y").
-Undo the change, and all 32 pass again. Press `q` to quit.
+Undo the change, and they all pass again. Press `q` to quit.
 
 ### 2. The new file layout
 
@@ -178,15 +178,312 @@ shows the deploy job running a new `npm test` step.
 
 ---
 
+## Phase 1 — the proposed layer, read-only (feature-34)
+
+**What changed:**
+- With `?community=1`, the concept map shows **proposals** on top of the confirmed graph.
+  For now these are three sample proposals from `content/proposals-fixtures/`, clearly labelled
+  "Sample".
+- Each proposal is marked by its outline and a badge in its label, not by colour: the fill
+  stays the type colour.
+- Proposals never move confirmed concepts.
+- New toggles: **Show confirmed** and **Show proposed**.
+- Clicking a proposal opens a **proposal card** with the claim (with LaTeX), evidence and a
+  read-only vote tally.
+- Without `?community=1`, nothing changes.
+
+### 1. Automated checks
+
+```powershell
+npm test
+npm run validate
+npm run build
+npm run lint
+```
+
+| Command | You should see |
+|---|---|
+| `npm test` | `Test Files 4 passed (4)` · `Tests 63 passed (63)`. The new tests cover placing proposals without moving anything, checking proposals against the graph (taken ids, missing concepts, unknown types, bad arXiv / DOI), the three fixtures, and the claim text format. |
+| `npm run build` | As before, plus a separate `ProposalCard-….js` chunk (~265 kB) and the KaTeX fonts. Formula rendering only loads when you open a proposal. |
+| `npm run validate`, `npm run lint` | Unchanged from Phase 0. |
+
+### 2. See the proposed layer
+
+1. `npm run dev`, then open <http://localhost:5173/?mode=concepts&community=1>.
+2. In the legend (bottom left), a new row reads **Confirmed · Proposed — dashed outline ·
+   ⚑ Contested — double outline**, each with a matching outline swatch.
+3. Search for **Structure Formation**. Next to it you'll find:
+   - **Jeans scale**, with a dashed outline and the label *Jeans scale / Proposed · ✓2 ✗0 ?1*,
+     joined by a dashed line labelled *is a condition of (proposed)*;
+   - **Non-linear structure growth**, dashed, joined to Structure Formation (*relates
+     (proposed)*) and to the Zel'dovich approximation (*predicts (proposed)*).
+4. Search for **Wave Dark Matter**. Next to it is **Ultralight mass > 10⁻²² eV**, with a
+   **double** outline, the label *⚑ Contested · ✓1 ✗2 ?0*, and a **dotted** line labelled
+   *concerns (contested)*.
+5. Compare with <http://localhost:5173/?mode=concepts> (no flag): the confirmed concepts are
+   in exactly the same places; only the proposals are gone.
+
+### 3. Open a proposal card
+
+1. Click **Jeans scale**. The card opens on the right:
+   - a dashed pill: **PROPOSAL · NOT YET CONFIRMED**;
+   - **The claim**, with the Jeans length rendered as a formula, λ_J = c_s √(π/(Gρ));
+   - "Proposed by Sample contributor A · Oct 1, 2026";
+   - **What it would add**: the concept itself, plus "Jeans scale is a condition of
+     Structure Formation", where *Structure Formation* is a link;
+   - **Evidence**: the formula as a display equation, and an *arXiv:0000.00001 ↗* link
+     (a placeholder, so the page won't exist);
+   - **Votes so far**: ✓ 2 Verify · ✗ 0 Dispute · ? 1 Needs clarification, and "Voting
+     opens in a later phase."
+2. Click **Ultralight mass > 10⁻²² eV**. The pill has a double outline and reads **⚑
+   CONTESTED PROPOSAL**, and a double-bordered box **Why it's contested** shows the dispute
+   summary.
+3. Click **Non-linear structure growth**. It shows "Sample expert B ✓ Verified expert" and
+   a display formula.
+4. Click the confirmed **Structure Formation**. Its normal card now ends with **Open
+   proposals about this concept (2)**, and each entry opens that proposal.
+
+### 4. The layer toggles
+
+The control bar (bottom right) has **Show confirmed** and **Show proposed**. Both are on
+when the page loads.
+
+- **Show proposed** off: all three proposals and their lines disappear. Turn it back on.
+- **Show confirmed** off: only the proposals stay, plus the three confirmed concepts they
+  connect to (Structure Formation, Zel'dovich approximation, Wave Dark Matter), shown
+  faintly. Turn it back on.
+- **None of the three toggles moves the view.** Zoom in somewhere (wheel or the + button),
+  open a card if you like, then flip **Show all concepts**, **Show confirmed** and **Show
+  proposed** on and off: the zoom and position stay exactly where you left them. Use ⤢
+  (Show the whole map) if you want to re-frame.
+- Switching to **Learning goal** and back to **Concept map** keeps `community=1` in the URL
+  and the proposals on the map.
+
+### 5. Keyboard and screen reader
+
+1. Tab to **All concepts as a list** and press Enter. A new first group, **Proposed — not
+   yet confirmed (3)**, lists each proposal with its status in words ("Proposed · ✓2 ✗0 ?1",
+   "⚑ Contested · …").
+2. Tab to *Jeans scale* and press Enter. The card opens and focus moves into it. A screen
+   reader reads the card's heading and then its sections. Formulas are read as maths, because
+   KaTeX also outputs MathML.
+3. Press **Escape**. The card closes and focus returns to *Jeans scale* in the list.
+4. Tab to the control bar. Both toggles are announced as toggle buttons, "pressed" or "not
+   pressed".
+
+### 6. Light theme and reduced motion
+
+- Switch to the light theme (☀/🌙 button). The outlines and badges stay readable, and the
+  header is now light too (it used to stay dark grey, which made the title hard to read).
+- **Reduce motion** on: opening a card jumps instead of gliding.
+
+### 7. Smoke test
+
+As in Phase 0 (two terminals). The new community section prints:
+
+```
+rank of each proposal's anchor among the nearest confirmed concepts: [ 2, 2, 2 ]
+proposed layer: 3 concepts, 4 relations, contested ultralight_bound_s3; confirmed nodes moved: 0
+proposal card: { proposedBy: true, sentence: true, tally: true }
+layer toggles: { proposedOff: 'false', overlayHidden: true, confirmedOff: 'false', hiddenConfirmed: 61, anchorShown: true }
+```
+
+Each rank must be 1–3 (the proposal sits next to what it connects to), and **confirmed nodes
+moved** must be 0. As before, the run ends with only the two known feature-20 failures.
+
+### 8. Try your own proposal (optional)
+
+Copy `content/proposals-fixtures/sample-jeans-scale.json` to a new file, change `id`, the
+concept's `id` and the relation's `id`, and point the relation at another confirmed concept.
+Save, and it appears on the map (reload the page).
+
+Break it on purpose, e.g. point `target` at `nothing_here`: the proposal is left out, and
+the browser console says why (`Proposal "…" left out: … points at "nothing_here", which is
+neither confirmed nor proposed`). `npm test` fails for the same reason. Delete the file
+afterwards.
+
+---
+
+## Phase 2 — the proposal editor, local drafts (feature-35)
+
+**What changed:**
+- With `?community=1`, the concept map has a **＋ Propose a concept** button. It opens an
+  editor where the concept card usually sits, and a dashed, glowing **ghost** concept
+  appears on the map.
+- **Drag the ghost** to work out where the idea fits. The concepts nearest it are offered as
+  connections ("＋ Connect?"). **Clicking any concept on the map** connects it.
+- The **form** does everything without the canvas: name, kind (with its definition),
+  connections (search), relation as a full sentence, assumptions, description, field, the
+  claim (Markdown + LaTeX preview), evidence, your name.
+- **Conflict detection, live:** similar names ("Did you mean …?"), a relation that already
+  exists, one that says the opposite, and loops of strict prerequisites.
+- The draft is **saved in this browser** and can be **exported**: the node and relation
+  files for `content/concepts/`, a pull-request text, or one proposal file.
+- Where you dragged the ghost is **never saved or exported** — it's a sketch.
+- Fixed from Phase 1 testing: **Show all concepts / Show confirmed / Show proposed** no
+  longer reset the view (see Phase 1, step 4).
+
+### 1. Automated checks
+
+```powershell
+npm test
+npm run validate
+npm run build
+npm run lint
+```
+
+| Command | You should see |
+|---|---|
+| `npm test` | `Test Files 7 passed (7)` · `Tests 102 passed (102)`. New: conflict detection (similar names, duplicates, reversed relations, loops), the draft (ids, what it exports, missing fields, malformed evidence, reading it back), and an end-to-end check that **exported files pass the real validator** when dropped into a copy of `content/concepts/`. |
+| `npm run build` | As before, plus a separate `DraftEditor-….js` chunk. The editor only loads when you open it. |
+| `npm run validate`, `npm run lint` | Unchanged. |
+
+### 2. Open the editor
+
+1. `npm run dev`, then open <http://localhost:5173/?mode=concepts&community=1>.
+2. Top left, above "All concepts as a list": **＋ Propose a concept**. Click it.
+3. The editor opens on the right, with a dashed pill **DRAFT · NOT SUBMITTED · SAVED IN THIS
+   BROWSER**, and focus moves into it.
+4. If you were zoomed far out, the map zooms in so names are readable. In the middle of the
+   free map area there's a grey, dashed, glowing circle: **New concept / Draft · not
+   submitted**. The legend gains **Your draft — dashed, glowing**.
+5. **Connections** shows no suggestions yet. They appear once you drag the ghost or connect
+   something.
+
+### 3. Pointer flow: work out where it fits
+
+1. Type **Test concept** as the name and choose **Property/quantity** as the kind. The ghost
+   takes the name and the type's colour and glyph. Below the picker, the type's definition
+   and examples appear (the same text as the legend).
+2. Use the header search to jump to **Structure Formation** (the editor stays open). The ghost
+   is now off screen: click **Bring the draft into view** (under Connections), and it moves to the middle of the
+   view.
+3. **Drag the ghost** close to Structure Formation. As you drag, the nearest concepts get a
+   soft glow and **＋ Connect?** under their name, and the editor lists them under **Nearest
+   on the map**.
+4. Click **＋ Connect to Structure Formation**. A dashed blue line *relates (draft)* appears.
+   Under Connections: "**Test concept** relates to Structure Formation.", and the status line
+   says *Connected to Structure Formation — choose the relation under Connections.*
+5. **Click Structure Formation on the map.** While drafting, clicking a concept connects it
+   instead of opening its card. Since this is the same relation again, the second one shows
+   **⚠ You already added this relation above.** Click its **Remove**.
+6. Open the first relation's **Relation** list. Every option is the full sentence, e.g. "Test
+   concept is a condition of Structure Formation". Pick that one; the line on the map updates.
+7. **Add an assumption**, type *linear potential*. The sentence now ends "under the
+   assumption of linear potential", and the map line adds "assuming linear potential".
+8. Throughout, **no confirmed concept moves** — only the ghost.
+
+### 4. Conflict detection
+
+**Similar names** (in the Name field, replace the text each time):
+
+| Type | You should see |
+|---|---|
+| `Structur formation` | A gold box: *≈ Already on the map with a similar name — did you mean one of these?* listing **Structure Formation** (*similar name*) with **Show on map**. On the map, Structure Formation gets a gold ring and **≈ Similar name** under its name. |
+| `SR` | **Special Relativity** (*abbreviation*) |
+| `EFE` | **Einstein Field Equations** (*abbreviation*) |
+| `Jeans scale` | **Jeans scale** (*same name · an open proposal*), the sample proposal |
+
+**Show on map** glides to that concept and highlights it the way a click does, while focus
+stays in the editor.
+
+**Relations between existing concepts:** open **Add a relation between two concepts already
+on the map**.
+
+1. From **Zel'dovich approximation** to **Structure Formation**, then set the relation to
+   *approximates*: **⚠ This relation is already on the map.**
+2. Click **Swap direction**: **⚠ The map already says the opposite: "Zel'dovich approximation
+   approximates Structure Formation."**
+3. Add another: from **Tangent vector** (pick exactly that entry, not "Construct tangent
+   vectors…") to **Linear Algebra**, set to *is a strict prerequisite for*: **⚠ Strict
+   prerequisites would go round in a loop: Linear Algebra → Vector space → Tangent vector →
+   Linear Algebra.**
+4. Remove these relations again.
+
+### 5. Keyboard-only flow
+
+1. **Discard the draft…** → **Discard** (bottom of the editor) to start fresh.
+2. Tab to **＋ Propose a concept** and press Enter. Focus moves into the editor.
+3. Tab to **Name** and type a name. Tab to **Kind of concept** and choose one with the arrow
+   keys.
+4. Tab to the **Connect … to a concept** search, type *Zel*, choose with ↓ and Enter. The
+   ghost **glides next to Zel'dovich approximation** and the view frames both. Under
+   Connections, **Near what you connected** offers that concept's neighbours (e.g.
+   Structure Formation).
+5. Everything else is reachable with Tab, Enter, Space and the arrow keys. Every field has a
+   visible label, and screen readers announce the status line ("Connected to …").
+
+### 6. Fill in, check, export
+
+1. Fill in **Description**, tick a **Field** (e.g. Cosmology), and write a **claim** with maths,
+   e.g. `Growth stays linear while $\delta \ll 1$.` The preview below renders the formula.
+2. **Add evidence** with kind *arXiv id* and type `abc`. Under **Check and export**:
+   *Evidence 1 isn't a valid arXiv id.* Each item there is a button that jumps to its field.
+   Change it to `2101.01234` (a placeholder).
+3. When nothing is missing, **Check and export** says *Ready* and offers:
+   - **Download the files (N)**: one node file plus one file per relation. Chrome may ask
+     once to allow several downloads.
+   - **Copy pull-request text**: title, claim, what it adds (as sentences), evidence links,
+     the file list.
+   - **Download as one proposal file**: the whole proposal, for
+     `content/proposals-fixtures/`.
+   - **Show the files**: exactly what's in each.
+4. Open a downloaded file: there's **no x, y or position** anywhere.
+
+**Try the files in the repo** (undo afterwards):
+
+1. Put the node file into `content/concepts/nodes/` and the relation files into
+   `content/concepts/edges/`.
+2. `npm run validate` → `✓ content/concepts valid — 65 nodes …`.
+3. The running dev server recompiles. Reload the page **without** `community=1`: your
+   concept is an ordinary solid node, placed by the normal layout, and its card opens like
+   any other.
+4. `git clean -n content/concepts` lists the new files; delete them (or run `git clean -f
+   content/concepts`).
+
+Or put the single proposal file into `content/proposals-fixtures/` and reload with
+`community=1`: it shows as a dashed proposal with your claim. Delete it afterwards.
+
+### 7. Saved between visits; close and discard
+
+- **Reload** the page. The button now reads **＋ Continue your proposal**, and opening it
+  restores everything. The ghost goes next to its connections: where you dragged it isn't
+  kept, by design.
+- **Close — keep the draft** (or ×): the ghost disappears and focus returns to the button.
+- **Discard the draft…** asks *Discard everything?* with **Discard** / **Keep it**.
+- With **Show confirmed** off, the ghost, its lines and the concepts it connects to stay
+  visible (those concepts faintly).
+
+### 8. Light theme and reduced motion
+
+- Light theme: field borders, the gold warning box, the dashed relation boxes and the ghost
+  all stay readable.
+- **Reduce motion** on: the ghost jumps instead of gliding. Nothing pulses (the glow is
+  steady anyway).
+
+### 9. Smoke test
+
+As in Phase 0 (two terminals). The new editor section prints:
+
+```
+view kept through the toggles: true
+editor, keyboard: { editorFocused: true, rank: 1, draftEdges: 1, suggestions: 'Near what you connected＋ Connect to Structure Formation' }
+editor, pointer: { offered: [ '＋ Connect to Structure Formation' ], relations: 3, duplicate: true, ghostLabel: 'Smoke test concept\nDraft · not submitted', confirmedMoved: 0 }
+editor closed: { ghostGone: true, focusOnButton: true, button: '＋ Continue your proposal' }
+```
+
+**rank** must be 1–3 (the ghost sits next to its connection), and **confirmedMoved** must be
+0. The run still ends with only the two known feature-20 failures.
+
+---
+
 ## Coming phases — how you'll test them
 
 These are previews from the plan's exit criteria. Each gets full, step-by-step instructions
-like Phase 0 when it's built.
+when it's built.
 
 | Phase | You'll check |
 |---|---|
-| **1 — Proposed layer (fixtures)** | With `?mode=concepts&community=1`: sample proposals appear with a dashed outline and a "Proposed" badge (and contested ones with a double outline and ⚑). Confirmed concepts don't move when proposals are toggled on or off. The **Show confirmed / Show proposed** toggles work. The proposal card shows the claim (with LaTeX), its evidence links and a read-only vote tally. All of it works by keyboard and is read correctly by a screen reader. |
-| **2 — Staging editor** | Drag a ghost concept next to Structure Formation and see nearby concepts offer "Connect?". Draw an edge. Get a "Did you mean …?" warning for a duplicate label and for an existing edge. Confirmed concepts never move. Build the same proposal using only the keyboard. Export it and check the files contain **no positions** and pass `npm run validate`. |
 | **3 — Sign-in and submitting** | On a staging site connected to a **test repository**: sign in with GitHub, link an ORCID iD, submit a proposal, and see a pull request appear in the test repo. A second browser shows the proposal dashed within a minute. |
 | **4 — Voting and contested** | Verify, Dispute and Needs clarification on a proposal. The quorum status updates ("2 of 3 verified-expert votes, 1 open dispute"). The "Quorum" check on the PR turns green or red. Marking a proposal contested shows ⚑ and its dispute thread. |
 | **5 — Moderation** | As a steward: the review queue lists your domain's proposals, each with a mini-map. Merge one, and after the deploy it shows solid. As a curator: merge two duplicates and check no relation is left dangling. |

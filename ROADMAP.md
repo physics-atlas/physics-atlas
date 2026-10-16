@@ -6,6 +6,48 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-35: Community review, Phase 2 — the proposal editor (local drafts, export)
+
+**Status:** ✅ Implemented <!-- status-line: feature-35 -->
+**Planned:** 2026-10-15 — [.claude/plans/epic-community-review.md](.claude/plans/epic-community-review.md) (Phase 2)
+**Implemented:** 2026-10-15
+
+### Implemented
+- `src/graph/conflicts.ts` — similar names (normalisation + trigram Dice + abbreviations), duplicate / reversed relations (map, draft, other proposals), strict-prerequisite loops with their path
+- `src/community/draft.ts` + `useDraft.ts` — the draft model (one per browser, localStorage), ids as slug + random suffix, missing-field checks, export: node + relation files, pull-request text, one proposal file; never a position
+- `src/components/DraftEditor.tsx` — lazy form panel: name with "Did you mean …?", kind with its definition, connections (suggestions, search, relations as sentences, assumptions, swap, relations between existing concepts), details, claim with preview, evidence, export, close / discard
+- `GraphView.tsx` — `draft` / `onDraftNear` / `draftRecall` props: draggable ghost (dashed, steady glow), draft relations, "＋ Connect?" / "≈ Similar name" marks, placement next to connections until dragged, zoom-in on open; only the ghost is grabbable
+- `ConceptMapView.tsx` — "Propose a concept" entry, click-to-connect while drafting, suggestions, focus in / back; `Legend.tsx` draft swatch
+- `scripts/validate-concepts.mjs` — `CONCEPTS_DIR` override; `scripts/export-draft.test.mjs` runs it on an exported draft
+- Fixed from Phase 1 testing: Show all / Show confirmed / Show proposed keep the view; + / − zoom counts as the user moving the view
+- Tests: 102; smoke: keyboard flow (ghost next to its connection), pointer flow (drag → suggestion → duplicate warning, 0 confirmed moved), close / focus, toggles keep the view
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke passes the new editor section (only the 2 pre-existing feature-20 failures). Checked in Chrome: dark + light theme, keyboard-only flow, real downloads validated in a copy of content/concepts and loaded as a normal node. Not done: a real screen-reader pass.
+
+<!-- impl-marker: feature-35 -->
+
+## feature-34: Community review, Phase 1 — the proposed layer (read-only)
+
+**Status:** ✅ Implemented <!-- status-line: feature-34 -->
+**Planned:** 2026-10-15 — [.claude/plans/epic-community-review.md](.claude/plans/epic-community-review.md) (Phase 1)
+**Implemented:** 2026-10-15
+
+### Implemented
+- `src/community/` — `types.ts` (Proposal, ProposalStore), `proposals.ts` (validation against the confirmed graph, overlay, merge, badges, evidence links), `store.ts` (`FixtureStore`), `richText.ts` (Markdown + LaTeX subset parser)
+- `content/proposals-fixtures/` — 3 labelled sample proposals (2 open, 1 contested)
+- `src/graph/layoutOptimize.ts` — `forceLayout()` fixed nodes / start / temperature; `removeOverlaps()` movable set; `placeNew()`
+- `src/components/GraphView.tsx` — `overlay` / `layers` / `extraControls` props; proposals drawn as dashed (proposed) or double (contested) outlines with a badge line; placed with confirmed nodes fixed; re-placed when the layout improves; layer toggles re-frame the view (changed in feature-35: they keep the view)
+- `src/components/ProposalCard.tsx` + `RichText.tsx` — lazy chunk with KaTeX (MathML output)
+- `ConceptMapView.tsx` — community mode (`?community=1`, kept across navigation in `App.tsx`), toggles, proposals in the concept list, "Open proposals about this concept"; `Legend.tsx` status row
+- Tests: 63 (placement never moves existing nodes, proposal validation, fixtures, rich text); smoke: community section (0 confirmed nodes moved, anchors among the 3 nearest, card, toggles)
+- Also fixed: light-theme header contrast; Vitest `fsModuleCache` off (stale globs)
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke passes the new community section (only the 2 pre-existing feature-20 failures). Checked in Chrome: dark + light theme, keyboard route, Escape focus return. Not done: a real screen-reader pass.
+
+<!-- impl-marker: feature-34 -->
+
 ## feature-33: Community review, Phase 0 — groundwork
 
 **Status:** ✅ Implemented <!-- status-line: feature-33 -->

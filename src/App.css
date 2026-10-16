@@ -52,6 +52,10 @@ body {
   opacity: 0.18;
 }
 
+:root[data-theme='light'] .app-header {
+  background: rgba(255, 255, 255, 0.78);
+}
+
 :root[data-theme='light'] .app-title {
   background: linear-gradient(100deg, #1c2333 0%, #2f6fc4 55%, #7d4a9e 100%);
   -webkit-background-clip: text;
@@ -1127,6 +1131,8 @@ body {
    list. At least half the screen wide; mirrored by cardInset() in ConceptMapView. */
 .concept-map-card {
   width: min(max(50vw, 380px), calc(100% - 32px));
+  /* leaves the bottom strip to the map controls */
+  max-height: calc(100% - 104px);
   padding: 20px 24px;
 }
 
@@ -2466,10 +2472,16 @@ input[type='checkbox'] {
 /* Map controls — single-pointer alternatives to wheel / pinch / drag (WCAG 2.5.7) */
 .graph-controls {
   position: absolute;
+  right: 12px;
   bottom: 12px;
   z-index: 5;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
+  /* Bottom-right, beside the legend (bottom-left, max 560px): wrap instead of overlapping it */
+  max-width: calc(100% - 600px);
+  min-width: 168px;
   gap: 4px;
   padding: 4px;
   background: var(--surface);
@@ -2514,6 +2526,7 @@ input[type='checkbox'] {
   .graph-controls {
     bottom: auto;
     top: 12px;
+    max-width: calc(100% - 24px);
   }
 }
 
@@ -2649,4 +2662,511 @@ input[type='checkbox'] {
   text-decoration: line-through;
   text-decoration-color: var(--ink-2);
   text-decoration-thickness: 1px;
+}
+
+/* ---------- community preview: proposals (Phase 1) ----------
+   Status is always words + outline pattern, never a colour of its own
+   (docs/ACCESSIBILITY.md); the type colour stays the node's fill. */
+
+.proposal-status {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 2px 10px;
+  border: 2px dashed var(--ink);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proposal-status-contested {
+  border-style: double;
+  border-width: 4px;
+}
+
+.proposal-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.proposal-claim {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+}
+
+.rich-text p {
+  margin: 0 0 8px;
+  line-height: 1.55;
+}
+
+.rich-text p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-math-display {
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.proposal-meta {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.verified-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border: 1px solid var(--accent-ink);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.proposal-dispute {
+  padding: 10px 12px;
+  border: 3px double var(--ink);
+  border-radius: 8px;
+}
+
+.proposal-dispute p {
+  margin: 0;
+}
+
+.proposal-evidence {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.proposal-evidence li {
+  display: grid;
+  gap: 2px;
+}
+
+.proposal-evidence-note {
+  font-size: 12px;
+  font-style: italic;
+}
+
+.proposal-tally {
+  list-style: none;
+  margin: 6px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+.proposal-tally-count {
+  display: inline-block;
+  min-width: 34px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.concept-index-proposals .concept-index-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+}
+
+/* Legend: outline swatches that match the canvas */
+.legend-statuses {
+  display: contents;
+}
+
+.status-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+}
+
+.status-swatch-proposed {
+  border-style: dashed;
+}
+
+.status-swatch-contested {
+  border: 4px double var(--ink);
+}
+
+.status-swatch-draft {
+  border: 2px dashed var(--accent-ink);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* ---------- community preview: proposal editor (Phase 2) ----------
+   A form beside the map. Field borders use --muted (≥ 8.7:1) so every
+   control's edge is visible (WCAG 1.4.11); hints are italic, labels use the
+   label cue (uppercase + tracking), warnings carry a ⚠ / ≈ glyph and words. */
+
+.concept-propose {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 2px dashed var(--accent-ink);
+  border-radius: 12px;
+  background: rgba(var(--panel-rgb), 0.92);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.concept-propose:hover {
+  background: var(--accent-soft);
+}
+
+.proposal-status-draft {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.draft-intro {
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+
+.draft-status {
+  margin: 8px 0 0;
+  font-style: italic;
+}
+
+.draft-status:empty {
+  display: none;
+}
+
+.draft-section {
+  display: grid;
+  gap: 12px;
+}
+
+.draft-field {
+  display: grid;
+  gap: 4px;
+}
+
+.draft-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.draft-optional {
+  font-weight: 400;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.draft-hint {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.draft-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--muted);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+textarea.draft-input {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.draft-mono {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+
+.draft-preview {
+  padding: 8px 12px;
+  border: 1px dashed var(--muted);
+  border-radius: 8px;
+}
+
+.draft-definition {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: start;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+}
+
+.draft-definition p {
+  margin: 0;
+  grid-column: 2;
+}
+
+.draft-definition > :first-child {
+  grid-row: span 2;
+  margin-top: 3px;
+}
+
+.draft-warning {
+  margin: 0;
+  padding: 8px 12px;
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+}
+
+.draft-warning p {
+  margin: 0 0 6px;
+}
+
+.draft-similar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.draft-similar li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.draft-domains {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px 12px;
+}
+
+.draft-domains legend {
+  margin-bottom: 6px;
+}
+
+.draft-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 14px;
+}
+
+.draft-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.draft-suggestions {
+  display: grid;
+  gap: 6px;
+}
+
+.draft-suggestion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.draft-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 2px dashed var(--accent-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.draft-suggestion:hover {
+  background: var(--accent-soft);
+}
+
+.draft-search .search,
+.draft-pair .search {
+  flex: none;
+  width: 100%;
+  margin-left: 0;
+}
+
+.draft-relations,
+.draft-evidence {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.draft-relation {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--accent-ink);
+  border-radius: 10px;
+}
+
+.draft-sentence {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.draft-condition {
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--muted);
+}
+
+.draft-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.draft-button {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1.5px solid var(--muted);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.draft-button:hover {
+  background: var(--accent-soft);
+}
+
+.draft-button-primary {
+  border-color: var(--accent-ink);
+  border-width: 2px;
+  font-weight: 600;
+}
+
+/* Destructive: said in the label ("Discard") and by the heavier double border. */
+.draft-button-danger {
+  border: 3px double var(--ink);
+  font-weight: 600;
+}
+
+.draft-link {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.draft-pair summary,
+.draft-files summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 24px;
+}
+
+.draft-pair[open] {
+  display: grid;
+  gap: 8px;
+}
+
+.draft-pair p {
+  margin: 0;
+}
+
+.draft-problems {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
+
+.draft-files[open] {
+  display: grid;
+  gap: 6px;
+}
+
+.draft-code {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.draft-section > .draft-button {
+  justify-self: start;
+}
+
+.draft-footer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.draft-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.draft-search .search-input,
+.draft-pair .search-input {
+  min-height: 36px;
+  border: 1.5px solid var(--muted);
+  font-size: 14px;
 }

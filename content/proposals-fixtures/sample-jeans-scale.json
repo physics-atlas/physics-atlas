@@ -1,0 +1,47 @@
+{
+  "id": "sample-jeans-scale",
+  "title": "Sample: Jeans scale as a condition of structure formation",
+  "state": "open",
+  "author": {
+    "name": "Sample contributor A"
+  },
+  "createdAt": "2026-10-01T10:00:00Z",
+  "claim": "**Sample data for testing.** Gravitational collapse only proceeds on scales larger than the Jeans length $\\lambda_J = c_s \\sqrt{\\pi / (G \\rho)}$, so the Jeans scale is a condition of *Structure Formation*.",
+  "evidence": [
+    {
+      "kind": "equation",
+      "ref": "\\lambda_J = c_s \\sqrt{\\frac{\\pi}{G \\rho}}",
+      "note": "Jeans length"
+    },
+    {
+      "kind": "arxiv",
+      "ref": "0000.00001",
+      "note": "Placeholder reference (sample data)"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "jeans_scale_s1",
+      "type": "property",
+      "label": "Jeans scale",
+      "importance": 3,
+      "attrs": {
+        "description": "Sample: the length scale above which gravity overcomes pressure support.",
+        "domain": "Cosmology"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "s1_e1",
+      "source": "jeans_scale_s1",
+      "target": "structure_formation",
+      "relationship": "is a condition of"
+    }
+  ],
+  "tally": {
+    "verify": 2,
+    "dispute": 0,
+    "clarify": 1
+  }
+}

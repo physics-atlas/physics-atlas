@@ -139,6 +139,15 @@ const copy = (pos: Positions): Positions =>
 /** Half-diagonal of a node's label-inclusive box: how much room it claims. */
 const reach = (b: NodeBox) => Math.hypot(b.right - b.left, b.bottom - b.top) / 2;
 
+export interface ForceOptions {
+  /** Nodes that keep these positions: they push and pull but never move. */
+  fixed?: Positions;
+  /** Starting positions for movable nodes (otherwise random). */
+  start?: Positions;
+  /** Largest first step; small for a local settle around a good start. */
+  temperature?: number;
+}
+
 /**
  * Spring-electrical layout (Fruchterman–Reingold) of one connected
  * component. Each pair's ideal distance grows with the two label boxes, so
@@ -150,17 +159,20 @@ export function forceLayout(
   boxes: Record<string, NodeBox>,
   rng: () => number,
   iterations = FORCE_ITERATIONS,
+  { fixed = {}, start = {}, temperature }: ForceOptions = {},
 ): Positions {
   const n = ids.length;
   const r = ids.map((id) => reach(boxes[id]));
   const k = (i: number, j: number) => EDGE_ROOM + r[i] + r[j];
   const meanK = EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1);
   const side = meanK * Math.sqrt(n);
-  const x = ids.map(() => (rng() - 0.5) * side);
-  const y = ids.map(() => (rng() - 0.5) * side);
+  const initial = ids.map((id) => fixed[id] ?? start[id] ?? { x: (rng() - 0.5) * side, y: (rng() - 0.5) * side });
+  const x = initial.map((p) => p.x);
+  const y = initial.map((p) => p.y);
+  const pinned = ids.map((id) => id in fixed);
   const at = new Map(ids.map((id, i) => [id, i]));
   const links = segments.map(([s, t]) => [at.get(s)!, at.get(t)!] as const);
-  const t0 = side / 4;
+  const t0 = temperature ?? side / 4;
   for (let it = 0; it < iterations; it++) {
     const temp = t0 * (1 - it / iterations) + 1;
     const fx = new Array<number>(n).fill(0);
@@ -193,7 +205,7 @@ export function forceLayout(
     }
     for (let i = 0; i < n; i++) {
       const m = Math.hypot(fx[i], fy[i]);
-      if (m < 1e-9) continue;
+      if (pinned[i] || m < 1e-9) continue;
       const step = Math.min(m, temp) / m;
       x[i] += fx[i] * step;
       y[i] += fy[i] * step;
@@ -225,10 +237,20 @@ export function alignWide(pos: Positions): Positions {
   );
 }
 
-/** Pushes overlapping label boxes apart along their smaller overlap axis. */
-export function removeOverlaps(pos: Positions, boxes: Record<string, NodeBox>, maxPasses = 60): Positions {
+/**
+ * Pushes overlapping label boxes apart along their smaller overlap axis.
+ * With `movable`, only those nodes move: a pair with one movable node moves
+ * it the whole way, a pair with none is left alone.
+ */
+export function removeOverlaps(
+  pos: Positions,
+  boxes: Record<string, NodeBox>,
+  maxPasses = 60,
+  movable?: Set<string>,
+): Positions {
   const out = copy(pos);
   const ids = Object.keys(out);
+  const canMove = (id: string) => !movable || movable.has(id);
   const centre = (id: string) => ({
     x: out[id].x + (boxes[id].left + boxes[id].right) / 2,
     y: out[id].y + (boxes[id].top + boxes[id].bottom) / 2,
@@ -238,23 +260,99 @@ export function removeOverlaps(pos: Positions, boxes: Record<string, NodeBox>, m
     for (let i = 0; i < ids.length; i++)
       for (let j = i + 1; j < ids.length; j++) {
         const a = ids[i], b = ids[j];
+        const ma = canMove(a), mb = canMove(b);
+        if (!ma && !mb) continue;
         const o = overlapOf(a, b, out, boxes, BOX_MARGIN);
         if (o.x <= 0 || o.y <= 0) continue;
         moved = true;
         const ca = centre(a), cb = centre(b);
+        // Each side's share of the push: half each, or all of it for the only movable one.
+        const sa = ma ? (mb ? 0.5 : 1) : 0, sb = mb ? (ma ? 0.5 : 1) : 0;
         if (o.x < o.y) {
           const dir = ca.x <= cb.x ? -1 : 1;
-          out[a].x += (dir * (o.x + SLACK)) / 2;
-          out[b].x -= (dir * (o.x + SLACK)) / 2;
+          out[a].x += dir * (o.x + SLACK) * sa;
+          out[b].x -= dir * (o.x + SLACK) * sb;
         } else {
           const dir = ca.y <= cb.y ? -1 : 1;
-          out[a].y += (dir * (o.y + SLACK)) / 2;
-          out[b].y -= (dir * (o.y + SLACK)) / 2;
+          out[a].y += dir * (o.y + SLACK) * sa;
+          out[b].y -= dir * (o.y + SLACK) * sb;
         }
       }
     if (!moved) break;
   }
   return out;
+}
+
+/** How far around a new node the existing graph takes part in placing it. */
+const PLACE_RADIUS = 600;
+const PLACE_ITERATIONS = 150;
+
+/**
+ * Places new nodes into an existing layout without moving any existing node.
+ * A new node starts at the centre of its already-placed neighbours (chains
+ * of new nodes follow their anchor), settles in a local force run against
+ * the fixed nodes around it, then is pushed clear of every name it overlaps.
+ * Unconnected new nodes go in a column to the right of the graph.
+ */
+export function placeNew(
+  fixed: Positions,
+  newIds: string[],
+  segments: Segment[],
+  boxes: Record<string, NodeBox>,
+  rng: () => number,
+): Positions {
+  if (newIds.length === 0) return {};
+  const isNew = new Set(newIds);
+  const touching = segments.filter(([s, t]) => isNew.has(s) || isNew.has(t));
+  const neighbours = (id: string) =>
+    touching.flatMap(([s, t]) => (s === id ? [t] : t === id ? [s] : []));
+
+  const start: Positions = {};
+  for (let pass = 0; pass < newIds.length; pass++)
+    for (const id of newIds) {
+      if (start[id]) continue;
+      const anchors = neighbours(id)
+        .map((n) => fixed[n] ?? start[n])
+        .filter((p): p is Pos => Boolean(p));
+      if (anchors.length === 0) continue;
+      start[id] = {
+        x: anchors.reduce((s, p) => s + p.x, 0) / anchors.length + (rng() - 0.5) * 60,
+        y: anchors.reduce((s, p) => s + p.y, 0) / anchors.length + (rng() - 0.5) * 60,
+      };
+    }
+  const fixedIds = Object.keys(fixed);
+  const right = fixedIds.length ? Math.max(...fixedIds.map((id) => fixed[id].x + boxes[id].right)) : 0;
+  let column = fixedIds.length ? Math.min(...fixedIds.map((id) => fixed[id].y)) : 0;
+  for (const id of newIds)
+    if (!start[id]) {
+      start[id] = { x: right + EDGE_ROOM - boxes[id].left, y: column };
+      column += boxes[id].bottom - boxes[id].top + EDGE_ROOM;
+    }
+
+  // Only the neighbourhood takes part: far-away nodes would push the new
+  // ones outwards for no visible benefit.
+  const near = fixedIds.filter(
+    (id) =>
+      touching.some(([s, t]) => s === id || t === id) ||
+      newIds.some((n) => Math.hypot(fixed[id].x - start[n].x, fixed[id].y - start[n].y) < PLACE_RADIUS),
+  );
+  const ids = [...near, ...newIds];
+  const inRun = new Set(ids);
+  const settled = forceLayout(
+    ids,
+    touching.filter(([s, t]) => inRun.has(s) && inRun.has(t)),
+    boxes,
+    rng,
+    PLACE_ITERATIONS,
+    { fixed: Object.fromEntries(near.map((id) => [id, fixed[id]])), start, temperature: EDGE_ROOM },
+  );
+  const clear = removeOverlaps(
+    { ...fixed, ...Object.fromEntries(newIds.map((id) => [id, settled[id]])) },
+    boxes,
+    60,
+    isNew,
+  );
+  return Object.fromEntries(newIds.map((id) => [id, clear[id]]));
 }
 
 /**

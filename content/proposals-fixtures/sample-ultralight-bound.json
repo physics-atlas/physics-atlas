@@ -1,0 +1,45 @@
+{
+  "id": "sample-ultralight-bound",
+  "title": "Sample: ultralight mass above 10⁻²² eV",
+  "state": "contested",
+  "author": {
+    "name": "Sample contributor C"
+  },
+  "createdAt": "2026-10-05T09:15:00Z",
+  "claim": "**Sample data for testing.** The wave-dark-matter particle mass satisfies $m > 10^{-22}\\,\\mathrm{eV}$.",
+  "evidence": [
+    {
+      "kind": "arxiv",
+      "ref": "0000.00002",
+      "note": "Placeholder reference (sample data)"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ultralight_bound_s3",
+      "type": "claim",
+      "label": "Ultralight mass > 10⁻²² eV",
+      "importance": 3,
+      "attrs": {
+        "description": "Sample: a proposed lower bound on the particle mass.",
+        "domain": "Cosmology"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "s3_e1",
+      "source": "ultralight_bound_s3",
+      "target": "wave_dark_matter",
+      "relationship": "concerns"
+    }
+  ],
+  "tally": {
+    "verify": 1,
+    "dispute": 2,
+    "clarify": 0
+  },
+  "dispute": {
+    "summary": "Sample dispute: the bound depends on which observations are trusted, so experts disagree on whether it should be stated without conditions."
+  }
+}

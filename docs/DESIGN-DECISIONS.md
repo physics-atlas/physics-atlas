@@ -375,6 +375,62 @@ pushes 1 px past the margin.
 **Open paths:** per-domain folders (if `CODEOWNERS` routing is wanted; today the quorum
 Action can read `domain` directly), YAML instead of JSON for easier hand-editing.
 
+## Decision 20 — Proposals are an overlay on a fixed confirmed layout (2026-10)
+
+The proposed layer (community review, Phase 1) is drawn **on top of** the confirmed graph,
+never mixed into it. The confirmed graph is laid out, searched and cached exactly as before.
+Proposals are added afterwards and placed by `placeNew()`:
+
+1. each proposed concept starts at the centre of the concepts it connects to;
+2. a short local force run settles it, with every confirmed node fixed;
+3. it's pushed clear of every name it would overlap.
+
+So proposals can't move a confirmed concept or invalidate the layout cache, which the smoke
+test checks (0 px moved). When the background search improves the confirmed layout,
+proposals are re-placed and glide along.
+
+Status never borrows a colour, because fill already means type (Decision 13). A proposal has
+a **dashed** outline, a contested one a **double** outline and ⚑, edges are dashed or dotted,
+and every proposed concept carries its status and tally in words in its label ("Proposed ·
+✓2 ✗0 ?1"). The legend, the card and the concept list repeat it in text.
+
+The proposal card loads lazily with KaTeX (~265 kB, plus fonts), so the map's own bundle
+grows only by the small proposal logic.
+
+**Open paths:** clustering many proposals around one concept into a count badge once there
+are dozens; per-proposal hover previews; drawing proposed *edits* to confirmed concepts
+(Phase 2+).
+
+## Decision 21 — The proposal editor: a draggable sketch, click to connect (2026-10)
+
+The proposal editor (community review, Phase 2) puts a **ghost** of the new concept on the
+map. The proposer drags it to work out where the idea fits. Large graphs are hard to picture
+in your head, and that's all the drag is for:
+
+- **The position is never data.** It lives only in `GraphView` for the session. The draft
+  (`src/community/draft.ts`) holds content only, and the export carries no coordinates (a
+  test checks this). Once merged, a concept is placed by the normal layout.
+- **Confirmed concepts never move** for the ghost; the smoke test checks 0 px.
+- **Connecting is a click, not a drag.** While drafting, clicking a confirmed concept adds a
+  relation to it, and the concepts nearest the ghost say "＋ Connect?" in their labels. This
+  replaced the planned `cytoscape-edgehandles` edge drawing: no new dependency, and it isn't
+  a dragging-only action (WCAG 2.5.7).
+- **The form is a complete route of its own.** Search connects, and suggestions then come
+  from the graph neighbours of what's connected. The ghost glides next to its connections, so
+  a keyboard user gets the same visual aid without dragging.
+- **Conflicts are hints, not blocks** (`src/graph/conflicts.ts`): similar names
+  (normalisation, trigram similarity, a short abbreviation list), duplicate or reversed
+  relations (against the map, the draft and other open proposals), strict-prerequisite loops.
+  A curator may well accept a near-duplicate on purpose. Only missing fields and malformed
+  evidence stop an export.
+- **One draft per browser**, in localStorage, until Phase 3 submits drafts as pull requests.
+  New ids are a slug plus a fixed random suffix (`jeans_scale_k3f9`), so a renamed draft keeps
+  one identity and two drafts never collide.
+
+**Open paths:** several drafts at once; proposing an *edit* to a confirmed concept;
+edge-only proposals without a new concept (possible in the data, not offered by the editor);
+real edge drawing if experts ask for it.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):

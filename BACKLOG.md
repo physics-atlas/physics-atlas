@@ -42,8 +42,8 @@ orientation in the graph) and a11y polish. Don't invent new physics content
 
 ### Epic: community proposals & expert review — plan `.claude/plans/epic-community-review.md`
 - [x] feature-33: Phase 0 — groundwork: Decision 18 (GitHub-based backend; lifts "no backend, no accounts" in CLAUDE.md), Vitest for pure logic, `concepts.json` split into one file per node/edge (compiled, golden-file test), controlled `domain` vocabulary.
-- [ ] feature-34: Phase 1 — read-only proposed layer from fixtures: `ProposalStore`, proposed/contested by outline + badge + text, "Show confirmed / Show proposed" toggles, proposal card (claim with KaTeX, evidence), others' proposals placed with confirmed nodes fixed.
-- [ ] feature-35: Phase 2 — staging-area editor: drag a ghost to see where an idea fits (session-only position, never saved), "nearby concepts → Connect?" suggestions, edge drawing + search-based keyboard route, live conflict detection (`conflicts.ts`), local drafts, export without positions.
+- [x] feature-34: Phase 1 — read-only proposed layer from fixtures: `ProposalStore`, proposed/contested by outline + badge + text, "Show confirmed / Show proposed" toggles, proposal card (claim with KaTeX, evidence), others' proposals placed with confirmed nodes fixed.
+- [x] feature-35: Phase 2 — staging-area editor: drag a ghost to see where an idea fits (session-only position, never saved), "nearby concepts → Connect?" suggestions, click-to-connect + search-based keyboard route, live conflict detection (`conflicts.ts`), local drafts, export without positions.
 - [ ] feature-36: Phase 3 — identity + submit: serverless OAuth proxy, `GitHubStore` (one PR per proposal), proposed layer from open PRs, ORCID linking, test repo. Needs D2, D6.
 - [ ] feature-37: Phase 4 — review: Verify / Dispute / Needs clarification as structured PR reviews, node threads, `quorum.ts` + "Quorum" Action (bootstrap policy), Contested status.
 - [ ] feature-38: Phase 5 — moderation: stewards via CODEOWNERS, curators, `?mode=review` queue with mini-graph, merge / contest / duplicate-merge. Needs D5.

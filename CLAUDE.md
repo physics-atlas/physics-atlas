@@ -37,7 +37,7 @@ backlog/roadmap entries and commit messages.
 | Test | `npm test` | Vitest unit tests (`src/**/*.test.ts`, `scripts/**/*.test.mjs`) — pure logic: layout geometry, sentences, the concept file format |
 | Smoke | `CHROME_BIN=/usr/bin/google-chrome npm run smoke` | Browser smoke via puppeteer; needs a running dev server |
 | Dev server | `npm run dev` | Vite |
-| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=explore` for the explorer view |
+| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=explore` for the explorer view; `?mode=concepts&community=1` for the community-review preview |
 | DB migrate | *(empty — no backend)* | |
 
 ## Architecture Overview
@@ -50,6 +50,8 @@ sophie_scicom/
 ├── src/
 │   ├── data/         # topics.json + types.ts (schema); concepts.json is GENERATED (gitignored)
 │   ├── graph/        # dag.ts (ancestors, topological curriculum ordering), levelColors.ts
+│   ├── community/    # community review: proposal types, validation, overlay, store, claim text,
+│   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), GoalView, ExplorerView,
 │   │                 # ContentList, Legend
 │   ├── App.tsx       # mode switch (goal | explore), reads ?mode= from the URL

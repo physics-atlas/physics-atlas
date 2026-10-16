@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
-import type { ConceptGraph, Topic } from '../data/types';
+import type { ConceptGraph, GraphEdge, GraphNode, Topic } from '../data/types';
+import type { ConceptOverlay } from '../community/proposals';
+import { NEW_CONCEPT } from '../community/draft';
 import { buildTopicMap, buildUnitGraph, parseUnitId, resolveSubtopicRef } from '../graph/dag';
 import { CATEGORY_COLORS, categoryOf } from '../graph/categoryColors';
 import {
@@ -14,9 +17,17 @@ import {
 import type { ConceptIndex } from '../graph/concepts';
 import { TYPE_COLORS } from '../graph/typeColors';
 import { typeIconUri } from '../graph/typeIcons';
-import { arrangeComponent, better, createRng, layoutKey, packComponents } from '../graph/layoutOptimize';
+import {
+  arrangeComponent,
+  better,
+  createRng,
+  layoutKey,
+  packComponents,
+  placeNew,
+  removeOverlaps,
+} from '../graph/layoutOptimize';
 import { reducedMotion } from '../lib/motion';
-import type { LayoutScore, NodeBox, Positions, Segment } from '../graph/layoutOptimize';
+import type { LayoutScore, NodeBox, Pos, Positions, Segment } from '../graph/layoutOptimize';
 
 cytoscape.use(dagre);
 
@@ -26,7 +37,27 @@ const ICON_BOOST_PX = 14;
 // show; the overview shows 4 and up; minor details need a close look.
 const REVEAL_AT: Record<number, number> = { 1: 3.2, 2: 2.2, 3: 1.45, 4: 0.8, 5: 0 };
 /** Classes that keep a concept on screen at any zoom — what the user is looking at. */
-const PINNED = ['chosen', 'goal-node', 'sel-pre', 'sel-post', 'path-node'];
+// Proposals (.overlay) and the confirmed concepts they attach to stay visible
+// while the proposed layer is on — a proposal must never look disconnected.
+// So do the draft, what it connects to, and the concepts it points the proposer at.
+const PINNED = [
+  'chosen',
+  'goal-node',
+  'sel-pre',
+  'sel-post',
+  'path-node',
+  'overlay',
+  'anchor-pinned',
+  'draft',
+  'draft-anchor',
+  'draft-near',
+  'conflict-match',
+];
+/** Neither layer of reviewed content: the proposals and the proposer's own draft. */
+const NOT_CONFIRMED = '.overlay, .draft';
+const NEAR_COUNT = 6;
+/** How close (model px) a concept must be to the ghost to count as near it. */
+const NEAR_RADIUS = 450;
 
 interface GraphViewProps {
   /**
@@ -74,9 +105,48 @@ interface GraphViewProps {
    * so name the keyboard route (search, a list view) here.
    */
   label?: string;
+  /**
+   * Proposed concepts and relations drawn on top of the confirmed graph
+   * (concept variant). They're placed around their connections without
+   * moving any confirmed node, and never enter the layout cache.
+   */
+  overlay?: ConceptOverlay | null;
+  /** Which layers show. Hidden confirmed concepts that a proposal attaches to stay as faint context. */
+  layers?: { confirmed: boolean; overlay: boolean };
+  /** More buttons for the map's control bar (e.g. layer toggles). */
+  extraControls?: ReactNode;
+  /**
+   * The proposal being drafted (concept variant): a ghost concept the proposer
+   * can drag around to see where it fits, and its relations. Confirmed
+   * concepts never move for it, and its position is never reported as data.
+   */
+  draft?: DraftOverlay | null;
+  /**
+   * The confirmed concepts nearest the ghost, nearest first — after it's
+   * placed, re-placed or dragged. `byHand`: the proposer has dragged it.
+   */
+  onDraftNear?: (ids: string[], byHand: boolean) => void;
+  /** Bump to move the ghost into the middle of the view. */
+  draftRecall?: number;
+}
+
+export interface DraftOverlay {
+  /** The new concept, under NEW_CONCEPT */
+  node: GraphNode;
+  /** No kind chosen yet: drawn neutral, without a type colour or glyph */
+  untyped?: boolean;
+  edges: GraphEdge[];
+  /** Concepts offered as connections — marked "＋ Connect?" */
+  nearIds: string[];
+  /** Existing concepts with a name like the draft's — marked "≈ Similar name" */
+  conflictIds: string[];
 }
 
 const ZOOM_STEP = 1.5;
+const NO_IDS: string[] = [];
+const DRAFT_BADGE = 'Draft · not submitted';
+/** The zoom the editor opens at, at least: mid-importance names are readable (15px × 0.75 ≥ 9px). */
+const DRAFT_ZOOM = 0.75;
 
 interface Insets {
   left: number;
@@ -96,6 +166,21 @@ function overviewZoom(cy: cytoscape.Core, insets: Insets): number {
   const w = Math.max(cy.width() - insets.left - insets.right - 2 * FIT_PADDING, 1);
   const h = Math.max(cy.height() - insets.bottom - 2 * FIT_PADDING, 1);
   return fitZoom(cy.elements().boundingBox(), w, h);
+}
+
+/** The model point in the middle of the canvas area the panels leave visible. */
+function visibleCentre(cy: cytoscape.Core, insets: Insets): Pos {
+  const pan = cy.pan();
+  const zoom = cy.zoom();
+  const x = insets.left + (cy.width() - insets.left - insets.right) / 2;
+  const y = (cy.height() - insets.bottom) / 2;
+  return { x: (x - pan.x) / zoom, y: (y - pan.y) / zoom };
+}
+
+/** Whether `eles` are fully on screen, clear of the panels. */
+function inView(cy: cytoscape.Core, eles: cytoscape.CollectionReturnValue, insets: Insets): boolean {
+  const bb = eles.renderedBoundingBox({ includeLabels: true });
+  return bb.x1 >= insets.left && bb.x2 <= cy.width() - insets.right && bb.y1 >= 0 && bb.y2 <= cy.height() - insets.bottom;
 }
 
 /** cy.fit() with asymmetric side insets, so the fit lands beside overlay panels. */
@@ -141,6 +226,8 @@ const styleFor = (large: boolean, light: boolean) => {
   const gold = light ? '#b0821e' : '#e6b566';
   const goldEdge = light ? 'rgba(176, 130, 30, 0.85)' : 'rgba(230, 181, 102, 0.85)';
   const goldArrow = light ? 'rgba(176, 130, 30, 0.9)' : 'rgba(230, 181, 102, 0.9)';
+  // The draft: the app's accent (focus-ring) colour, which no node type uses.
+  const accent = light ? '#2f6fc4' : '#8fb7ff';
   return [
   {
     selector: 'node',
@@ -200,6 +287,80 @@ const styleFor = (large: boolean, light: boolean) => {
   {
     selector: 'node.concept-node[icon].icon-boost',
     style: { 'background-width': '86%', 'background-height': '86%' },
+  },
+  // Proposed layer — status by outline pattern and the badge line in the
+  // label, never by fill: the fill still says the concept's type. Defined
+  // before the selection/hover states, which only change width and colour,
+  // so the pattern survives them.
+  {
+    selector: 'node.overlay',
+    style: {
+      'border-style': 'dashed',
+      // room for the badge line ("Proposed · ✓2 ✗0 ?1") at the selected font size
+      'text-max-width': '220px',
+      'border-width': 3,
+      'border-color': ink,
+      'border-opacity': 1,
+      'background-opacity': 0.3,
+    },
+  },
+  { selector: 'node.overlay.status-contested', style: { 'border-style': 'double', 'border-width': 6 } },
+  {
+    selector: 'edge.overlay',
+    style: {
+      'line-style': 'dashed',
+      'line-dash-pattern': [8, 5],
+      width: 2,
+      'line-color': ink,
+      'target-arrow-color': ink,
+      'line-opacity': 0.75,
+    },
+  },
+  { selector: 'edge.overlay.status-contested', style: { 'line-style': 'dotted' } },
+  // The proposer's draft: dashed outline with a steady glow (it never pulses —
+  // nothing here animates on its own), and the badge "Draft · not submitted".
+  {
+    selector: 'node.draft',
+    style: {
+      'border-style': 'dashed',
+      'border-width': 3,
+      'border-color': accent,
+      'border-opacity': 1,
+      'background-opacity': 0.3,
+      'text-max-width': '220px',
+      'underlay-color': accent,
+      'underlay-opacity': 0.22,
+      'underlay-padding': 10,
+      'underlay-shape': 'ellipse',
+    },
+  },
+  {
+    selector: 'edge.draft',
+    style: {
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 4],
+      width: 2.5,
+      'line-color': accent,
+      'target-arrow-color': accent,
+      'line-opacity': 0.95,
+    },
+  },
+  // Offered as a connection ("＋ Connect?" in the label) / named like the draft ("≈ Similar name").
+  {
+    selector: 'node.draft-near',
+    style: { 'underlay-color': accent, 'underlay-opacity': 0.16, 'underlay-padding': 7, 'underlay-shape': 'ellipse' },
+  },
+  {
+    selector: 'node.conflict-match',
+    style: {
+      'border-width': 4,
+      'border-color': gold,
+      'border-opacity': 1,
+      'underlay-color': gold,
+      'underlay-opacity': 0.2,
+      'underlay-padding': 8,
+      'underlay-shape': 'ellipse',
+    },
   },
   {
     selector: 'node.chosen',
@@ -359,6 +520,10 @@ const styleFor = (large: boolean, light: boolean) => {
     style: { opacity: 0, 'text-opacity': 0, events: 'no', 'transition-duration': fadeDuration },
   },
   { selector: 'edge.zoom-hidden', style: { opacity: 0, events: 'no', 'transition-duration': fadeDuration } },
+  // Layer toggles: a hidden layer is gone; confirmed concepts a proposal
+  // attaches to stay as faint context.
+  { selector: 'node.layer-context', style: { opacity: 0.35 } },
+  { selector: '.layer-hidden', style: { display: 'none' } },
   {
     selector: 'node.hover-pre',
     style: {
@@ -563,18 +728,7 @@ function layoutConcepts(
     return () => {};
   }
 
-  const boxes: Record<string, NodeBox> = {};
-  cy.nodes().forEach((n) => {
-    const p = n.position();
-    const bb = n.boundingBox({ includeLabels: true });
-    boxes[n.id()] = {
-      radius: n.width() / 2,
-      left: bb.x1 - p.x,
-      right: bb.x2 - p.x,
-      top: bb.y1 - p.y,
-      bottom: bb.y2 - p.y,
-    };
-  });
+  const boxes = nodeBoxes(cy.nodes());
   const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
   const loneRow: Positions = {};
   let x = 0;
@@ -712,47 +866,82 @@ function topicElements(
   return elements;
 }
 
+/** A node's label: goal/learned markers, its name, and a status badge on a second line. */
+function nodeLabel(title: string, { goal = false, done = false, badge }: { goal?: boolean; done?: boolean; badge?: string }) {
+  return `${goal ? '★ ' : ''}${done ? '✓ ' : ''}${title}${badge ? `\n${badge}` : ''}`;
+}
+
+function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, classes = '', badge?: string) {
+  const importance = effectiveImportance(n, degree);
+  const radius = nodeRadius(n, degree);
+  return {
+    data: {
+      id: n.id,
+      title: n.label,
+      badge,
+      label: nodeLabel(n.label, { badge }),
+      color: TYPE_COLORS[n.type],
+      size: 2 * radius,
+      radius,
+      importance,
+      fontSize: 10.5 + importance * 1.5,
+      type: n.type,
+      icon: typeIconUri(n.type, iconColor) ?? undefined,
+    },
+    classes: `concept-node ${classes}`.trim(),
+    // Only the draft can be dragged; everything else is placed by the layout.
+    grabbable: false,
+  };
+}
+
+function conceptEdgeElement(e: GraphEdge, classes = '', status?: string) {
+  const relation = normalizeRelationship(e.relationship) ?? e.relationship.trim();
+  const assumed = (e.conditions ?? []).map((c) => c.label);
+  // The assumption goes on its own line under the relation name, then the status.
+  const lines = [relation, assumed.length ? `assuming ${joinList(assumed)}` : '', status ? `(${status})` : ''];
+  return {
+    data: { id: e.id, source: e.source, target: e.target, relation: lines.filter(Boolean).join('\n') },
+    classes: `concept-edge ${classes}`.trim(),
+  };
+}
+
 function conceptElements(
   graph: ConceptGraph,
   index: ConceptIndex,
   iconColor: string,
 ): cytoscape.ElementDefinition[] {
   return [
-    ...graph.nodes.map((n) => {
-      const degree = index.degree.get(n.id) ?? 0;
-      const importance = effectiveImportance(n, degree);
-      const radius = nodeRadius(n, degree);
-      return {
-        data: {
-          id: n.id,
-          title: n.label,
-          label: n.label,
-          color: TYPE_COLORS[n.type],
-          size: 2 * radius,
-          radius,
-          importance,
-          fontSize: 10.5 + importance * 1.5,
-          type: n.type,
-          icon: typeIconUri(n.type, iconColor) ?? undefined,
-        },
-        classes: 'concept-node',
-      };
+    ...graph.nodes.map((n) => conceptNodeElement(n, index.degree.get(n.id) ?? 0, iconColor)),
+    ...graph.edges.map((e) => conceptEdgeElement(e)),
+  ];
+}
+
+/** Proposed concepts and relations, drawn on top of the confirmed graph (`.overlay`). */
+function overlayElements(overlay: ConceptOverlay, iconColor: string): cytoscape.ElementDefinition[] {
+  const degree = new Map<string, number>();
+  for (const { edge } of overlay.edges)
+    for (const end of [edge.source, edge.target]) degree.set(end, (degree.get(end) ?? 0) + 1);
+  return [
+    ...overlay.nodes.map(({ node, status, badge, proposalId }) => {
+      const el = conceptNodeElement(node, degree.get(node.id) ?? 0, iconColor, `overlay status-${status}`, badge);
+      return { ...el, data: { ...el.data, proposalId } };
     }),
-    ...graph.edges.map((e) => {
-      const relation = normalizeRelationship(e.relationship) ?? e.relationship.trim();
-      const assumed = (e.conditions ?? []).map((c) => c.label);
-      return {
-        data: {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          // The assumption goes on its own line under the relation name.
-          relation: assumed.length ? `${relation}\nassuming ${joinList(assumed)}` : relation,
-        },
-        classes: 'concept-edge',
-      };
+    ...overlay.edges.map(({ edge, status, proposalId }) => {
+      const el = conceptEdgeElement(edge, `overlay status-${status}`, status === 'contested' ? 'contested' : 'proposed');
+      return { ...el, data: { ...el.data, proposalId } };
     }),
   ];
+}
+
+/** Label-inclusive extents of the given nodes, as offsets from each centre. */
+function nodeBoxes(nodes: cytoscape.NodeCollection): Record<string, NodeBox> {
+  const boxes: Record<string, NodeBox> = {};
+  nodes.forEach((n) => {
+    const p = n.position();
+    const bb = n.boundingBox({ includeLabels: true });
+    boxes[n.id()] = { radius: n.width() / 2, left: bb.x1 - p.x, right: bb.x2 - p.x, top: bb.y1 - p.y, bottom: bb.y2 - p.y };
+  });
+  return boxes;
 }
 
 export default function GraphView({
@@ -773,6 +962,12 @@ export default function GraphView({
   fitInsets,
   onSelect,
   label = 'Interactive map',
+  overlay = null,
+  layers,
+  extraControls,
+  draft = null,
+  onDraftNear,
+  draftRecall = 0,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -788,10 +983,17 @@ export default function GraphView({
   const preHoverViewportRef = useRef<{ zoom: number; pan: cytoscape.Position } | null>(null);
   const hoverZoomActiveIdRef = useRef<string | null>(null);
   const applyFadeRef = useRef<(() => void) | null>(null);
+  /** Positions for the overlay given confirmed positions — null when there's no overlay. */
+  const placeOverlayRef = useRef<((confirmed: Positions) => Positions) | null>(null);
   const fitIdsRef = useRef(fitIds);
   fitIdsRef.current = fitIds;
   const fitInsetsRef = useRef(fitInsets);
   fitInsetsRef.current = fitInsets;
+  const viewportTouchedRef = useRef(false);
+  const onDraftNearRef = useRef(onDraftNear);
+  onDraftNearRef.current = onDraftNear;
+  /** Where the ghost sits (session only — never data), and whether the proposer dragged it there. */
+  const draftPlaceRef = useRef<{ pos: Pos; byHand: boolean; anchors: string } | null>(null);
   // The whole-graph fit keeps only the bottom strip (legend) clear — side
   // panels belong to a selection and are gone when nothing is selected.
   // "Show all" switches the zoom level of detail off — everything visible at
@@ -808,6 +1010,24 @@ export default function GraphView({
     bottom: fitInsetsRef.current?.bottom ?? 0,
   });
 
+  /** Tells the editor which confirmed concepts sit nearest the ghost. */
+  const reportNear = () => {
+    const cy = cyRef.current;
+    const ghost = cy?.$id(NEW_CONCEPT);
+    if (!cy || !ghost || ghost.empty()) return;
+    const p = ghost.position();
+    const d = (n: cytoscape.NodeSingular) => Math.hypot(n.position().x - p.x, n.position().y - p.y);
+    const near = cy
+      .nodes()
+      .not(NOT_CONFIRMED)
+      .filter((n) => !n.hasClass('layer-hidden') && d(n as cytoscape.NodeSingular) <= NEAR_RADIUS)
+      .toArray()
+      .sort((a, b) => d(a as cytoscape.NodeSingular) - d(b as cytoscape.NodeSingular))
+      .slice(0, NEAR_COUNT)
+      .map((n) => n.id());
+    onDraftNearRef.current?.(near, draftPlaceRef.current?.byHand ?? false);
+  };
+
   // (Re)build the graph when the topic/concept set (or expansion) changes
   useEffect(() => {
     const elements = concepts
@@ -819,22 +1039,27 @@ export default function GraphView({
       elements,
       style: styleFor(large, theme === 'light'),
       wheelSensitivity: 1,
-      autoungrabify: true,
+      // Concept nodes opt out one by one (grabbable: false) so the draft alone can be dragged.
+      autoungrabify: !concepts,
     });
     // A user pan/zoom before the background layout search finishes means the
     // improved layout should not re-fit the viewport under them.
-    let viewportTouched = false;
+    viewportTouchedRef.current = false;
     cy.on('scrollzoom dragpan pinchzoom', () => {
-      viewportTouched = true;
+      viewportTouchedRef.current = true;
     });
     let cancelLayoutSearch = () => {};
     if (concepts) {
-      cancelLayoutSearch = layoutConcepts(cy, large, (positions) => {
+      cancelLayoutSearch = layoutConcepts(cy, large, (improved) => {
+        // Proposals follow the confirmed graph into its better arrangement.
+        const positions = { ...improved, ...(placeOverlayRef.current?.(improved) ?? {}) };
         const reduced = reducedMotion();
         const refit = () => {
           const ids = fitIdsRef.current;
-          if (ids) fitBeside(cy, cy.nodes().filter((n) => ids.has(n.id())), fitInsetsRef.current ?? NO_INSETS);
-          else if (!viewportTouched) fitBeside(cy, cy.elements(), overviewInsets());
+          if (!viewportTouchedRef.current) {
+            if (ids) fitBeside(cy, cy.nodes().filter((n) => ids.has(n.id())), fitInsetsRef.current ?? NO_INSETS);
+            else fitBeside(cy, cy.elements(), overviewInsets());
+          }
           // The overview zoom moved with the layout, even if the viewport didn't.
           applyFadeRef.current?.();
         };
@@ -845,7 +1070,8 @@ export default function GraphView({
         }
         const glide = cy.layout({
           name: 'preset',
-          positions: (n: cytoscape.NodeSingular) => positions[n.id()],
+          // The draft keeps its place; the proposer put it there.
+          positions: (n: cytoscape.NodeSingular) => positions[n.id()] ?? n.position(),
           fit: false,
           animate: true,
           animationDuration: 600,
@@ -890,6 +1116,28 @@ export default function GraphView({
       applyFadeRef.current = applyFade;
     }
 
+    // Dragging the draft is how the proposer works out where it fits: the
+    // concepts nearest it are offered as connections as it moves.
+    let dragFrame = 0;
+    if (concepts) {
+      cy.on('drag', 'node.draft', (e) => {
+        const anchors = draftPlaceRef.current?.anchors ?? '';
+        draftPlaceRef.current = { pos: { ...(e.target as cytoscape.NodeSingular).position() }, byHand: true, anchors };
+        if (!dragFrame)
+          dragFrame = window.requestAnimationFrame(() => {
+            dragFrame = 0;
+            reportNear();
+          });
+      });
+      cy.on('grab', 'node.draft', () => {
+        if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
+      });
+      cy.on('free', 'node.draft', () => {
+        if (containerRef.current) containerRef.current.style.cursor = 'grab';
+        reportNear();
+      });
+    }
+
     // One core-level tap handler (not a delegated 'node' one) so a tap on a
     // subtopic child fires exactly once with the true target — a delegated
     // handler would also fire for the compound parent it bubbles through and
@@ -931,7 +1179,7 @@ export default function GraphView({
         }
         n.removeClass('hover-soft').addClass('hovered');
       });
-      if (containerRef.current) containerRef.current.style.cursor = 'pointer';
+      if (containerRef.current) containerRef.current.style.cursor = n.hasClass('draft') ? 'grab' : 'pointer';
     });
     cy.on('mouseout', 'node', () => {
       cy.batch(() =>
@@ -1032,6 +1280,7 @@ export default function GraphView({
     cyRef.current = cy;
     return () => {
       if (fadeFrame) window.cancelAnimationFrame(fadeFrame);
+      if (dragFrame) window.cancelAnimationFrame(dragFrame);
       cancelLayoutSearch();
       applyFadeRef.current = null;
       clearHoverZoomTimers();
@@ -1042,19 +1291,170 @@ export default function GraphView({
     };
   }, [topics, concepts, large, expandedIds, theme, unitPathIds]);
 
+  // Proposed layer: added after the confirmed layout (so it never enters the
+  // layout search or its cache), placed around its connections with every
+  // confirmed node fixed. Re-runs whenever the graph is rebuilt.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !concepts) return;
+    cy.remove('.overlay');
+    cy.nodes().removeClass('overlay-anchor');
+    if (!overlay || (overlay.nodes.length === 0 && overlay.edges.length === 0)) {
+      placeOverlayRef.current = null;
+      return;
+    }
+    cy.add(overlayElements(overlay, theme === 'light' ? '#1c2333' : '#ffffff'));
+    const newIds = overlay.nodes.map((o) => o.node.id);
+    const isNew = new Set(newIds);
+    for (const { edge } of overlay.edges)
+      for (const end of [edge.source, edge.target]) if (!isNew.has(end)) cy.$id(end).addClass('overlay-anchor');
+    const segments = overlay.edges.map(({ edge }) => [edge.source, edge.target] as Segment);
+    const boxes = nodeBoxes(cy.nodes());
+    const place = (confirmed: Positions) => placeNew(confirmed, newIds, segments, boxes, createRng(11));
+    placeOverlayRef.current = place;
+    const current: Positions = {};
+    cy.nodes().not(NOT_CONFIRMED).forEach((n) => {
+      current[n.id()] = { ...n.position() };
+    });
+    setPositions(cy, place(current));
+    return () => {
+      placeOverlayRef.current = null;
+    };
+  }, [overlay, topics, concepts, large, expandedIds, theme, unitPathIds]);
+
+  // The draft: a ghost the proposer drags to see where the idea fits. It's
+  // added after the confirmed layout and is never part of it — confirmed
+  // concepts don't move for it, and its position stays in this session.
+  const draftPresent = Boolean(draft);
+  const draftNearIds = draft?.nearIds ?? NO_IDS;
+  const draftConflictIds = draft?.conflictIds ?? NO_IDS;
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !concepts) return;
+    if (!draft) {
+      cy.remove('.draft');
+      cy.nodes().removeClass('draft-anchor');
+      draftPlaceRef.current = null;
+      return;
+    }
+    const insets = fitInsetsRef.current ?? NO_INSETS;
+    const el = conceptNodeElement(draft.node, draft.edges.length, theme === 'light' ? '#1c2333' : '#ffffff', 'draft', DRAFT_BADGE);
+    if (draft.untyped) {
+      el.data.color = theme === 'light' ? '#5c6a88' : '#cdd6e8';
+      el.data.icon = undefined;
+    }
+    let ghost = cy.$id(NEW_CONCEPT);
+    const fresh = ghost.empty();
+    // A new ghost needs a zoom where concept names are readable; zoom in (never
+    // out) about the middle of the view, which is where the ghost appears.
+    if (fresh && !draftPlaceRef.current && cy.zoom() < DRAFT_ZOOM) {
+      const w = cy.width() - insets.left - insets.right;
+      cy.zoom({ level: DRAFT_ZOOM, renderedPosition: { x: insets.left + w / 2, y: (cy.height() - insets.bottom) / 2 } });
+      applyFadeRef.current?.();
+    }
+    if (fresh) ghost = cy.add({ ...el, group: 'nodes', grabbable: true, position: visibleCentre(cy, insets) });
+    else ghost.data(el.data);
+
+    cy.remove('edge.draft');
+    const shown = draft.edges.filter((e) => cy.$id(e.source).nonempty() && cy.$id(e.target).nonempty());
+    cy.add(shown.map((e) => ({ ...conceptEdgeElement(e, 'draft', 'draft'), group: 'edges' as const })));
+    cy.nodes().removeClass('draft-anchor');
+    const anchors = [...new Set(shown.flatMap((e) => [e.source, e.target]))].filter((id) => id !== NEW_CONCEPT).sort();
+    for (const id of anchors) cy.$id(id).addClass('draft-anchor');
+
+    // Until the proposer drags it, the ghost follows its connections — the
+    // keyboard route gets the same visual aid. Once dragged, it stays put.
+    const key = anchors.join(' ');
+    const place = draftPlaceRef.current;
+    if (!place || (!place.byHand && place.anchors !== key)) {
+      const fixed: Positions = {};
+      cy.nodes().not('.draft').forEach((n) => {
+        fixed[n.id()] = { ...n.position() };
+      });
+      const boxes = nodeBoxes(cy.nodes());
+      const pos = anchors.length
+        ? placeNew(fixed, [NEW_CONCEPT], shown.map((e) => [e.source, e.target] as Segment), boxes, createRng(7))[NEW_CONCEPT]
+        : removeOverlaps({ ...fixed, [NEW_CONCEPT]: visibleCentre(cy, insets) }, boxes, 60, new Set([NEW_CONCEPT]))[NEW_CONCEPT];
+      draftPlaceRef.current = { pos, byHand: false, anchors: key };
+      const reframe = () => {
+        const eles = ghost.union(cy.nodes().filter((n) => n.hasClass('draft-anchor')));
+        if (anchors.length && !inView(cy, eles, insets)) fitBeside(cy, eles, insets);
+        reportNear();
+      };
+      if (fresh || reducedMotion()) {
+        ghost.position(pos);
+        reframe();
+      } else ghost.animate({ position: pos }, { duration: 400, easing: 'ease-in-out-cubic', complete: reframe });
+    } else {
+      draftPlaceRef.current = { ...place, anchors: key };
+      if (fresh) ghost.position(place.pos);
+    }
+  }, [draft, theme, topics, concepts, large, expandedIds, unitPathIds]);
+
+  // "Bring the draft into view": after panning or a search jump, the ghost may
+  // be off screen — this puts it in the middle of the view, as if dragged there.
+  useEffect(() => {
+    const cy = cyRef.current;
+    const ghost = cy?.$id(NEW_CONCEPT);
+    if (!draftRecall || !cy || !ghost || ghost.empty()) return;
+    const fixed: Positions = {};
+    cy.nodes().not('.draft').forEach((n) => {
+      fixed[n.id()] = { ...n.position() };
+    });
+    const centre = visibleCentre(cy, fitInsetsRef.current ?? NO_INSETS);
+    const pos = removeOverlaps({ ...fixed, [NEW_CONCEPT]: centre }, nodeBoxes(cy.nodes()), 60, new Set([NEW_CONCEPT]))[
+      NEW_CONCEPT
+    ];
+    draftPlaceRef.current = { pos, byHand: true, anchors: draftPlaceRef.current?.anchors ?? '' };
+    ghost.position(pos);
+    reportNear();
+  }, [draftRecall]);
+
+  // Layer toggles. With confirmed hidden, the concepts a proposal attaches to
+  // stay as faint context so the proposal still reads as connected. A toggle
+  // changes what's drawn, never where the user is looking.
+  const showConfirmed = layers?.confirmed ?? true;
+  const showOverlay = layers?.overlay ?? true;
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || !concepts) return;
+    cy.batch(() => {
+      cy.elements().removeClass('layer-hidden layer-context anchor-pinned');
+      if (showOverlay) cy.nodes('.overlay-anchor').addClass('anchor-pinned');
+      else cy.elements('.overlay').addClass('layer-hidden');
+      if (!showConfirmed) {
+        cy.nodes().not(NOT_CONFIRMED).forEach((n) => {
+          const context = (showOverlay && n.hasClass('overlay-anchor')) || n.hasClass('draft-anchor');
+          n.addClass(context ? 'layer-context' : 'layer-hidden');
+        });
+        cy.edges().not(NOT_CONFIRMED).addClass('layer-hidden');
+      }
+    });
+    applyFadeRef.current?.();
+  }, [showConfirmed, showOverlay, overlay, draft, topics, concepts, large, expandedIds, theme, unitPathIds]);
+
   // Apply selection/path highlighting without re-layout
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
     cy.batch(() => {
-      cy.elements().removeClass('chosen dimmed onpath done sel-soft sel-pre sel-post goal-node path-node');
+      cy.elements().removeClass(
+        'chosen dimmed onpath done sel-soft sel-pre sel-post goal-node path-node draft-near conflict-match',
+      );
+      const near = new Set(draftNearIds);
+      const similar = new Set(draftConflictIds);
       cy.nodes().forEach((n) => {
         const title = n.data('title') as string | undefined;
         if (title === undefined) return;
         const isDone = doneIds?.has(n.id()) ?? false;
         const isGoal = goalId != null && n.id() === goalId;
-        n.data('label', `${isGoal ? '★ ' : ''}${isDone ? '✓ ' : ''}${title}`);
+        // The draft's marks say in words what their glow shows.
+        const hint = similar.has(n.id()) ? '≈ Similar name' : near.has(n.id()) ? '＋ Connect?' : undefined;
+        const badge = [n.data('badge') as string | undefined, hint].filter(Boolean).join(' · ') || undefined;
+        n.data('label', nodeLabel(title, { goal: isGoal, done: isDone, badge }));
         if (isDone) n.addClass('done');
+        if (near.has(n.id())) n.addClass('draft-near');
+        if (similar.has(n.id())) n.addClass('conflict-match');
       });
       if (directionalSelect) {
         // Sticky both-directions tree: silver up (prerequisites), gold down
@@ -1084,7 +1484,7 @@ export default function GraphView({
     });
     // What's pinned just changed — re-run the zoom level of detail.
     applyFadeRef.current?.();
-  }, [selectedId, highlightIds, doneIds, topics, concepts, directionalSelect, goalId, theme]);
+  }, [selectedId, highlightIds, doneIds, topics, concepts, directionalSelect, goalId, theme, overlay, draftNearIds, draftConflictIds, draftPresent]);
 
   // Glide to the focused concept (search / home jumps) — a smooth pan+zoom
   // that frames the concept with its immediate connections, rather than a
@@ -1105,13 +1505,21 @@ export default function GraphView({
   }, [focus, large]);
 
   // Sub-view fit — declared after the focus glide so it wins when both fire.
+  // Only a different set re-fits: a re-render that rebuilds the same set (a
+  // display toggle, say) leaves the view where the user put it.
   const hadFitRef = useRef(false);
+  const fitKeyRef = useRef('');
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
     const insets = fitInsetsRef.current ?? NO_INSETS;
+    const key = fitIds ? `${theme}|${[...fitIds].sort().join(' ')}` : '';
+    const changed = key !== fitKeyRef.current;
+    fitKeyRef.current = key;
     if (fitIds) {
+      if (!changed) return;
       hadFitRef.current = true;
+      viewportTouchedRef.current = false;
       fitBeside(cy, cy.nodes().filter((n) => fitIds.has(n.id())), insets);
     } else if (hadFitRef.current) {
       hadFitRef.current = false;
@@ -1128,6 +1536,7 @@ export default function GraphView({
       level: Math.min(cy.maxZoom(), Math.max(cy.minZoom(), cy.zoom() * factor)),
       renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
     };
+    viewportTouchedRef.current = true;
     cy.stop();
     if (reducedMotion()) cy.zoom(target);
     else cy.animate({ zoom: target }, { duration: 250, easing: 'ease-in-out-cubic' });
@@ -1135,6 +1544,7 @@ export default function GraphView({
   const fitAll = () => {
     const cy = cyRef.current;
     if (!cy) return;
+    viewportTouchedRef.current = false;
     if (concepts) fitBeside(cy, cy.elements(), overviewInsets());
     else cy.animate({ fit: { eles: cy.elements(), padding: large ? 40 : 24 } }, { duration: reducedMotion() ? 0 : 500 });
   };
@@ -1142,12 +1552,7 @@ export default function GraphView({
   return (
     <>
       <div ref={containerRef} className="graph-canvas" role="img" aria-label={label} />
-      <div
-        className="graph-controls"
-        role="group"
-        aria-label="Map view"
-        style={{ right: (fitInsets?.right ?? 0) + 12 }}
-      >
+      <div className="graph-controls" role="group" aria-label="Map view">
         <button type="button" className="graph-control" onClick={() => zoomBy(ZOOM_STEP)} aria-label="Zoom in" title="Zoom in">
           <span aria-hidden>+</span>
         </button>
@@ -1168,6 +1573,7 @@ export default function GraphView({
             Show all concepts
           </button>
         )}
+        {extraControls}
       </div>
     </>
   );

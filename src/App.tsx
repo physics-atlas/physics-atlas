@@ -27,6 +27,10 @@ const VIEW_TITLES: Record<Mode, string> = {
   concepts: 'Concept map',
 };
 
+// Community-review preview (Phases 1–5 of .claude/plans/epic-community-review.md):
+// `?community=1` shows the proposed layer. Read once — it's a flag, not state.
+const COMMUNITY = new URLSearchParams(window.location.search).get('community') === '1';
+
 function initialMode(): Mode {
   const m = new URLSearchParams(window.location.search).get('mode');
   if (m === 'map' || m === 'explore') return 'map';
@@ -129,7 +133,7 @@ export default function App() {
   // no guard flag needed, no loop.
   const firstUrlSync = useRef(true);
   useEffect(() => {
-    const target =
+    const view =
       mode === 'home'
         ? ''
         : mode === 'goal'
@@ -139,6 +143,8 @@ export default function App() {
             : mode === 'concepts' && conceptGoal
               ? `?mode=concepts&goal=${encodeURIComponent(conceptGoal)}`
               : `?mode=${mode}`;
+    // The community preview flag survives navigation between views.
+    const target = COMMUNITY ? `${view ? `${view}&` : '?'}community=1` : view;
     if (window.location.search === target) {
       firstUrlSync.current = false;
       return;
@@ -333,6 +339,7 @@ export default function App() {
             onFocus={focusOn}
             focus={focus}
             theme={theme}
+            community={COMMUNITY}
           />
         )}
       </main>
