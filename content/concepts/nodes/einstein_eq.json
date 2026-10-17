@@ -2,7 +2,8 @@
   "id": "einstein_eq",
   "type": "equation",
   "label": "Einstein Field Equations",
-  "importance": 5,
+  "importance": 50,
+  "generality": 10,
   "attrs": {
     "description": "Relate the curvature of spacetime directly to the energy and momentum of whatever matter and radiation are present, forming the core field equation of general relativity.",
     "equation": "Gμν + Λgμν = (8πG / c⁴) Tμν",

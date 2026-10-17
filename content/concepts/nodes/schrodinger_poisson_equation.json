@@ -2,8 +2,8 @@
   "id": "schrodinger_poisson_equation",
   "type": "equation",
   "label": "Schrödinger-Poisson eq.",
-  "importance": 3,
-  "generality": 1,
+  "importance": 30,
+  "generality": 2,
   "epistemicStatus": "Candidate",
   "attrs": {
     "description": "Describes the evolution of a Schrödinger wave which is self-gravitational.",

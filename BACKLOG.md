@@ -49,6 +49,9 @@ orientation in the graph) and a11y polish. Don't invent new physics content
 - [ ] feature-38: Phase 5 — moderation: stewards via CODEOWNERS, curators, `?mode=review` queue with mini-graph, merge / contest / duplicate-merge. Needs D5.
 - [ ] feature-39: Phase 6 — accountability: per-node blame timeline, public audit log, verified-expert badges. Needs D7.
 - [ ] feature-40: Phase 7 — hardening: abuse limits, GDPR review, scale, expert docs, AT testing.
+- [x] feature-41: Generality (1–10) sizes the circle, importance (1–50) sets zoom visibility; both in the proposal editor; the claim is optional (Decision 22).
+- [x] feature-42: Phase 2b — several drafts in the editor (still one proposal each), dependencies between proposals (`dependsOn`, relations dropped when a dependency is rejected), edit proposals for confirmed concepts (Decision 23).
+- [x] feature-43: Depth by zoom — generality 10 is 10× the old largest circle (×1.5 per step), importance is a depth (each 8 points = twice as close), big names inside their circle, circles you've zoomed past fade, layout spacing no longer scaled by the biggest nodes (Decision 24).
 
 ## Client feedback (2026-07-20) — deferred
 

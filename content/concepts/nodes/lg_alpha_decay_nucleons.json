@@ -2,7 +2,8 @@
   "id": "lg_alpha_decay_nucleons",
   "type": "learning_goal",
   "label": "Predict changes in neutron and proton number after the decay",
-  "importance": 1,
+  "importance": 10,
+  "generality": 2,
   "attrs": {
     "description": "Determine how alpha decay changes the neutron number and proton number of the parent nucleus."
   }

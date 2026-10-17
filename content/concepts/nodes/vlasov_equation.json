@@ -2,8 +2,8 @@
   "id": "vlasov_equation",
   "type": "equation",
   "label": "Vlasov eq.",
-  "importance": 3,
-  "generality": 2,
+  "importance": 30,
+  "generality": 4,
   "attrs": {
     "description": "Describes the phase-space evolution of a particle gas.",
     "equation": "∂f/∂t + v·∇ₓf − ∇Φ·∇ᵥf = 0",

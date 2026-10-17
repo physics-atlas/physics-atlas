@@ -1,22 +1,26 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
-import type { ConceptGraph, EdgeType, GraphEdge, NodeType } from '../data/types';
+import type { EdgeType, GraphEdge, NodeType } from '../data/types';
 import {
   EVIDENCE_LABELS,
-  NEW_CONCEPT,
   PROPOSABLE_TYPES,
-  draftLayer,
+  draftDependencies,
   draftProblems,
+  draftShape,
   exportFiles,
+  isDraftRef,
+  mapId,
   proposalFile,
+  proposalTitle,
   pullRequestText,
+  removedFiles,
 } from '../community/draft';
-import type { Draft, DraftField, DraftRelation, ExportFile } from '../community/draft';
-import type { Evidence, EvidenceKind, Proposal } from '../community/types';
+import type { Draft, DraftContext, DraftField, DraftRelation, ExportFile } from '../community/draft';
+import type { Evidence, EvidenceKind } from '../community/types';
 import { edgeConflicts } from '../graph/conflicts';
 import type { EdgeConflict, LabelMatch } from '../graph/conflicts';
-import { normalizeRelationship, sentenceParts } from '../graph/concepts';
+import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts } from '../graph/concepts';
 import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
 import RelationSentence from './RelationSentence';
@@ -26,18 +30,23 @@ import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 
 interface DraftEditorProps {
+  /** The draft the form shows */
   draft: Draft;
   update: (change: (d: Draft) => Draft) => void;
-  confirmed: ConceptGraph;
+  /** The confirmed graph, every draft, and other people's open proposals */
+  ctx: DraftContext;
   index: ConceptIndex;
-  /** Other open proposals — checked for relations this draft would repeat */
-  proposals: Proposal[];
+  /** Everything a draft can name, by its id on the map: confirmed, proposed, drafts */
+  byMapId: ConceptMap;
+  onSwitch: (suffix: string) => void;
+  /** Starts another new-concept draft */
+  onAddConcept: () => void;
   /** Existing concepts named like the draft */
   similar: LabelMatch[];
   /** Concepts offered as connections, and whether they're the ones nearest the ghost on the map */
   suggestions: { ids: string[]; from: 'map' | 'connections' };
   searchEntries: SearchEntry[];
-  /** Adds a relation from the new concept to a confirmed one */
+  /** Adds a relation from the draft's concept to another one */
   onConnect: (id: string) => void;
   /** Moves the ghost into the middle of the map view */
   onRecall: () => void;
@@ -99,9 +108,11 @@ function download(file: ExportFile) {
 export default function DraftEditor({
   draft,
   update,
-  confirmed,
+  ctx,
   index,
-  proposals,
+  byMapId,
+  onSwitch,
+  onAddConcept,
   similar,
   suggestions,
   searchEntries,
@@ -119,17 +130,41 @@ export default function DraftEditor({
   const [pairFrom, setPairFrom] = useState<string | null>(null);
   const exportRef = useRef<HTMLElement>(null);
 
-  const layer = useMemo(() => draftLayer(draft), [draft]);
-  const byId: ConceptMap = useMemo(() => new Map([...index.byId, [NEW_CONCEPT, layer.node]]), [index, layer.node]);
-  const problems = useMemo(() => draftProblems(draft, confirmed), [draft, confirmed]);
+  const shape = useMemo(() => draftShape(draft, ctx), [draft, ctx]);
+  const own = mapId(draft);
+  const byId = byMapId;
+  const problems = useMemo(() => draftProblems(draft, ctx), [draft, ctx]);
+  const deps = useMemo(() => draftDependencies(draft, ctx), [draft, ctx]);
+  // What this draft's relations are checked against: other proposals, and your other drafts.
   const otherRelations = useMemo(
-    () => proposals.flatMap((p) => p.edges.map((edge) => ({ edge, title: p.title }))),
-    [proposals],
+    () => [
+      ...ctx.proposals.flatMap((p) => p.edges.map((edge) => ({ edge, title: p.title }))),
+      ...ctx.drafts
+        .filter((d) => d.suffix !== draft.suffix)
+        .flatMap((d) => draftShape(d, ctx).edges.map((edge) => ({ edge, title: `your draft “${proposalTitle(d)}”` }))),
+    ],
+    [ctx, draft.suffix],
   );
-  const name = layer.node.label;
+  // A relation the edit removes no longer counts as being on the map.
+  const keptEdges = useMemo(
+    () => ctx.confirmed.edges.filter((e) => !draft.removals.includes(e.id)),
+    [ctx.confirmed.edges, draft.removals],
+  );
+  const original = draft.editOf ? index.byId.get(draft.editOf) : undefined;
+  const existing = draft.editOf
+    ? [...(index.outgoing.get(draft.editOf) ?? []), ...(index.incoming.get(draft.editOf) ?? [])]
+    : [];
+  const name = (shape.ghost ?? shape.subject)?.label ?? draft.label;
   const definition = draft.type ? NODE_TYPE_DEFINITIONS[draft.type] : undefined;
-  const connected = new Set(draft.relations.flatMap((r) => [r.source, r.target]));
-  const offered = suggestions.ids.filter((id) => !connected.has(id) && index.byId.has(id)).slice(0, 4);
+  const offered = suggestions.ids.filter((id) => byId.has(id)).slice(0, 4);
+  /** The open proposal or draft a not-yet-accepted concept belongs to. */
+  const pendingTitle = (id: string) =>
+    isDraftRef(id)
+      ? proposalTitle(ctx.drafts.find((d) => `@draft:${d.suffix}` === id) ?? draft)
+      : ctx.proposals.find((p) => p.nodes.some((n) => n.id === id))?.title;
+  const dependents = ctx.drafts.filter((d) =>
+    d.relations.some((r) => r.source === `@draft:${draft.suffix}` || r.target === `@draft:${draft.suffix}`),
+  ).length;
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => update((d) => ({ ...d, [key]: value }));
   const setRelation = (key: string, change: (r: DraftRelation) => DraftRelation) =>
@@ -156,21 +191,57 @@ export default function DraftEditor({
       setNote(`Couldn't copy — select the ${what} under “Show the files” instead.`);
     }
   };
-  const files = problems.length ? [] : exportFiles(draft);
-  const prText = problems.length ? '' : pullRequestText(draft, index.byId);
-  const bundle = problems.length ? null : proposalFile(draft);
+  const files = problems.length ? [] : exportFiles(draft, ctx);
+  const deletions = problems.length ? [] : removedFiles(draft);
+  const prText = problems.length ? '' : pullRequestText(draft, ctx);
+  const bundle = problems.length ? null : proposalFile(draft, ctx);
 
   return (
     <div className="draft-editor">
       <p className="proposal-status proposal-status-draft">Draft · not submitted · saved in this browser</p>
+      <nav className="draft-switcher" aria-label="Your drafts">
+        <p className="draft-label">Your drafts — each one is its own proposal</p>
+        <ul className="draft-switcher-list">
+          {ctx.drafts.map((d) => {
+            const current = d.suffix === draft.suffix;
+            return (
+              <li key={d.suffix}>
+                <button
+                  type="button"
+                  className="draft-chip"
+                  aria-current={current ? 'true' : undefined}
+                  onClick={() => onSwitch(d.suffix)}
+                >
+                  {d.editOf ? '✎ ' : ''}
+                  {d.label.trim() || 'New concept'}
+                  {current && <span className="draft-chip-note"> · open</span>}
+                </button>
+              </li>
+            );
+          })}
+          <li>
+            <button type="button" className="draft-chip draft-chip-add" onClick={onAddConcept}>
+              <span aria-hidden>＋ </span>Another concept
+            </button>
+          </li>
+        </ul>
+      </nav>
       <h2 className="map-card-title" id={CONCEPT_CARD_TITLE_ID}>
-        Propose a concept
+        {original ? `Propose an edit: ${original.label}` : 'Propose a concept'}
       </h2>
-      <p className="draft-intro">
-        Drag the dashed concept on the map to see where it fits — the concepts nearest it are offered as
-        connections, and clicking any concept on the map connects it. Everything can also be done with this form
-        alone. Where you put it on the map is only a sketch: it isn't saved with the proposal.
-      </p>
+      {original ? (
+        <p className="draft-intro">
+          The form is filled in from the concept. Change what should change, add relations, or propose removing ones
+          that are wrong; the concept on the map previews your edit. It's one proposal, reviewed on its own.
+        </p>
+      ) : (
+        <p className="draft-intro">
+          Drag the dashed concept on the map to see where it fits — the concepts nearest it are offered as
+          connections, and clicking any concept on the map connects it. Everything can also be done with this form
+          alone. Where you put it on the map is only a sketch: it isn't saved with the proposal. You can start several
+          concepts and connect them to each other; each one is still its own proposal.
+        </p>
+      )}
       <p className="draft-status" role="status" aria-live="polite">
         {note || status}
       </p>
@@ -202,7 +273,7 @@ export default function DraftEditor({
                     <strong>{m.node.label}</strong>{' '}
                     <span className="concept-via">
                       {m.reason}
-                      {index.byId.has(m.node.id) ? '' : ' · an open proposal'}
+                      {index.byId.has(m.node.id) ? '' : isDraftRef(m.node.id) ? ' · your draft' : ' · an open proposal'}
                     </span>{' '}
                     <button type="button" className="draft-link" onClick={() => onShow(m.node.id)}>
                       Show on map
@@ -251,11 +322,45 @@ export default function DraftEditor({
           <span className="rel-count">{draft.relations.length}</span>
         </h3>
 
-        <div className="draft-row-actions">
-          <button type="button" className="draft-button" onClick={onRecall}>
-            Bring the draft into view
-          </button>
-        </div>
+        {!draft.editOf && (
+          <div className="draft-row-actions">
+            <button type="button" className="draft-button" onClick={onRecall}>
+              Bring the draft into view
+            </button>
+          </div>
+        )}
+
+        {draft.editOf && existing.length > 0 && (
+          <div className="draft-existing">
+            <p className="draft-label">Its relations now</p>
+            <ul className="draft-existing-list">
+              {existing.map((e) => {
+                const removing = draft.removals.includes(e.id);
+                return (
+                  <li key={e.id} className={removing ? 'draft-removing' : undefined}>
+                    <span className="draft-sentence">
+                      <RelationSentence edge={e} byId={byId} selfId={own} onPick={onShow} />
+                    </span>
+                    {removing && <span className="concept-via"> — removal proposed</span>}{' '}
+                    <button
+                      type="button"
+                      className="draft-button"
+                      aria-pressed={removing}
+                      onClick={() =>
+                        update((d) => ({
+                          ...d,
+                          removals: removing ? d.removals.filter((x) => x !== e.id) : [...d.removals, e.id],
+                        }))
+                      }
+                    >
+                      Propose removing
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {offered.length > 0 && (
           <div className="draft-suggestions">
@@ -264,13 +369,15 @@ export default function DraftEditor({
             </p>
             <ul className="draft-suggestion-list">
               {offered.map((id) => {
-                const n = index.byId.get(id)!;
+                const n = byId.get(id)!;
+                const pending = !index.byId.has(id);
                 return (
                   <li key={id}>
                     <button type="button" className="draft-suggestion" onClick={() => onConnect(id)}>
                       <span aria-hidden>＋ </span>
                       <TypeBadge type={n.type} />
                       Connect to {n.label}
+                      {pending && <span className="draft-chip-note"> (not accepted yet)</span>}
                     </button>
                   </li>
                 );
@@ -288,23 +395,52 @@ export default function DraftEditor({
           />
         </div>
 
-        {draft.relations.length === 0 && <p className="concept-empty">No connections yet.</p>}
+        {draft.relations.length === 0 && (
+          <p className="concept-empty">{draft.editOf ? 'No new relations.' : 'No connections yet.'}</p>
+        )}
         <ol className="draft-relations">
           {draft.relations.map((r, i) => {
-            const edge = layer.edges[i];
+            const edge = shape.edges.find((e) => e.id === `${own}|${draft.suffix}_e${i + 1}`);
+            if (!edge)
+              return (
+                <li key={r.key} className="draft-relation">
+                  <p className="draft-warning">
+                    <span aria-hidden>⚠ </span>This relation pointed at a concept that's no longer proposed.
+                  </p>
+                  <div className="draft-row-actions">
+                    <button
+                      type="button"
+                      className="draft-button"
+                      onClick={() => update((d) => ({ ...d, relations: d.relations.filter((x) => x.key !== r.key) }))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              );
             const conflicts = edgeConflicts(edge, {
-              confirmed: confirmed.edges,
-              draft: layer.edges.slice(0, i),
+              confirmed: keptEdges,
+              draft: shape.edges.filter((e) => Number(e.id.slice(e.id.lastIndexOf('_e') + 2)) <= i),
               proposals: otherRelations,
             });
-            const from = byId.get(r.source)?.label ?? r.source;
-            const to = byId.get(r.target)?.label ?? r.target;
+            const from = byId.get(edge.source)?.label ?? edge.source;
+            const to = byId.get(edge.target)?.label ?? edge.target;
             const type = normalizeRelationship(r.relationship) ?? 'relates';
+            const waitingOn = [edge.source, edge.target]
+              .filter((x) => x !== own && !index.byId.has(x))
+              .map(pendingTitle)
+              .filter(Boolean);
             return (
               <li key={r.key} className="draft-relation">
                 <p className="draft-sentence">
-                  <RelationSentence edge={edge} byId={byId} selfId={NEW_CONCEPT} onPick={onShow} />
+                  <RelationSentence edge={edge} byId={byId} selfId={own} onPick={onShow} />
                 </p>
+                {waitingOn.length > 0 && (
+                  <p className="draft-hint">
+                    Depends on “{waitingOn.join('”, “')}”, which isn't accepted yet. If it's rejected, this relation is
+                    dropped.
+                  </p>
+                )}
                 <Field id={fieldId(`rel-${r.key}`)} label="Relation">
                   <select
                     id={fieldId(`rel-${r.key}`)}
@@ -459,6 +595,46 @@ export default function DraftEditor({
             </label>
           ))}
         </fieldset>
+
+        <Field
+          id={fieldId('generality')}
+          label={`Generality, 1–${GENERALITY_MAX}`}
+          hint={`How broad the idea is: 1 is very specific, ${GENERALITY_MAX} very general. On the map it sets the size of the circle, from small (1) to 40 times larger (${GENERALITY_MAX}) — watch your draft grow or shrink.`}
+          optional
+        >
+          <input
+            id={fieldId('generality')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={GENERALITY_MAX}
+            step={1}
+            value={draft.generality ?? ''}
+            onChange={(e) => set('generality', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('generality-hint')}
+          />
+        </Field>
+        <Field
+          id={fieldId('importance')}
+          label={`Importance, 1–${IMPORTANCE_MAX}`}
+          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 40 shows on the whole map, and every 8 points lower needs twice as close a look, so 1 only appears when you're right next to it.`}
+          optional
+        >
+          <input
+            id={fieldId('importance')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={IMPORTANCE_MAX}
+            step={1}
+            value={draft.importance ?? ''}
+            onChange={(e) => set('importance', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('importance-hint')}
+          />
+        </Field>
+        <p className="draft-hint">Leave either empty and the curator sets it.</p>
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-claim')}>
@@ -468,7 +644,8 @@ export default function DraftEditor({
         <Field
           id={fieldId('claim')}
           label="What reviewers vote on"
-          hint="Markdown: **bold**, *italic*; maths in $…$, or $$…$$ on its own line."
+          hint="Without a claim, reviewers vote on the concept and its connections as written. Markdown: **bold**, *italic*; maths in $…$, or $$…$$ on its own line."
+          optional
         >
           <textarea
             id={fieldId('claim')}
@@ -573,6 +750,22 @@ export default function DraftEditor({
         <h3 className="block-heading" id={fieldId('h-export')}>
           Check and export
         </h3>
+        {deps.length > 0 && (
+          <div className="draft-deps">
+            <p>
+              This proposal depends on {deps.length === 1 ? 'another proposal' : `${deps.length} other proposals`}:
+            </p>
+            <ul>
+              {deps.map((x) => (
+                <li key={x.id}>{x.title}</li>
+              ))}
+            </ul>
+            <p className="draft-hint">
+              Export and submit those too: they have to be accepted first. If one is rejected, the relations pointing
+              at it are dropped from this proposal, and the rest of it stands.
+            </p>
+          </div>
+        )}
         {problems.length > 0 ? (
           <>
             <p>Before it can be exported:</p>
@@ -593,9 +786,20 @@ export default function DraftEditor({
         ) : (
           <>
             <p>
-              Ready. Download the files, put them into <code>content/concepts/</code>, run <code>npm run validate</code>,
-              and open a pull request with the text below as its description.
+              Ready. Download the files and put them into <code>content/concepts/</code>
+              {draft.editOf ? ' (the concept’s file replaces the old one)' : ''}
+              {deletions.length ? ', delete the files listed below' : ''}, run <code>npm run validate</code>, and open a
+              pull request with the text below as its description.
             </p>
+            {deletions.length > 0 && (
+              <ul className="draft-deletions">
+                {deletions.map((p) => (
+                  <li key={p}>
+                    Delete <code>{p}</code>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="draft-row-actions">
               <button
                 type="button"
@@ -640,11 +844,13 @@ export default function DraftEditor({
 
       <div className="map-card-cta draft-footer">
         <button type="button" className="draft-button" onClick={onClose}>
-          Close — keep the draft
+          Close — keep the drafts
         </button>
         {confirmDiscard ? (
-          <span className="draft-confirm" role="group" aria-label="Discard the draft?">
-            Discard everything?{' '}
+          <span className="draft-confirm" role="group" aria-label="Discard this draft?">
+            Discard “{proposalTitle(draft)}”?
+            {dependents > 0 &&
+              ` ${dependents === 1 ? 'One of your other drafts points' : `${dependents} of your other drafts point`} at it; those relations will be removed.`}{' '}
             <button type="button" className="draft-button draft-button-danger" onClick={onDiscard}>
               Discard
             </button>
@@ -654,7 +860,7 @@ export default function DraftEditor({
           </span>
         ) : (
           <button type="button" className="draft-button" onClick={() => setConfirmDiscard(true)}>
-            Discard the draft…
+            Discard this draft…
           </button>
         )}
       </div>

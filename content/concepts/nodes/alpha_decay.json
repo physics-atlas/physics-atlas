@@ -2,7 +2,8 @@
   "id": "alpha_decay",
   "type": "phenomenon",
   "label": "Alpha decay",
-  "importance": 3,
+  "importance": 30,
+  "generality": 6,
   "attrs": {
     "description": "Radioactive decay in which an unstable nucleus emits an alpha particle.",
     "domain": "Nuclear physics"

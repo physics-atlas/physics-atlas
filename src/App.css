@@ -2901,6 +2901,10 @@ textarea.draft-input {
   line-height: 1.5;
 }
 
+.draft-number {
+  width: 8em;
+}
+
 .draft-mono {
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
@@ -3169,4 +3173,132 @@ textarea.draft-input {
   min-height: 36px;
   border: 1.5px solid var(--muted);
   font-size: 14px;
+}
+
+/* Several drafts, edits, dependencies (community preview) */
+.draft-switcher {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.draft-switcher-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draft-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1.5px dashed var(--muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.draft-chip:hover {
+  background: var(--accent-soft);
+}
+
+/* The open draft: solid, heavier border and the word "open" — not a colour alone. */
+.draft-chip[aria-current='true'] {
+  border: 2.5px solid var(--accent-ink);
+  font-weight: 600;
+}
+
+.draft-chip-note {
+  font-weight: 400;
+  font-style: italic;
+}
+
+.draft-chip-add {
+  border-style: solid;
+}
+
+.draft-existing {
+  display: grid;
+  gap: 6px;
+}
+
+.draft-existing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.draft-existing-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.draft-removing .draft-sentence {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.draft-deps {
+  padding: 8px 12px;
+  border: 1.5px dashed var(--accent-ink);
+  border-radius: 8px;
+}
+
+.draft-deps p,
+.draft-deps ul {
+  margin: 0 0 6px;
+}
+
+.draft-deletions {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.proposal-changes {
+  margin: 0 0 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.proposal-change {
+  display: grid;
+  gap: 2px;
+}
+
+.proposal-change dt {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proposal-change dd {
+  margin: 0;
+}
+
+.proposal-change ins {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.proposal-op {
+  font-weight: 600;
+}
+
+.proposal-back {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.map-card-edit {
+  align-self: flex-start;
 }

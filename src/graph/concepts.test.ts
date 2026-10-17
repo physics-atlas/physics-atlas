@@ -4,11 +4,14 @@ import {
   buildConceptIndex,
   conditionClause,
   domainsOf,
+  effectiveGenerality,
   effectiveImportance,
   joinList,
+  labelSize,
   neighborsOf,
   nodeRadius,
   normalizeRelationship,
+  revealZoom,
   sentenceParts,
 } from './concepts';
 
@@ -85,20 +88,41 @@ describe('domainsOf', () => {
   });
 });
 
-describe('importance and size', () => {
-  it('prefers authored importance, then generality, then degree', () => {
-    expect(effectiveImportance(concept('a', { importance: 4, generality: 1 }), 0)).toBe(4);
-    expect(effectiveImportance(concept('a', { generality: 2 }), 9)).toBe(2);
-    expect(effectiveImportance(concept('a'), 0)).toBe(1);
-    expect(effectiveImportance(concept('a'), 100)).toBe(5);
+describe('generality (size) and importance (zoom visibility)', () => {
+  it('each uses its authored value, else a degree estimate — never the other', () => {
+    const both = concept('a', { importance: 40, generality: 2 });
+    expect(effectiveImportance(both, 0)).toBe(40);
+    expect(effectiveGenerality(both, 0)).toBe(2);
+    expect(effectiveImportance(concept('a', { generality: 9 }), 0)).toBe(1);
+    expect(effectiveGenerality(concept('a', { importance: 50 }), 0)).toBe(1);
+    expect(effectiveImportance(concept('a'), 100)).toBe(50);
+    expect(effectiveGenerality(concept('a'), 100)).toBe(10);
   });
-  it('treats an unrated learning goal as minor', () => {
+  it('treats an unrated learning goal as minor and specific', () => {
     const goal = { id: 'g', label: 'G', type: 'learning_goal', attrs: { description: 'g' } } as GraphNode;
     expect(effectiveImportance(goal, 10)).toBe(1);
+    expect(effectiveGenerality(goal, 10)).toBe(1);
   });
-  it('maps importance 1–5 to radius 7–27', () => {
-    expect(nodeRadius(concept('a', { importance: 1 }), 0)).toBe(7);
-    expect(nodeRadius(concept('a', { importance: 5 }), 0)).toBe(27);
+  it('sizes the circle by generality: 1–10 → radius 7–270, the same factor per step', () => {
+    const r = (g: number) => nodeRadius(concept('a', { generality: g, importance: 50 }), 0);
+    expect(r(1)).toBeCloseTo(7);
+    expect(r(10)).toBeCloseTo(270);
+    expect(r(6) / r(5)).toBeCloseTo(r(2) / r(1));
+    expect(r(2) / r(1)).toBeCloseTo(1.5, 1);
+  });
+  it('sizes names by importance (12–18 px), and big circles get names to match', () => {
+    expect(labelSize(1)).toBe(12);
+    expect(labelSize(50)).toBe(18);
+    expect(labelSize(1, 270)).toBe(90);
+    expect(labelSize(50, 7)).toBe(18);
+  });
+  it('gives every importance its own depth: 50 always, 40 on the overview, each 8 below twice as close', () => {
+    expect(revealZoom(50)).toBe(0);
+    expect(revealZoom(40)).toBe(1);
+    expect(revealZoom(32)).toBe(2);
+    expect(revealZoom(24)).toBe(4);
+    expect(revealZoom(1)).toBeCloseTo(29.2, 0);
+    for (let i = 1; i < 49; i++) expect(revealZoom(i)).toBeGreaterThan(revealZoom(i + 1));
   });
 });
 

@@ -79,20 +79,71 @@ export function buildConceptIndex(graph: ConceptGraph): ConceptIndex {
   return { byId, incoming, outgoing, degree };
 }
 
+/** Generality: 1 (very specific) – 10 (very general). Sets the circle size. */
+export const GENERALITY_MAX = 10;
+/** Importance: 1 (minor detail) – 50 (landmark). Sets how far out a concept stays visible. */
+export const IMPORTANCE_MAX = 50;
+
+/** 1–10: authored generality, else a degree estimate (learning goals 1). Drives circle size. */
+export function effectiveGenerality(node: GraphNode, degree: number): number {
+  if (node.generality !== undefined) return node.generality;
+  if (node.type === 'learning_goal') return 1;
+  return Math.min(GENERALITY_MAX, 1 + Math.round(2 * Math.sqrt(degree)));
+}
+
 /**
- * 1–5: authored importance, else authored generality, else a degree estimate
- * (learning goals 1). Drives circle size and the zoom level a node appears at.
+ * 1–50: authored importance, else a degree estimate (learning goals 1).
+ * Drives the zoom level a concept appears at and the size of its name.
  */
 export function effectiveImportance(node: GraphNode, degree: number): number {
   if (node.importance !== undefined) return node.importance;
   if (node.type === 'learning_goal') return 1;
-  if (node.generality !== undefined) return node.generality;
-  return Math.min(5, 1 + Math.round(Math.sqrt(degree)));
+  return Math.min(IMPORTANCE_MAX, 1 + Math.round(10 * Math.sqrt(degree)));
 }
 
-/** On-canvas circle radius: importance 1–5 → 7…27. */
+const MIN_RADIUS = 7;
+/** Generality 10 is ten times the old largest circle (27 px). */
+const MAX_RADIUS = 270;
+/** Each generality step multiplies the radius by this (≈ 1.5), so small stays visibly small. */
+const STEP = (MAX_RADIUS / MIN_RADIUS) ** (1 / (GENERALITY_MAX - 1));
+
+/** On-canvas circle radius: generality 1–10 → 7…270, ×1.5 per step. */
 export function nodeRadius(node: GraphNode, degree: number): number {
-  return 7 + (effectiveImportance(node, degree) - 1) * 5;
+  return MIN_RADIUS * STEP ** (effectiveGenerality(node, degree) - 1);
+}
+
+/**
+ * From this radius (generality 6 and up) the name is written inside the
+ * circle, like a region's name on a map: the concept then claims only the
+ * room of its circle, so specific concepts can sit close around it.
+ */
+export const INSIDE_LABEL_RADIUS = 50;
+
+/**
+ * Label size: importance 1–50 → 12…18 px, like a map's city names — and for a
+ * big circle, in proportion to it (radius ÷ 3, written inside), so the
+ * largest concepts can be read far out.
+ */
+export const labelSize = (importance: number, radius = 0): number => {
+  const base = 12 + ((importance - 1) * 6) / (IMPORTANCE_MAX - 1);
+  return radius >= INSIDE_LABEL_RADIUS ? Math.max(base, radius / 3) : base;
+};
+
+/** At and above this importance a concept shows on the whole-map overview. */
+const OVERVIEW_IMPORTANCE = 40;
+/** Every this-many importance points below it doubles how close you have to zoom. */
+const POINTS_PER_DOUBLING = 8;
+
+/**
+ * Map-style level of detail: the zoom, relative to the whole-map overview, at
+ * which a concept of this importance appears. Every importance value is its
+ * own depth: 40 shows on the overview, 32 at 2× closer, 24 at 4×, 16 at 8×,
+ * 1 at about 30×; 50 always shows.
+ */
+export function revealZoom(importance: number): number {
+  const i = Math.min(IMPORTANCE_MAX, Math.max(1, importance));
+  if (i >= IMPORTANCE_MAX) return 0;
+  return 2 ** ((OVERVIEW_IMPORTANCE - i) / POINTS_PER_DOUBLING);
 }
 
 /**

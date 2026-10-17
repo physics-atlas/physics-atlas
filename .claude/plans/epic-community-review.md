@@ -279,6 +279,33 @@ form is the accessible equivalent, not a replacement.
 - **Value:** Sophie (and invited experts) can author through the UI right away and submit by
   hand.
 
+### Phase 2b — Several drafts, dependencies, edits — ✅ done 2026-10-16 (feature-42)
+
+Requested after Phase 2 testing. **One proposal is still one concept and its relations**,
+reviewed on its own (the Risks row below stands), but the editor works on several at once.
+
+- **Several drafts** (`useDrafts()`, localStorage v2; a Phase 2 draft is moved over once).
+  Each new concept has its own ghost (`@draft:<suffix>`); dragging one makes its draft the open
+  one.
+- **Dependencies:** a relation into another draft, or into a concept of someone else's open
+  proposal, puts that proposal in `dependsOn`. `proposalProblems()` requires it (a relation
+  into another proposal's concept without listing it is an error).
+  `resolveDependencies()` drops relations whose dependency is no longer open, records them in
+  `dropped`, and leaves out a proposal that's left with nothing. A new concept stays even with
+  no relations left. Discarding a draft removes the relations other drafts had into it — the
+  local version of a rejection.
+- **Edits:** "Propose an edit" on a card opens the same form, filled in from the concept
+  (`newEditDraft()`). An edit proposal has `edits: [node]` (same id), new `edges`, and
+  `removals` (confirmed relation ids). Fields the form doesn't show are kept, in the file's own
+  key order, so the diff shows only what changed. The map previews the edit on the concept
+  itself; other people's edits are marked "✎ Edit proposed", and their removals are drawn
+  dotted with "(removal proposed)".
+- **For Phases 3–5:** a dependent PR can only be merged after its dependencies. When a
+  dependency PR is closed unmerged, the relation files pointing at its concepts are removed
+  from the dependent PR (a bot commit, or the steward on merge) — the same rule as
+  `resolveDependencies()`. An edit PR replaces the node file and deletes the removed edge
+  files.
+
 ### Phase 3 — Identity and submitting proposals *(GitHub backend goes live)*
 
 - **Scope:**
@@ -318,8 +345,10 @@ form is the accessible equivalent, not a replacement.
   - A **Review queue** view (a new mode, `?mode=review`): pending proposals filtered by the
     steward's domains, each with a **mini-graph** of the affected neighbourhood (`GraphView`
     + `fitIds`), the discussion, and the quorum status.
-  - Actions: **Merge** (when the check is green), **Mark contested**, **Request changes**,
-    **Close as duplicate** (curators: pick the surviving node, re-point its edges).
+  - Actions: **Merge** (when the check is green and every `dependsOn` proposal is merged),
+    **Mark contested**, **Request changes**, **Close as duplicate** (curators: pick the
+    surviving node, re-point its edges). Closing a proposal drops the relations its dependents
+    had into it (Phase 2b).
   - The merge commit carries the approvers as trailers.
   - Remove the `?community=1` flag.
 - **Exit:**

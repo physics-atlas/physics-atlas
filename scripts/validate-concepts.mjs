@@ -162,10 +162,11 @@ for (const n of data.nodes) {
     errors.push(`${where}: type "${n.type}" not one of ${NODE_TYPES.join(', ')}`);
   else checkNodeAttrs(where, n);
 
-  if (n.importance !== undefined && (!Number.isInteger(n.importance) || n.importance < 1 || n.importance > 5))
-    errors.push(`${where}: importance must be an integer 1–5`);
-  if (n.generality !== undefined && (!Number.isInteger(n.generality) || n.generality < 1 || n.generality > 5))
-    errors.push(`${where}: generality must be an integer 1–5`);
+  // Mirrors IMPORTANCE_MAX / GENERALITY_MAX in src/graph/concepts.ts — keep in sync.
+  if (n.importance !== undefined && (!Number.isInteger(n.importance) || n.importance < 1 || n.importance > 50))
+    errors.push(`${where}: importance must be an integer 1–50`);
+  if (n.generality !== undefined && (!Number.isInteger(n.generality) || n.generality < 1 || n.generality > 10))
+    errors.push(`${where}: generality must be an integer 1–10`);
   if (n.epistemicStatus !== undefined) {
     if (typeof n.epistemicStatus !== 'string' || !n.epistemicStatus.trim())
       errors.push(`${where}: epistemicStatus must be a non-empty string (delete the field if unknown)`);
@@ -253,7 +254,10 @@ if (errors.length === 0) {
 
 const noImportance = data.nodes.filter((n) => n.importance === undefined).length;
 if (noImportance)
-  warn.push(`${noImportance} of ${data.nodes.length} nodes have no importance yet — size and zoom visibility fall back to generality, then connection count`);
+  warn.push(`${noImportance} of ${data.nodes.length} nodes have no importance yet — how far out they stay visible falls back to connection count`);
+const noGenerality = data.nodes.filter((n) => n.generality === undefined).length;
+if (noGenerality)
+  warn.push(`${noGenerality} of ${data.nodes.length} nodes have no generality yet — their circle size falls back to connection count`);
 const noStatus = data.nodes.filter((n) => n.epistemicStatus === undefined).length;
 warn.push(`${noStatus} of ${data.nodes.length} nodes have no epistemicStatus yet — the card shows "To-do"`);
 

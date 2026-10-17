@@ -2,7 +2,8 @@
   "id": "newtonian_gravity",
   "type": "model_regime",
   "label": "Newtonian Gravity",
-  "importance": 5,
+  "importance": 50,
+  "generality": 10,
   "attrs": {
     "description": "The classical model in which gravity is treated as an instantaneous attractive force between masses, recovered from general relativity as a low-velocity, weak-field approximation.",
     "domain": "Classical mechanics"

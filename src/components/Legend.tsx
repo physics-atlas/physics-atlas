@@ -85,7 +85,7 @@ function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) 
           {NODE_TYPE_LABELS[type]}
         </button>
       ))}
-      <span className="legend-entry legend-size-note">larger circle = more important · zoom in for more</span>
+      <span className="legend-entry legend-size-note">larger circle = more general · zoom in for less important concepts</span>
       {statuses && (
         <span className="legend-statuses">
           {STATUSES.filter((s) => draft || s.key !== 'draft').map((s) => (

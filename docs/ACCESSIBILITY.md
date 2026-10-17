@@ -17,11 +17,11 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 
 | Practice | Where |
 |---|---|
-| Every visual encoding has a text equivalent | Node colour → type name in the label, legend and card; size → importance, explained in the legend; silver/gold direction → "From this concept" / "Into this concept" in the card's text; proposal status → dashed / double outline **plus** "Proposed · ✓2 ✗0 ?1" / "⚑ Contested" in the label, card, list and legend; the editor's glows → "Draft · not submitted", "＋ Connect?" and "≈ Similar name" in the labels, repeated as lists in the editor |
+| Every visual encoding has a text equivalent | Node colour → type name in the label, legend and card; size → generality and "zoom in for more" → importance, both explained in the legend and in the editor's field hints; silver/gold direction → "From this concept" / "Into this concept" in the card's text; proposal status → dashed / double outline **plus** "Proposed · ✓2 ✗0 ?1" / "⚑ Contested" in the label, card, list and legend; the editor's glows → "Draft · not submitted", "＋ Connect?" and "≈ Similar name" in the labels, repeated as lists in the editor |
 | The graph has a non-visual equivalent | **All concepts as a list** panel; every relation as a full sentence ("Zel'dovich approximation approximates Structure Formation under the assumption of linear potential.") in the card |
 | Vocabulary is defined where it's used | Clicking a type in the legend opens its definition, examples and "not to be confused with" notes |
 | The display can be adjusted | Light/dark theme; **Reduce motion**; **Show all concepts** (turns off zoom level of detail); browser zoom up to 400% |
-| Information comes in layers | Zoom level of detail shows landmarks first; the card opens with a description and leaves the full relation list collapsed |
+| Information comes in layers | Zoom level of detail shows landmarks first and reveals more specific concepts the closer you look (importance is a depth: each 8 points lower, twice as close); **Show all concepts** turns the depth off; the card opens with a description and leaves the full relation list collapsed |
 
 ### Multiple means of action and expression (the "how")
 
@@ -69,8 +69,14 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   | Note, hint, empty state, secondary context ("via …", "— parent topic") | italic |
   | Done / learned | strikethrough, beside the ticked checkbox or ✓ |
   | Relation name on the map | italic on a background plate (concept names are upright) |
+  | Big concept's name (generality 6+) | inside its circle, on a plate (surface colour, 78%) so it reads over the type colour |
+  | Zoomed past a concept | its circle fades to a faint outline; the concept is still in the list, search and cards |
   | Proposed / contested concept | dashed / double outline + the status and tally in words in its label ("Proposed · ✓2 ✗0 ?1"); never a status colour |
   | Draft (editor) | dashed outline with a steady glow + "Draft · not submitted"; concepts offered or flagged say "＋ Connect?" / "≈ Similar name"; warnings carry ⚠ / ≈ and a gold border, not gold text |
+  | The open draft (of several) | a heavier, larger glow on the map; in the editor's draft list a solid, heavier border plus the word "open" |
+  | Edit (yours / someone else's) | dashed glowing outline + "✎ Editing · draft" / dashed ink outline + "✎ Edit proposed · ✓…" on the confirmed concept |
+  | Removal proposed | dotted line + "(removal proposed)" / "(your draft removes this)" on it; in lists, struck through + "removal proposed" or "Removes:" |
+  | Not accepted yet / depends on | "(not accepted yet)" in suggestions; "Depends on … — if it's rejected, this relation is dropped" under the relation |
   | Optional field | the word *optional*, in italic, after the label |
   | Placeholder | italic |
 

@@ -2,7 +2,8 @@
   "id": "nucleon_number",
   "type": "property",
   "label": "Nucleon number",
-  "importance": 2,
+  "importance": 20,
+  "generality": 4,
   "attrs": {
     "description": "The total number of protons and neutrons in a nucleus.",
     "domain": "Nuclear physics"

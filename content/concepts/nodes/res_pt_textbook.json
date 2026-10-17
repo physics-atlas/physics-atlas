@@ -2,7 +2,8 @@
   "id": "res_pt_textbook",
   "type": "resource",
   "label": "Textbook page: parallel transport",
-  "importance": 1,
+  "importance": 10,
+  "generality": 2,
   "attrs": {
     "link": "https://example.com/learn/parallel-transport-ch4",
     "mediaType": "text",

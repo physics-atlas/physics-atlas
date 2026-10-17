@@ -2,7 +2,8 @@
   "id": "four_velocity",
   "type": "property",
   "label": "Four-velocity",
-  "importance": 3,
+  "importance": 30,
+  "generality": 6,
   "attrs": {
     "description": "The relativistic velocity field tangent to the fluid worldlines.",
     "domain": "Relativity"

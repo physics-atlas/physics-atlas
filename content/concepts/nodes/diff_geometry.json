@@ -2,7 +2,8 @@
   "id": "diff_geometry",
   "type": "formalism",
   "label": "Differential Geometry",
-  "importance": 5,
+  "importance": 50,
+  "generality": 10,
   "attrs": {
     "description": "The study of curves, surfaces, and manifolds using calculus and linear algebra — the mathematical language used to describe curved spacetime.",
     "domain": "Mathematics"

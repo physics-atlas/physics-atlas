@@ -2,7 +2,8 @@
   "id": "special_relativity",
   "type": "model_regime",
   "label": "Special Relativity",
-  "importance": 5,
+  "importance": 50,
+  "generality": 10,
   "attrs": {
     "description": "The theory of spacetime and motion in inertial frames when gravity is neglected.",
     "domain": "Relativity"

@@ -2,8 +2,8 @@
   "id": "structure_formation",
   "type": "phenomenon",
   "label": "Structure Formation",
-  "importance": 4,
-  "generality": 3,
+  "importance": 40,
+  "generality": 6,
   "attrs": {
     "description": "The growth of galaxies, clusters and the cosmic web from small initial density fluctuations through gravitational instability.",
     "domain": "Cosmology"

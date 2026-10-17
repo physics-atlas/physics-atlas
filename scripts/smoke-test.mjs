@@ -344,7 +344,7 @@ const clickControl = (text) =>
 
 // The confirmed layout first settles and is cached; then the same map with proposals.
 await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
-await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v4')), { timeout: 60000 });
+await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v6')), { timeout: 60000 });
 await page.reload({ waitUntil: 'networkidle0' });
 await wait(500);
 const layoutBefore = await confirmedPositions();
@@ -363,6 +363,11 @@ const layer = await page.evaluate(() => {
     contested: cy.nodes('.status-contested').map((n) => n.id()),
     jeansLabel: cy.$id('jeans_scale_s1').data('label'),
     url: window.location.search,
+    // A proposal that depends on another one relates to its proposed concept.
+    dependent: cy.edges('.overlay').some((e) => e.source().id() === 'jeans_mass_s4' && e.target().id() === 'jeans_scale_s1'),
+    // An edit is drawn on the confirmed concept; its removal on the confirmed relation.
+    editLabel: cy.$id('vlasov_equation').data('label'),
+    removal: cy.$id('e62').hasClass('removal-proposed') && cy.$id('e62').data('relation').includes('(removal proposed)'),
     // Each proposal sits next to the confirmed concept it connects to: that
     // concept ranks among the nearest confirmed ones (1 = the nearest).
     anchorRanks: [
@@ -383,8 +388,12 @@ if (layer.anchorRanks.some((r) => r < 1 || r > 3))
 console.log(
   `proposed layer: ${layer.nodes.length} concepts, ${layer.edges} relations, contested ${layer.contested}; confirmed nodes moved: ${moved.length}`,
 );
-if (layer.nodes.length !== 3 || layer.edges !== 4)
-  errors.push(`expected 3 proposed concepts / 4 relations, got ${layer.nodes.length}/${layer.edges}`);
+console.log('dependent proposal and edit:', { dependent: layer.dependent, editLabel: layer.editLabel, removal: layer.removal });
+if (layer.nodes.length !== 4 || layer.edges !== 7)
+  errors.push(`expected 4 proposed concepts / 7 relations, got ${layer.nodes.length}/${layer.edges}`);
+if (!layer.dependent) errors.push('the dependent sample lost its relation to the proposal it depends on');
+if (!layer.editLabel?.includes('✎ Edit proposed') || !layer.removal)
+  errors.push(`the edit sample isn't marked on the map: ${layer.editLabel}, removal ${layer.removal}`);
 if (layer.contested.join() !== 'ultralight_bound_s3') errors.push(`expected one contested proposal, got ${layer.contested}`);
 if (moved.length) errors.push(`proposals moved confirmed concepts: ${moved.slice(0, 5).join(', ')}`);
 if (!layer.jeansLabel?.includes('Proposed · ✓2 ✗0 ?1')) errors.push(`proposal badge missing: ${layer.jeansLabel}`);
@@ -438,7 +447,7 @@ if (confirmedOff !== 'false' || context.hiddenConfirmed < 50 || !context.anchorS
 
 // --- Community preview, Phase 2: the proposal editor ---
 // Keyboard first (form + search alone), then the pointer (drag the ghost).
-await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-draft-v1'));
+await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
 await page.goto(`${URL}/?mode=concepts&community=1`, { waitUntil: 'networkidle0' });
 await page.waitForFunction(() => window.__cy?.nodes('.overlay').length > 0, { timeout: 10000 });
 await wait(500);
@@ -458,7 +467,7 @@ await page.keyboard.press('Enter');
 await wait(1600);
 const keyboardDraft = await page.evaluate(() => {
   const cy = window.__cy;
-  const g = cy.$id('@new');
+  const g = cy.nodes('.draft.draft-active').first();
   const p = g.position();
   const d = (n) => Math.hypot(n.position().x - p.x, n.position().y - p.y);
   const nearest = cy.nodes().not('.overlay, .draft').sort((a, b) => d(a) - d(b)).map((n) => n.id());
@@ -484,7 +493,7 @@ await page.evaluate(() => {
 await wait(200);
 const drag = await page.evaluate(() => {
   const r = document.querySelector('.graph-canvas').getBoundingClientRect();
-  const g = window.__cy.$id('@new').renderedPosition();
+  const g = window.__cy.nodes('.draft.draft-active').first().renderedPosition();
   return { x: r.x + g.x, y: r.y + g.y, tx: r.x + 330, ty: r.y + 470 };
 });
 await page.mouse.move(drag.x, drag.y);
@@ -503,7 +512,7 @@ await wait(300);
 const pointerDraft = await page.evaluate(() => ({
   relations: document.querySelectorAll('.draft-relation .draft-sentence').length,
   duplicate: [...document.querySelectorAll('.draft-warning')].some((w) => w.textContent.includes('already added this relation')),
-  ghostLabel: window.__cy.$id('@new').data('label'),
+  ghostLabel: window.__cy.nodes('.draft.draft-active').first().data('label'),
 }));
 const afterDraft = await confirmedPositions();
 const movedByDraft = Object.keys(beforeDraft).filter(
@@ -518,14 +527,67 @@ await page.screenshot({ path: `${OUT}/community-draft.png` });
 await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Close')).click());
 await wait(300);
 const closed = await page.evaluate(() => ({
-  ghostGone: window.__cy.$id('@new').empty(),
+  ghostGone: window.__cy.nodes('.draft.draft-active').first().empty(),
   focusOnButton: document.activeElement?.classList.contains('concept-propose'),
   button: document.querySelector('.concept-propose')?.textContent,
 }));
 console.log('editor closed:', closed);
 if (!closed.ghostGone || !closed.focusOnButton || !closed.button?.includes('Continue'))
   errors.push(`closing the editor: ${JSON.stringify(closed)}`);
-await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-draft-v1'));
+
+// Several drafts: a second concept that relates to the first depends on it,
+// and discarding the first removes that relation.
+await page.click('.concept-propose');
+await page.waitForSelector('.draft-editor');
+await wait(300);
+const firstGhost = await page.evaluate(() => window.__cy.nodes('.draft').map((n) => n.id())[0]);
+await page.evaluate(() => [...document.querySelectorAll('.draft-chip-add')][0].click());
+await wait(400);
+await page.focus('.draft-editor input.draft-input');
+await page.keyboard.type('Smoke dependent');
+await page.evaluate((id) => window.__cy.$id(id).emit('tap'), firstGhost);
+await wait(1600);
+const dependent = await page.evaluate(() => ({
+  ghosts: window.__cy.nodes('.draft').length,
+  between: window.__cy.edges('.draft').filter((e) => e.source().hasClass('draft') && e.target().hasClass('draft')).length,
+  deps: document.querySelector('.draft-deps')?.textContent ?? '',
+}));
+await page.evaluate(() => [...document.querySelectorAll('.draft-chip')].find((b) => b.textContent.includes('Smoke test concept')).click());
+await wait(300);
+await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Discard')).click());
+await wait(100);
+await page.click('.draft-button-danger');
+await wait(600);
+const afterDiscard = await page.evaluate(() => ({
+  ghosts: window.__cy.nodes('.draft').length,
+  draftEdges: window.__cy.edges('.draft').length,
+  status: document.querySelector('.draft-status')?.textContent ?? '',
+}));
+console.log('two drafts:', dependent, 'after discarding the first:', afterDiscard);
+if (dependent.ghosts !== 2 || dependent.between !== 1 || !dependent.deps.includes('Add Smoke test concept'))
+  errors.push(`a relation between two drafts didn't make a dependency: ${JSON.stringify(dependent)}`);
+if (afterDiscard.ghosts !== 1 || afterDiscard.draftEdges !== 0 || !afterDiscard.status.includes('Removed 1 relation'))
+  errors.push(`discarding a draft didn't remove the relation into it: ${JSON.stringify(afterDiscard)}`);
+
+// Editing a confirmed concept: the same form, filled in; the concept previews the edit.
+await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Close')).click());
+await wait(300);
+await page.evaluate(() => window.__cy.$id('kinetic_theory').emit('tap'));
+await page.waitForSelector('.map-card-edit', { timeout: 10000 });
+await page.click('.map-card-edit');
+await page.waitForSelector('.draft-editor');
+await wait(400);
+const editForm = await page.evaluate(() => ({
+  title: document.querySelector('.draft-editor .map-card-title')?.textContent ?? '',
+  name: document.querySelector('.draft-editor input.draft-input')?.value ?? '',
+  subject: window.__cy.$id('kinetic_theory').hasClass('draft-subject'),
+  existing: document.querySelectorAll('.draft-existing-list li').length,
+}));
+console.log('edit form:', editForm);
+if (!editForm.title.includes('Propose an edit: Kinetic theory') || editForm.name !== 'Kinetic theory' || !editForm.subject)
+  errors.push(`editing a concept: ${JSON.stringify(editForm)}`);
+await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Close')).click());
+await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
 
 console.log('console errors:', errors.length ? errors : 'none');
 await browser.close();

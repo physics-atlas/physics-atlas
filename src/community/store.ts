@@ -1,5 +1,5 @@
 import type { ConceptGraph } from '../data/types';
-import { proposalProblems } from './proposals';
+import { proposalProblems, resolveDependencies } from './proposals';
 import type { Proposal, ProposalStore } from './types';
 
 // Phase 1: sample proposals from content/proposals-fixtures/*.json. Phase 3
@@ -14,13 +14,17 @@ export function fixtureProposals(): Proposal[] {
   return Object.values(FIXTURES);
 }
 
-/** Proposals that fit the confirmed graph; the rest are reported and left out. */
+/**
+ * Proposals that fit the confirmed graph (the rest are reported and left
+ * out), with relations into dependencies that are no longer open dropped.
+ */
 export function usableProposals(proposals: Proposal[], confirmed: ConceptGraph): Proposal[] {
-  return proposals.filter((p) => {
-    const problems = proposalProblems(p, confirmed);
+  const valid = proposals.filter((p) => {
+    const problems = proposalProblems(p, confirmed, proposals);
     if (problems.length) console.warn(`Proposal "${p.id}" left out:\n  ${problems.join('\n  ')}`);
     return problems.length === 0;
   });
+  return resolveDependencies(valid, confirmed);
 }
 
 export class FixtureStore implements ProposalStore {

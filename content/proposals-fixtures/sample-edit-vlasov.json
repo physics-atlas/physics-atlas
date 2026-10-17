@@ -1,0 +1,60 @@
+{
+  "id": "sample-edit-vlasov",
+  "title": "Sample: edit Vlasov eq. — larger circle, and a named relation instead of e62",
+  "state": "open",
+  "author": {
+    "name": "Sample contributor D"
+  },
+  "createdAt": "2026-10-09T09:00:00Z",
+  "claim": "**Sample data for testing.** An edit proposal: it changes a confirmed concept (generality 4 → 6), removes the placeholder relation e62 and adds a named one in its place.",
+  "evidence": [],
+  "nodes": [],
+  "edits": [
+    {
+      "id": "vlasov_equation",
+      "type": "equation",
+      "label": "Vlasov eq.",
+      "importance": 30,
+      "generality": 6,
+      "attrs": {
+        "description": "Describes the phase-space evolution of a particle gas.",
+        "equation": "∂f/∂t + v·∇ₓf − ∇Φ·∇ᵥf = 0",
+        "variables": [
+          {
+            "symbol": "f",
+            "meaning": "Phase-space distribution function f(x, v, t)"
+          },
+          {
+            "symbol": "v",
+            "meaning": "Velocity"
+          },
+          {
+            "symbol": "Φ",
+            "meaning": "Gravitational potential"
+          }
+        ],
+        "conditions": [
+          "Collisionless system"
+        ],
+        "representations": [],
+        "domain": "Cosmology"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "vlasov_equation_s5_e1",
+      "source": "structure_formation",
+      "target": "vlasov_equation",
+      "relationship": "described by"
+    }
+  ],
+  "removals": [
+    "e62"
+  ],
+  "tally": {
+    "verify": 1,
+    "dispute": 0,
+    "clarify": 0
+  }
+}

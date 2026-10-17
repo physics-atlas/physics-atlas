@@ -2,7 +2,8 @@
   "id": "quark_gluon_plasma",
   "type": "physical_system",
   "label": "Quark-Gluon-Plasma",
-  "importance": 4,
+  "importance": 40,
+  "generality": 8,
   "attrs": {
     "description": "A state of strongly interacting matter in which quarks and gluons are not confined inside hadrons.",
     "domain": "Nuclear physics"

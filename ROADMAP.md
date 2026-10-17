@@ -6,6 +6,65 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-43: Depth by zoom
+
+**Status:** ✅ Implemented <!-- status-line: feature-43 -->
+**Planned:** 2026-10-17 — requested after Phase 2b testing (Decision 24)
+**Implemented:** 2026-10-17
+
+### Implemented
+- `src/graph/concepts.ts` — `nodeRadius()` geometric 7 … 270; `revealZoom()` 2^((40 − importance) / 8), 50 always; `labelSize(importance, radius)` with names inside circles from radius 50 (`INSIDE_LABEL_RADIUS`)
+- `src/graph/layoutOptimize.ts` — `forceLayout()` repulsion: one typical spacing for every pair, plus a contact push using each pair's own sizes
+- `GraphView.tsx` — `label-inside` style (name on a plate, glyph above), per-node label widths, `zoom-past` fade for circles wider than the view; layout cache v6
+- Editor hints for Generality / Importance describe the new behaviour; `docs/AUTHORING.md` tables
+- Tests: 132 (radius, label size, every importance its own depth)
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke unchanged (only the 2 pre-existing feature-20 failures; proposal anchor ranks 2, 1, 1; 0 confirmed moved). Checked in Chrome: overview names, the zoom sequence into Dark Matter, the fade.
+
+<!-- impl-marker: feature-43 -->
+
+## feature-42: Community review, Phase 2b — several drafts, dependencies, edits
+
+**Status:** ✅ Implemented <!-- status-line: feature-42 -->
+**Planned:** 2026-10-16 — [.claude/plans/epic-community-review.md](.claude/plans/epic-community-review.md) (Phase 2b, Decision 23)
+**Implemented:** 2026-10-16
+
+### Implemented
+- `src/community/types.ts` — `Proposal.edits`, `removals`, `dependsOn`, computed `dropped`
+- `src/community/proposals.ts` — validation of edits, removals and dependencies (a relation into another proposal's concept needs `dependsOn`); `resolveDependencies()` (drops relations into proposals that are no longer open, leaves out an emptied proposal, repeats until stable); `nodeChanges()`, `proposalsAbout()`; overlay marks for edits and removals; "✎ Edit proposed" badge
+- `src/community/draft.ts` — version 2: several drafts, `editOf`, `removals`; relations into other drafts (`@draft:<suffix>`) and other proposals; `draftDependencies()`, `draftShape()` per draft, `newEditDraft()` (keeps fields the form doesn't show, in the file's key order), `withoutDraft()`; Phase 2 drafts migrate
+- `src/community/useDraft.ts` — `useDrafts()`: list + open draft
+- `GraphView.tsx` — a ghost per draft (dragging one makes it the open draft), edit previews on the confirmed concept, removal marks, other people's edits and removals marked
+- `DraftEditor.tsx` — draft switcher, edit mode ("Its relations now" with "Propose removing"), dependency notes, files to delete; `ProposalCard.tsx` — "What it would change", "Depends on", dropped relations
+- `ConceptMapView.tsx` — "✎ Propose an edit" on cards, edit proposals open from "Open proposals about this concept"
+- Fixtures: `sample-jeans-mass` (depends on `sample-jeans-scale`), `sample-edit-vlasov` (an edit)
+- Tests: 132, incl. the validator accepting an exported edit; smoke: dependent sample, edit marks, two drafts + discard, edit form
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke passes (only the 2 pre-existing feature-20 failures). Checked in Chrome: dark + light theme, edit card, rejection by removing a fixture. Not done: a real screen-reader pass.
+
+<!-- impl-marker: feature-42 -->
+
+## feature-41: Generality sizes, importance zooms; optional claim
+
+**Status:** ✅ Implemented <!-- status-line: feature-41 -->
+**Planned:** 2026-10-16 — requested after Phase 2 testing (Decision 22)
+**Implemented:** 2026-10-16
+
+### Implemented
+- `src/graph/concepts.ts` — `effectiveGenerality()` (1–10 → radius 7…27) and `effectiveImportance()` (1–50) are independent, each with its own degree fallback; `labelSize()`, `revealZoom()` (interpolated level-of-detail thresholds)
+- Content: importance × 10, Sophie's generality × 2, the other 52 concepts got generality from their old importance × 2 (unchanged size); fixtures likewise; layout cache key v5
+- Validator, `proposalProblems()` and `draftProblems()` check the new ranges
+- Proposal editor: optional Generality and Importance fields with what each does on the map (the ghost resizes live); the claim is optional (no claim → no Claim section in the pull-request text, "The proposal" on the card)
+- Legend and map hint: "larger circle = more general · zoom in for less important concepts"
+- Tests: 110
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke unchanged (only the 2 pre-existing feature-20 failures). Checked in Chrome: sizes on the map, ghost resizing, the range message.
+
+<!-- impl-marker: feature-41 -->
+
 ## feature-35: Community review, Phase 2 — the proposal editor (local drafts, export)
 
 **Status:** ✅ Implemented <!-- status-line: feature-35 -->

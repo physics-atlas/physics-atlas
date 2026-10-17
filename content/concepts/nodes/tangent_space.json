@@ -2,7 +2,8 @@
   "id": "tangent_space",
   "type": "formalism",
   "label": "Tangent Space",
-  "importance": 3,
+  "importance": 30,
+  "generality": 6,
   "attrs": {
     "description": "The vector space of all possible tangent vectors at a single point of a manifold — the local 'flat' approximation of the manifold at that point.",
     "domain": "Differential geometry"

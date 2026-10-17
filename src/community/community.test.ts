@@ -5,9 +5,11 @@ import {
   badgeText,
   evidenceHref,
   mergedGraph,
+  nodeChanges,
   overlayFor,
   proposalByNode,
   proposalProblems,
+  proposalsAbout,
 } from './proposals';
 import { parseInline, parseRichText } from './richText';
 import { FixtureStore, fixtureProposals } from './store';
@@ -127,12 +129,43 @@ describe('overlay and merging', () => {
 describe('the sample fixtures', () => {
   // Every file as written — the store would silently leave a broken one out.
   it.each(fixtureProposals().map((p) => [p.id, p] as const))('%s fits the real confirmed graph', (_id, p) => {
-    expect(proposalProblems(p, concepts)).toEqual([]);
+    expect(proposalProblems(p, concepts, fixtureProposals())).toEqual([]);
   });
 
-  it('include the three samples the test guide walks through', async () => {
+  it('include the five samples the test guide walks through', async () => {
     const ids = (await new FixtureStore(concepts).list()).map((p) => p.id);
-    expect(ids).toEqual(expect.arrayContaining(['sample-jeans-scale', 'sample-nonlinear-growth', 'sample-ultralight-bound']));
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'sample-jeans-scale',
+        'sample-nonlinear-growth',
+        'sample-ultralight-bound',
+        'sample-jeans-mass',
+        'sample-edit-vlasov',
+      ]),
+    );
+  });
+
+  it('keep a dependent’s relation while what it depends on is open, and drop it once that’s gone', async () => {
+    const all = fixtureProposals();
+    const withDep = await new FixtureStore(concepts, all).list();
+    expect(withDep.find((p) => p.id === 'sample-jeans-mass')?.edges).toHaveLength(2);
+    const rejected = await new FixtureStore(concepts, all.filter((p) => p.id !== 'sample-jeans-scale')).list();
+    const mass = rejected.find((p) => p.id === 'sample-jeans-mass')!;
+    expect(mass.edges.map((e) => e.target)).toEqual(['structure_formation']);
+    expect(mass.dropped).toEqual([{ edge: expect.objectContaining({ id: 's4_e1' }), dependency: 'sample-jeans-scale' }]);
+  });
+
+  it('draw an edit on the confirmed concept, with its removals', async () => {
+    const list = await new FixtureStore(concepts).list();
+    const overlay = overlayFor(list);
+    expect(overlay.edits).toEqual([expect.objectContaining({ id: 'vlasov_equation', proposalId: 'sample-edit-vlasov' })]);
+    expect(overlay.edits[0].badge).toBe('✎ Edit proposed · ✓1 ✗0 ?0');
+    expect(overlay.removals.map((m) => m.id)).toEqual(['e62']);
+    expect(proposalsAbout('vlasov_equation', list, concepts.edges).map((p) => p.id)).toEqual(['sample-edit-vlasov']);
+    const edit = list.find((p) => p.id === 'sample-edit-vlasov')!;
+    expect(nodeChanges(concepts.nodes.find((n) => n.id === 'vlasov_equation')!, edit.edits![0])).toEqual([
+      { field: 'Generality', before: '4', after: '6' },
+    ]);
   });
 
   it('come out of the store oldest first, covering both states', async () => {

@@ -38,16 +38,40 @@ export interface Proposal {
   author: ProposalAuthor;
   /** ISO 8601 */
   createdAt: string;
-  /** The exact statement being voted on — Markdown with $…$ / $$…$$ LaTeX */
-  claim: string;
+  /**
+   * The exact statement being voted on — Markdown with $…$ / $$…$$ LaTeX.
+   * Optional: without one, reviewers vote on the concepts and relations as written.
+   */
+  claim?: string;
   evidence: Evidence[];
-  /** New concepts, exactly as they would be merged */
+  /** New concepts, exactly as they would be merged (one, from the editor) */
   nodes: GraphNode[];
-  /** New relations; each end is a confirmed concept or one of `nodes` */
+  /**
+   * New relations. Each end is a confirmed concept, one of `nodes` or `edits`,
+   * or a concept of a proposal listed in `dependsOn`.
+   */
   edges: GraphEdge[];
+  /** An edit: the changed version of a confirmed concept, under its own id (one, from the editor) */
+  edits?: GraphNode[];
+  /** Ids of confirmed relations this proposal would remove */
+  removals?: string[];
+  /**
+   * Proposals whose concepts this one's relations point at. They have to be
+   * accepted first; if one is rejected or withdrawn, the relations pointing
+   * at it are dropped (`dropped`) and the rest of this proposal stands.
+   */
+  dependsOn?: string[];
   tally: VoteTally;
   /** Why it's contested — required when state is `contested` */
   dispute?: { summary: string };
+  /** Computed when loading, never authored: relations dropped because a dependency is no longer open */
+  dropped?: DroppedRelation[];
+}
+
+export interface DroppedRelation {
+  edge: GraphEdge;
+  /** The proposal it depended on */
+  dependency: string;
 }
 
 /** Where proposals come from: fixtures now, GitHub pull requests from Phase 3. */

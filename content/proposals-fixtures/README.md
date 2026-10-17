@@ -7,3 +7,8 @@ requests (Phase 3). They only appear on the concept map with `?community=1`.
 Each file is one proposal in the shape of `src/community/types.ts` → `Proposal`. A unit test
 checks every file against the confirmed graph, so a fixture that stops fitting (e.g. it points
 at a concept that was renamed) fails `npm test`.
+
+Two of them show what Phase 2b added: `sample-jeans-mass.json` relates to the *Jeans scale*
+sample and so lists it in `dependsOn` (move `sample-jeans-scale.json` away to see that relation
+dropped), and `sample-edit-vlasov.json` is an **edit** of a confirmed concept (`edits`,
+`removals`).

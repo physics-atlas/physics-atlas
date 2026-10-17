@@ -202,7 +202,8 @@ content/concepts/
   "id": "parallel_transport",
   "type": "method",
   "label": "Parallel Transport",
-  "importance": 4,
+  "importance": 40,
+  "generality": 8,
   "attrs": { "description": "…", "domain": "General relativity" }
 }
 ```
@@ -411,26 +412,58 @@ path (just the goal) with a "No prerequisites are linked to this goal yet"
 note — currently `lg_alpha_decay_nucleons` and
 `lg_alpha_radiation_properties`.
 
-### `importance` (1–5)
+### `generality` (1–10): the circle's size
 
-An optional integer, 1 (minor detail) to 5 (landmark). It sets the circle's
-size and its name's size, and how far out the concept stays visible: the map
-works like a street map, where zoomed out you see only the landmarks, and zooming in
-reveals more detail. On the whole-map overview, concepts of importance 4 and 5
-show. Importance 3 appears at about 1.5× that zoom, 2 at about 2×, and 1 at about
-3×. Importance 5 never disappears. A concept you've selected, its direct
-connections, and every step of an active goal path always stay visible,
-whatever their importance. Hovering a concept also shows its hidden neighbours.
+An optional integer, 1 (most specific) to 10 (most general). It sets the size of
+the concept's circle on the map. Each step makes the circle 1.5× wider, so 10 is
+almost 40 times the size of 1:
 
-Every concept currently has a **placeholder** importance assigned by Claude
-(landmark theories and frameworks 5, learning goals and resources 1–2). Change
-them freely. A missing value falls back to `generality`, then to a
+| Generality | 1 | 2 | 4 | 6 | 8 | 10 |
+|---|---|---|---|---|---|---|
+| Circle radius (px at zoom 1) | 7 | 10 | 23 | 53 | 118 | 270 |
+
+From generality 6 up, the name is written **inside** the circle, like a region's
+name on a map, and grows with it. Zoom in far enough that a circle is wider than
+the screen and it fades to a faint outline: you've zoomed past it, and what's
+around it takes over.
+
+The 12 values from Sophie's sheets (on the old 1–5 scale) were doubled. The
+other concepts got a **placeholder** generality from Claude's old importance
+value (also doubled). Change them freely. A missing value falls back to a
 connection-count estimate (learning goals 1).
 
-### `generality` (1–5)
+### `importance` (1–50): how close you have to zoom to see it
 
-An optional integer, 1 (most specific) to 5 (most general). It no longer drives
-size directly; it's the fallback when `importance` is missing.
+An optional integer, 1 (minor detail) to 50 (landmark). The map works like a
+street map: zoomed out you see only the landmarks, and zooming in reveals more
+and more specific concepts, with the relations between them. Every value is its
+own depth — each 8 points lower needs a zoom twice as close:
+
+| Importance | Appears at |
+|---|---|
+| 50 | always |
+| 40 | the whole-map view |
+| 32 | 2× closer |
+| 24 | 4× closer |
+| 16 | 8× closer |
+| 8 | 16× closer |
+| 1 | about 30× closer |
+
+So to have very specific concepts around *Dark Matter* show only when you're
+right next to it, give them a low importance; they sit next to it because
+they're connected to it. A concept you've selected, its direct connections, and
+every step of an active goal path always stay visible, whatever their
+importance. Hovering a concept also shows its hidden neighbours. **Show all
+concepts** in the map controls turns the depth off.
+
+Every concept has a **placeholder** importance assigned by Claude (old 1–5 scale
+× 10: landmark theories and frameworks 50, learning goals and resources 10–20).
+Change them freely. A missing value falls back to a connection-count estimate
+(learning goals 1).
+
+The two are independent on purpose. A very general idea can still be a minor
+stop on this map (a big circle that only appears up close), and a narrow one can
+be a landmark (a small circle that's always there).
 
 ### What a concept's card shows
 
@@ -493,8 +526,19 @@ exactly the files a merge adds:
 3. The proposer's **pull-request text** (title, claim, what it adds, evidence) is the
    description for the commit or pull request. The claim and evidence are for reviewers and
    stay out of the concept files.
-4. Set `importance` yourself. The editor doesn't ask for it, so a new concept starts at the
-   fallback size until you do.
+4. Check `generality` (circle size, 1–10) and `importance` (zoom visibility, 1–50). The
+   proposer may have suggested them; if a field is missing, set it yourself, or the concept
+   falls back to a size and visibility estimated from its connections.
+
+**An edit** (from **✎ Propose an edit** on a concept's card) exports the concept's file under
+its own name: it **replaces** the old one. Its new relations are extra files, and the
+relations it removes are listed as files to **delete**. Fields the form doesn't show (review
+notes, equation variables, epistemic status) are carried over unchanged.
+
+**A proposal that depends on another one** (its pull-request text has a **Depends on**
+section) relates to a concept that isn't accepted yet. Take in the one it depends on first.
+If you reject that one, delete the dependent proposal's relation files that point at it, and
+take in the rest as usual.
 
 ## Before committing
 

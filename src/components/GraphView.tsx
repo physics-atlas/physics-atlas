@@ -4,15 +4,18 @@ import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import type { ConceptGraph, GraphEdge, GraphNode, Topic } from '../data/types';
 import type { ConceptOverlay } from '../community/proposals';
-import { NEW_CONCEPT } from '../community/draft';
+import type { DraftShape } from '../community/draft';
 import { buildTopicMap, buildUnitGraph, parseUnitId, resolveSubtopicRef } from '../graph/dag';
 import { CATEGORY_COLORS, categoryOf } from '../graph/categoryColors';
 import {
   buildConceptIndex,
+  INSIDE_LABEL_RADIUS,
   effectiveImportance,
   joinList,
+  labelSize,
   nodeRadius,
   normalizeRelationship,
+  revealZoom,
 } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import { TYPE_COLORS } from '../graph/typeColors';
@@ -32,10 +35,8 @@ import type { LayoutScore, NodeBox, Pos, Positions, Segment } from '../graph/lay
 cytoscape.use(dagre);
 
 const ICON_BOOST_PX = 14;
-// Map-style level of detail: a concept of importance i shows once the zoom
-// reaches REVEAL_AT[i] × the whole-map overview zoom. Landmarks (5) always
-// show; the overview shows 4 and up; minor details need a close look.
-const REVEAL_AT: Record<number, number> = { 1: 3.2, 2: 2.2, 3: 1.45, 4: 0.8, 5: 0 };
+/** A circle wider than this share of the view has been zoomed past: it fades to an outline. */
+const PAST_VIEW = 0.9;
 /** Classes that keep a concept on screen at any zoom — what the user is looking at. */
 // Proposals (.overlay) and the confirmed concepts they attach to stay visible
 // while the proposed layer is on — a proposal must never look disconnected.
@@ -51,6 +52,8 @@ const PINNED = [
   'draft',
   'draft-anchor',
   'draft-near',
+  'draft-subject',
+  'edit-proposed',
   'conflict-match',
 ];
 /** Neither layer of reviewed content: the proposals and the proposer's own draft. */
@@ -62,7 +65,7 @@ const NEAR_RADIUS = 450;
 interface GraphViewProps {
   /**
    * The input variant: pass exactly one of `topics` (topic/subtopic DAG) or
-   * `concepts` (typed concept graph — circles sized by importance, 1-hop
+   * `concepts` (typed concept graph — circles sized by generality, 1-hop
    * hover, relation-labelled edges, map-style zoom level of detail).
    */
   topics?: Topic[];
@@ -116,26 +119,26 @@ interface GraphViewProps {
   /** More buttons for the map's control bar (e.g. layer toggles). */
   extraControls?: ReactNode;
   /**
-   * The proposal being drafted (concept variant): a ghost concept the proposer
-   * can drag around to see where it fits, and its relations. Confirmed
-   * concepts never move for it, and its position is never reported as data.
+   * The proposals being drafted (concept variant): a ghost per new concept,
+   * which the proposer can drag to see where it fits, edits previewed on the
+   * confirmed concept, and their relations. Confirmed concepts never move for
+   * them, and ghost positions are never reported as data.
    */
   draft?: DraftOverlay | null;
   /**
-   * The confirmed concepts nearest the ghost, nearest first — after it's
-   * placed, re-placed or dragged. `byHand`: the proposer has dragged it.
+   * The confirmed concepts nearest a ghost, nearest first — after it's placed,
+   * re-placed or dragged. `byHand`: the proposer has dragged it; `ghostId`:
+   * which one (dragging a ghost makes its draft the active one).
    */
-  onDraftNear?: (ids: string[], byHand: boolean) => void;
-  /** Bump to move the ghost into the middle of the view. */
+  onDraftNear?: (ids: string[], byHand: boolean, ghostId: string) => void;
+  /** Bump to move the active ghost into the middle of the view. */
   draftRecall?: number;
 }
 
 export interface DraftOverlay {
-  /** The new concept, under NEW_CONCEPT */
-  node: GraphNode;
-  /** No kind chosen yet: drawn neutral, without a type colour or glyph */
-  untyped?: boolean;
-  edges: GraphEdge[];
+  drafts: DraftShape[];
+  /** The draft the editor shows: its ghost glows strongest and gets the suggestions */
+  activeKey: string | null;
   /** Concepts offered as connections — marked "＋ Connect?" */
   nearIds: string[];
   /** Existing concepts with a name like the draft's — marked "≈ Similar name" */
@@ -144,6 +147,9 @@ export interface DraftOverlay {
 
 const ZOOM_STEP = 1.5;
 const NO_IDS: string[] = [];
+const NO_SHAPES: DraftShape[] = [];
+/** What an edit draft overrides on the confirmed concept while it's previewed. */
+const SUBJECT_KEYS = ['title', 'label', 'badge', 'color', 'size', 'radius', 'importance', 'fontSize', 'type', 'icon'];
 const DRAFT_BADGE = 'Draft · not submitted';
 /** The zoom the editor opens at, at least: mid-importance names are readable (15px × 0.75 ≥ 9px). */
 const DRAFT_ZOOM = 0.75;
@@ -166,6 +172,24 @@ function overviewZoom(cy: cytoscape.Core, insets: Insets): number {
   const w = Math.max(cy.width() - insets.left - insets.right - 2 * FIT_PADDING, 1);
   const h = Math.max(cy.height() - insets.bottom - 2 * FIT_PADDING, 1);
   return fitZoom(cy.elements().boundingBox(), w, h);
+}
+
+/**
+ * A relation's name plus what's proposed for it, in words — a removal by an
+ * open proposal, or by the proposer's own draft. Restores the plain name when
+ * neither applies any more.
+ */
+function refreshEdgeNotes(cy: cytoscape.Core) {
+  cy.edges().forEach((e) => {
+    const marked = e.hasClass('removal-proposed') || e.hasClass('removal-draft');
+    if (!marked && e.data('relationBase') === undefined) return;
+    if (e.data('relationBase') === undefined) e.data('relationBase', e.data('relation'));
+    const notes = [
+      e.hasClass('removal-proposed') ? '(removal proposed)' : '',
+      e.hasClass('removal-draft') ? '(your draft removes this)' : '',
+    ].filter(Boolean);
+    e.data('relation', [e.data('relationBase'), ...notes].join('\n'));
+  });
 }
 
 /** The model point in the middle of the canvas area the panels leave visible. */
@@ -265,7 +289,7 @@ const styleFor = (large: boolean, light: boolean) => {
       'background-opacity': 0.55,
       'text-valign': 'bottom',
       'text-margin-y': 4,
-      'text-max-width': '140px',
+      'text-max-width': 'data(labelWidth)',
       // More important concepts get bigger names, like a map's city labels;
       // names too small to read on screen are dropped.
       'font-size': 'data(fontSize)',
@@ -283,10 +307,26 @@ const styleFor = (large: boolean, light: boolean) => {
       'background-image-opacity': 0.95,
     },
   },
+  // A big concept: its name inside the circle on a plate (readable over the
+  // fill), the glyph above it.
+  {
+    selector: 'node.concept-node.label-inside',
+    style: {
+      'text-valign': 'center',
+      'text-margin-y': 'data(labelShift)',
+      'text-background-color': surface,
+      'text-background-opacity': 0.78,
+      'text-background-padding': '4px',
+      'text-background-shape': 'roundrectangle',
+      'background-position-y': '22%',
+      'background-width': '42%',
+      'background-height': '42%',
+    },
+  },
   // Zoomed out, the circle is only a few px across — let the glyph fill more of it.
   {
     selector: 'node.concept-node[icon].icon-boost',
-    style: { 'background-width': '86%', 'background-height': '86%' },
+    style: { 'background-width': '86%', 'background-height': '86%', 'background-position-y': '50%' },
   },
   // Proposed layer — status by outline pattern and the badge line in the
   // label, never by fill: the fill still says the concept's type. Defined
@@ -297,7 +337,7 @@ const styleFor = (large: boolean, light: boolean) => {
     style: {
       'border-style': 'dashed',
       // room for the badge line ("Proposed · ✓2 ✗0 ?1") at the selected font size
-      'text-max-width': '220px',
+      'text-max-width': 'data(labelWidthWide)',
       'border-width': 3,
       'border-color': ink,
       'border-opacity': 1,
@@ -327,7 +367,7 @@ const styleFor = (large: boolean, light: boolean) => {
       'border-color': accent,
       'border-opacity': 1,
       'background-opacity': 0.3,
-      'text-max-width': '220px',
+      'text-max-width': 'data(labelWidthWide)',
       'underlay-color': accent,
       'underlay-opacity': 0.22,
       'underlay-padding': 10,
@@ -345,6 +385,36 @@ const styleFor = (large: boolean, light: boolean) => {
       'line-opacity': 0.95,
     },
   },
+  // The draft the editor shows glows strongest; the others stay dashed but quieter.
+  { selector: 'node.draft.draft-active', style: { 'border-width': 4, 'underlay-opacity': 0.38, 'underlay-padding': 12 } },
+  { selector: 'edge.draft.draft-idle', style: { 'line-opacity': 0.55, width: 2 } },
+  // An edit draft previews on the confirmed concept itself ("✎ Editing · draft").
+  {
+    selector: 'node.draft-subject',
+    style: {
+      'border-style': 'dashed',
+      'border-width': 4,
+      'border-color': accent,
+      'border-opacity': 1,
+      'underlay-color': accent,
+      'underlay-opacity': 0.3,
+      'underlay-padding': 10,
+      'underlay-shape': 'ellipse',
+      'text-max-width': 'data(labelWidthWide)',
+    },
+  },
+  // Removals: dotted, with the reason in words on the line ("(removal proposed)").
+  {
+    selector: 'edge.removal-draft',
+    style: { 'line-style': 'dotted', 'line-color': accent, 'target-arrow-color': accent, width: 2.5 },
+  },
+  // Someone else's open edit: the confirmed concept gets a dashed ink outline
+  // and "✎ Edit proposed · ✓…" in its label.
+  {
+    selector: 'node.edit-proposed',
+    style: { 'border-style': 'dashed', 'border-width': 3, 'border-color': ink, 'border-opacity': 1, 'text-max-width': 'data(labelWidthWide)' },
+  },
+  { selector: 'edge.removal-proposed', style: { 'line-style': 'dotted', 'line-color': ink, 'line-opacity': 0.75 } },
   // Offered as a connection ("＋ Connect?" in the label) / named like the draft ("≈ Similar name").
   {
     selector: 'node.draft-near',
@@ -520,6 +590,19 @@ const styleFor = (large: boolean, light: boolean) => {
     style: { opacity: 0, 'text-opacity': 0, events: 'no', 'transition-duration': fadeDuration },
   },
   { selector: 'edge.zoom-hidden', style: { opacity: 0, events: 'no', 'transition-duration': fadeDuration } },
+  // Zoomed past a big concept: only a faint outline is left, and it no longer
+  // catches clicks meant for the concepts around it.
+  {
+    selector: 'node.zoom-past',
+    style: {
+      'background-opacity': 0.05,
+      'background-image-opacity': 0.08,
+      'border-opacity': 0.3,
+      'text-opacity': 0,
+      events: 'no',
+      'transition-duration': fadeDuration,
+    },
+  },
   // Layer toggles: a hidden layer is gone; confirmed concepts a proposal
   // attaches to stay as faint context.
   { selector: 'node.layer-context', style: { opacity: 0.35 } },
@@ -605,7 +688,7 @@ const styleFor = (large: boolean, light: boolean) => {
       'z-index': 20,
     },
   },
-  // Circles are sized by importance — keep the grow small and the fill
+  // Circles are sized by generality — keep the grow small and the fill
   // stronger than the topic boxes' tint, or small circles vanish on hover.
   { selector: 'node.concept-node.hovered', style: { padding: '3px' } },
   {
@@ -653,7 +736,7 @@ const layoutFor = (large: boolean) =>
 const SEARCH_SEEDS = 24;
 const COMPONENT_GAP = 120;
 const LONE_NODE_GAP = 40;
-const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v4';
+const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v6';
 const layoutCache = new Map<string, Positions>();
 
 interface ConceptComponent {
@@ -874,6 +957,7 @@ function nodeLabel(title: string, { goal = false, done = false, badge }: { goal?
 function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, classes = '', badge?: string) {
   const importance = effectiveImportance(n, degree);
   const radius = nodeRadius(n, degree);
+  const inside = radius >= INSIDE_LABEL_RADIUS;
   return {
     data: {
       id: n.id,
@@ -884,11 +968,15 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
       size: 2 * radius,
       radius,
       importance,
-      fontSize: 10.5 + importance * 1.5,
+      fontSize: labelSize(importance, radius),
+      // A big concept's name sits inside its circle, in its lower half.
+      labelWidth: inside ? 1.5 * radius : 140,
+      labelWidthWide: inside ? 1.5 * radius : 220,
+      labelShift: inside ? 0.4 * radius : 4,
       type: n.type,
       icon: typeIconUri(n.type, iconColor) ?? undefined,
     },
-    classes: `concept-node ${classes}`.trim(),
+    classes: `concept-node${inside ? ' label-inside' : ''} ${classes}`.trim(),
     // Only the draft can be dragged; everything else is placed by the layout.
     grabbable: false,
   };
@@ -992,8 +1080,11 @@ export default function GraphView({
   const viewportTouchedRef = useRef(false);
   const onDraftNearRef = useRef(onDraftNear);
   onDraftNearRef.current = onDraftNear;
-  /** Where the ghost sits (session only — never data), and whether the proposer dragged it there. */
-  const draftPlaceRef = useRef<{ pos: Pos; byHand: boolean; anchors: string } | null>(null);
+  /** Where each ghost sits (session only — never data), and whether the proposer dragged it there. */
+  const draftPlaceRef = useRef(new Map<string, { pos: Pos; byHand: boolean; anchors: string }>());
+  const activeGhostRef = useRef<string | null>(null);
+  /** Confirmed concepts previewed as edited, with what they showed before. */
+  const subjectBaseRef = useRef(new Map<string, Record<string, unknown>>());
   // The whole-graph fit keeps only the bottom strip (legend) clear — side
   // panels belong to a selection and are gone when nothing is selected.
   // "Show all" switches the zoom level of detail off — everything visible at
@@ -1010,11 +1101,11 @@ export default function GraphView({
     bottom: fitInsetsRef.current?.bottom ?? 0,
   });
 
-  /** Tells the editor which confirmed concepts sit nearest the ghost. */
-  const reportNear = () => {
+  /** Tells the editor which confirmed concepts sit nearest a ghost (the active one by default). */
+  const reportNear = (ghostId = activeGhostRef.current) => {
     const cy = cyRef.current;
-    const ghost = cy?.$id(NEW_CONCEPT);
-    if (!cy || !ghost || ghost.empty()) return;
+    const ghost = ghostId ? cy?.$id(ghostId) : undefined;
+    if (!cy || !ghostId || !ghost || ghost.empty()) return;
     const p = ghost.position();
     const d = (n: cytoscape.NodeSingular) => Math.hypot(n.position().x - p.x, n.position().y - p.y);
     const near = cy
@@ -1025,7 +1116,7 @@ export default function GraphView({
       .sort((a, b) => d(a as cytoscape.NodeSingular) - d(b as cytoscape.NodeSingular))
       .slice(0, NEAR_COUNT)
       .map((n) => n.id());
-    onDraftNearRef.current?.(near, draftPlaceRef.current?.byHand ?? false);
+    onDraftNearRef.current?.(near, draftPlaceRef.current.get(ghostId)?.byHand ?? false, ghostId);
   };
 
   // (Re)build the graph when the topic/concept set (or expansion) changes
@@ -1096,11 +1187,15 @@ export default function GraphView({
       fadeFrame = 0;
       const z = cy.zoom();
       const overview = overviewZoom(cy, overviewInsets());
+      // Zoomed in so far that a circle is bigger than the view: you're past it.
+      const pastAt = PAST_VIEW * Math.min(cy.width(), cy.height());
       cy.batch(() => {
         cy.nodes().forEach((n) => {
           const pinned = showAllRef.current || PINNED.some((c) => n.hasClass(c));
-          const reveal = REVEAL_AT[n.data('importance') as number] ?? 0;
+          const reveal = revealZoom(n.data('importance') as number);
+          const onScreen = 2 * (n.data('radius') as number) * z;
           n.toggleClass('zoom-hidden', !pinned && z < reveal * overview);
+          n.toggleClass('zoom-past', !n.hasClass('chosen') && onScreen > pastAt);
           n.toggleClass('icon-boost', (n.data('radius') as number) * z < ICON_BOOST_PX);
         });
         cy.edges().forEach((e) => {
@@ -1121,20 +1216,21 @@ export default function GraphView({
     let dragFrame = 0;
     if (concepts) {
       cy.on('drag', 'node.draft', (e) => {
-        const anchors = draftPlaceRef.current?.anchors ?? '';
-        draftPlaceRef.current = { pos: { ...(e.target as cytoscape.NodeSingular).position() }, byHand: true, anchors };
+        const n = e.target as cytoscape.NodeSingular;
+        const anchors = draftPlaceRef.current.get(n.id())?.anchors ?? '';
+        draftPlaceRef.current.set(n.id(), { pos: { ...n.position() }, byHand: true, anchors });
         if (!dragFrame)
           dragFrame = window.requestAnimationFrame(() => {
             dragFrame = 0;
-            reportNear();
+            reportNear(n.id());
           });
       });
       cy.on('grab', 'node.draft', () => {
         if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
       });
-      cy.on('free', 'node.draft', () => {
+      cy.on('free', 'node.draft', (e) => {
         if (containerRef.current) containerRef.current.style.cursor = 'grab';
-        reportNear();
+        reportNear((e.target as cytoscape.NodeSingular).id());
       });
     }
 
@@ -1322,90 +1418,144 @@ export default function GraphView({
     };
   }, [overlay, topics, concepts, large, expandedIds, theme, unitPathIds]);
 
-  // The draft: a ghost the proposer drags to see where the idea fits. It's
-  // added after the confirmed layout and is never part of it — confirmed
-  // concepts don't move for it, and its position stays in this session.
-  const draftPresent = Boolean(draft);
+  // The drafts: a ghost per new concept, which the proposer drags to see where
+  // the idea fits, and for an edit the confirmed concept itself, previewed as
+  // edited. Added after the confirmed layout and never part of it — confirmed
+  // concepts don't move for them, and ghost positions stay in this session.
+  const draftShapes = draft?.drafts ?? NO_SHAPES;
+  const activeDraft = draft?.activeKey ?? null;
   const draftNearIds = draft?.nearIds ?? NO_IDS;
   const draftConflictIds = draft?.conflictIds ?? NO_IDS;
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || !concepts) return;
-    if (!draft) {
-      cy.remove('.draft');
-      cy.nodes().removeClass('draft-anchor');
-      draftPlaceRef.current = null;
-      return;
-    }
     const insets = fitInsetsRef.current ?? NO_INSETS;
-    const el = conceptNodeElement(draft.node, draft.edges.length, theme === 'light' ? '#1c2333' : '#ffffff', 'draft', DRAFT_BADGE);
-    if (draft.untyped) {
-      el.data.color = theme === 'light' ? '#5c6a88' : '#cdd6e8';
-      el.data.icon = undefined;
+    const iconColor = theme === 'light' ? '#1c2333' : '#ffffff';
+    const places = draftPlaceRef.current;
+    const ghostIds = new Set(draftShapes.flatMap((s) => (s.ghost ? [s.ghost.id] : [])));
+    cy.nodes('.draft').forEach((n) => {
+      if (!ghostIds.has(n.id())) {
+        n.remove();
+        places.delete(n.id());
+      }
+    });
+    activeGhostRef.current = draftShapes.find((s) => s.key === activeDraft)?.ghost?.id ?? null;
+
+    // Edits: the confirmed concept shows its edited name and size while drafting.
+    const bases = subjectBaseRef.current;
+    for (const [id, base] of bases) cy.$id(id).data(base).removeClass('draft-subject');
+    bases.clear();
+    const degree = (id: string) => cy.$id(id).degree(false);
+    for (const s of draftShapes) {
+      const n = s.subjectId ? cy.$id(s.subjectId) : cy.collection();
+      if (!s.subject || n.empty()) continue;
+      if (!bases.has(n.id())) bases.set(n.id(), Object.fromEntries(SUBJECT_KEYS.map((k) => [k, n.data(k)])));
+      const { id: _id, ...data } = conceptNodeElement(s.subject, degree(n.id()), iconColor, '', '✎ Editing · draft').data;
+      void _id;
+      n.data(data).addClass('draft-subject');
     }
-    let ghost = cy.$id(NEW_CONCEPT);
-    const fresh = ghost.empty();
-    // A new ghost needs a zoom where concept names are readable; zoom in (never
-    // out) about the middle of the view, which is where the ghost appears.
-    if (fresh && !draftPlaceRef.current && cy.zoom() < DRAFT_ZOOM) {
-      const w = cy.width() - insets.left - insets.right;
-      cy.zoom({ level: DRAFT_ZOOM, renderedPosition: { x: insets.left + w / 2, y: (cy.height() - insets.bottom) / 2 } });
-      applyFadeRef.current?.();
+
+    // Ghosts first, so relations between two drafts find both ends.
+    const fresh = new Set<string>();
+    for (const s of draftShapes) {
+      if (!s.ghost) continue;
+      const el = conceptNodeElement(s.ghost, s.edges.length, iconColor, 'draft', DRAFT_BADGE);
+      if (s.untyped) {
+        el.data.color = theme === 'light' ? '#5c6a88' : '#cdd6e8';
+        el.data.icon = undefined;
+      }
+      let ghost = cy.$id(s.ghost.id);
+      if (ghost.empty()) {
+        // A first ghost needs a zoom where concept names are readable; zoom in
+        // (never out) about the middle of the view, which is where it appears.
+        if (places.size === 0 && fresh.size === 0 && cy.zoom() < DRAFT_ZOOM) {
+          const w = cy.width() - insets.left - insets.right;
+          cy.zoom({ level: DRAFT_ZOOM, renderedPosition: { x: insets.left + w / 2, y: (cy.height() - insets.bottom) / 2 } });
+          applyFadeRef.current?.();
+        }
+        ghost = cy.add({ ...el, group: 'nodes', grabbable: true, position: visibleCentre(cy, insets) });
+        fresh.add(s.ghost.id);
+      } else ghost.data(el.data);
+      ghost.toggleClass('draft-active', s.key === activeDraft);
     }
-    if (fresh) ghost = cy.add({ ...el, group: 'nodes', grabbable: true, position: visibleCentre(cy, insets) });
-    else ghost.data(el.data);
 
     cy.remove('edge.draft');
-    const shown = draft.edges.filter((e) => cy.$id(e.source).nonempty() && cy.$id(e.target).nonempty());
-    cy.add(shown.map((e) => ({ ...conceptEdgeElement(e, 'draft', 'draft'), group: 'edges' as const })));
+    const shown = draftShapes.flatMap((s) =>
+      s.edges
+        .filter((e) => cy.$id(e.source).nonempty() && cy.$id(e.target).nonempty())
+        .map((e) => ({ edge: e, active: s.key === activeDraft })),
+    );
+    cy.add(
+      shown.map(({ edge, active }) => ({
+        ...conceptEdgeElement(edge, active ? 'draft' : 'draft draft-idle', 'draft'),
+        group: 'edges' as const,
+      })),
+    );
     cy.nodes().removeClass('draft-anchor');
-    const anchors = [...new Set(shown.flatMap((e) => [e.source, e.target]))].filter((id) => id !== NEW_CONCEPT).sort();
-    for (const id of anchors) cy.$id(id).addClass('draft-anchor');
+    for (const { edge } of shown)
+      for (const end of [edge.source, edge.target]) if (!ghostIds.has(end)) cy.$id(end).addClass('draft-anchor');
+    cy.edges().removeClass('removal-draft');
+    for (const s of draftShapes) for (const id of s.removals) cy.$id(id).addClass('removal-draft');
+    refreshEdgeNotes(cy);
 
-    // Until the proposer drags it, the ghost follows its connections — the
+    // Until the proposer drags it, a ghost follows its connections — the
     // keyboard route gets the same visual aid. Once dragged, it stays put.
-    const key = anchors.join(' ');
-    const place = draftPlaceRef.current;
-    if (!place || (!place.byHand && place.anchors !== key)) {
+    let animating = false;
+    for (const s of draftShapes) {
+      if (!s.ghost) continue;
+      const id = s.ghost.id;
+      const ghost = cy.$id(id);
+      const touching = shown.map(({ edge }) => edge).filter((e) => e.source === id || e.target === id);
+      const anchors = [...new Set(touching.flatMap((e) => [e.source, e.target]))].filter((x) => x !== id).sort();
+      const key = anchors.join(' ');
+      const place = places.get(id);
+      if (place && (place.byHand || place.anchors === key)) {
+        places.set(id, { ...place, anchors: key });
+        if (fresh.has(id)) ghost.position(place.pos);
+        continue;
+      }
       const fixed: Positions = {};
-      cy.nodes().not('.draft').forEach((n) => {
-        fixed[n.id()] = { ...n.position() };
+      cy.nodes().forEach((n) => {
+        if (n.id() !== id) fixed[n.id()] = { ...n.position() };
       });
       const boxes = nodeBoxes(cy.nodes());
       const pos = anchors.length
-        ? placeNew(fixed, [NEW_CONCEPT], shown.map((e) => [e.source, e.target] as Segment), boxes, createRng(7))[NEW_CONCEPT]
-        : removeOverlaps({ ...fixed, [NEW_CONCEPT]: visibleCentre(cy, insets) }, boxes, 60, new Set([NEW_CONCEPT]))[NEW_CONCEPT];
-      draftPlaceRef.current = { pos, byHand: false, anchors: key };
+        ? placeNew(fixed, [id], touching.map((e) => [e.source, e.target] as Segment), boxes, createRng(7))[id]
+        : removeOverlaps({ ...fixed, [id]: ghost.position() }, boxes, 60, new Set([id]))[id];
+      places.set(id, { pos, byHand: false, anchors: key });
+      const isActive = s.key === activeDraft;
       const reframe = () => {
-        const eles = ghost.union(cy.nodes().filter((n) => n.hasClass('draft-anchor')));
+        if (!isActive) return;
+        const eles = ghost.union(cy.nodes().filter((n) => anchors.includes(n.id())));
         if (anchors.length && !inView(cy, eles, insets)) fitBeside(cy, eles, insets);
         reportNear();
       };
-      if (fresh || reducedMotion()) {
+      if (fresh.has(id) || reducedMotion()) {
         ghost.position(pos);
         reframe();
-      } else ghost.animate({ position: pos }, { duration: 400, easing: 'ease-in-out-cubic', complete: reframe });
-    } else {
-      draftPlaceRef.current = { ...place, anchors: key };
-      if (fresh) ghost.position(place.pos);
+      } else {
+        if (isActive) animating = true;
+        ghost.animate({ position: pos }, { duration: 400, easing: 'ease-in-out-cubic', complete: reframe });
+      }
     }
-  }, [draft, theme, topics, concepts, large, expandedIds, unitPathIds]);
+    if (!animating) reportNear();
+  }, [draftShapes, activeDraft, theme, topics, concepts, large, expandedIds, unitPathIds]);
 
-  // "Bring the draft into view": after panning or a search jump, the ghost may
-  // be off screen — this puts it in the middle of the view, as if dragged there.
+  // "Bring the draft into view": after panning or a search jump, the active
+  // ghost may be off screen — this puts it in the middle of the view, as if
+  // dragged there.
   useEffect(() => {
     const cy = cyRef.current;
-    const ghost = cy?.$id(NEW_CONCEPT);
-    if (!draftRecall || !cy || !ghost || ghost.empty()) return;
+    const id = activeGhostRef.current;
+    const ghost = id ? cy?.$id(id) : undefined;
+    if (!draftRecall || !cy || !id || !ghost || ghost.empty()) return;
     const fixed: Positions = {};
-    cy.nodes().not('.draft').forEach((n) => {
-      fixed[n.id()] = { ...n.position() };
+    cy.nodes().forEach((n) => {
+      if (n.id() !== id) fixed[n.id()] = { ...n.position() };
     });
     const centre = visibleCentre(cy, fitInsetsRef.current ?? NO_INSETS);
-    const pos = removeOverlaps({ ...fixed, [NEW_CONCEPT]: centre }, nodeBoxes(cy.nodes()), 60, new Set([NEW_CONCEPT]))[
-      NEW_CONCEPT
-    ];
-    draftPlaceRef.current = { pos, byHand: true, anchors: draftPlaceRef.current?.anchors ?? '' };
+    const pos = removeOverlaps({ ...fixed, [id]: centre }, nodeBoxes(cy.nodes()), 60, new Set([id]))[id];
+    draftPlaceRef.current.set(id, { pos, byHand: true, anchors: draftPlaceRef.current.get(id)?.anchors ?? '' });
     ghost.position(pos);
     reportNear();
   }, [draftRecall]);
@@ -1419,19 +1569,30 @@ export default function GraphView({
     const cy = cyRef.current;
     if (!cy || !concepts) return;
     cy.batch(() => {
-      cy.elements().removeClass('layer-hidden layer-context anchor-pinned');
-      if (showOverlay) cy.nodes('.overlay-anchor').addClass('anchor-pinned');
-      else cy.elements('.overlay').addClass('layer-hidden');
+      cy.elements().removeClass('layer-hidden layer-context anchor-pinned edit-proposed removal-proposed');
+      cy.nodes().forEach((n) => {
+        if (n.data('mark') !== undefined) n.removeData('mark');
+      });
+      if (showOverlay) {
+        cy.nodes('.overlay-anchor').addClass('anchor-pinned');
+        // Edits and removals of confirmed concepts: marked on the concept itself.
+        for (const m of overlay?.edits ?? []) cy.$id(m.id).addClass('edit-proposed').data('mark', m.badge);
+        for (const m of overlay?.removals ?? []) cy.$id(m.id).addClass('removal-proposed');
+      } else cy.elements('.overlay').addClass('layer-hidden');
+      refreshEdgeNotes(cy);
       if (!showConfirmed) {
         cy.nodes().not(NOT_CONFIRMED).forEach((n) => {
-          const context = (showOverlay && n.hasClass('overlay-anchor')) || n.hasClass('draft-anchor');
+          const context =
+            (showOverlay && (n.hasClass('overlay-anchor') || n.hasClass('edit-proposed'))) ||
+            n.hasClass('draft-anchor') ||
+            n.hasClass('draft-subject');
           n.addClass(context ? 'layer-context' : 'layer-hidden');
         });
         cy.edges().not(NOT_CONFIRMED).addClass('layer-hidden');
       }
     });
     applyFadeRef.current?.();
-  }, [showConfirmed, showOverlay, overlay, draft, topics, concepts, large, expandedIds, theme, unitPathIds]);
+  }, [showConfirmed, showOverlay, overlay, draftShapes, topics, concepts, large, expandedIds, theme, unitPathIds]);
 
   // Apply selection/path highlighting without re-layout
   useEffect(() => {
@@ -1450,7 +1611,9 @@ export default function GraphView({
         const isGoal = goalId != null && n.id() === goalId;
         // The draft's marks say in words what their glow shows.
         const hint = similar.has(n.id()) ? '≈ Similar name' : near.has(n.id()) ? '＋ Connect?' : undefined;
-        const badge = [n.data('badge') as string | undefined, hint].filter(Boolean).join(' · ') || undefined;
+        const badge =
+          [n.data('badge') as string | undefined, n.data('mark') as string | undefined, hint].filter(Boolean).join(' · ') ||
+          undefined;
         n.data('label', nodeLabel(title, { goal: isGoal, done: isDone, badge }));
         if (isDone) n.addClass('done');
         if (near.has(n.id())) n.addClass('draft-near');
@@ -1484,7 +1647,21 @@ export default function GraphView({
     });
     // What's pinned just changed — re-run the zoom level of detail.
     applyFadeRef.current?.();
-  }, [selectedId, highlightIds, doneIds, topics, concepts, directionalSelect, goalId, theme, overlay, draftNearIds, draftConflictIds, draftPresent]);
+  }, [
+    selectedId,
+    highlightIds,
+    doneIds,
+    topics,
+    concepts,
+    directionalSelect,
+    goalId,
+    theme,
+    overlay,
+    showOverlay,
+    draftNearIds,
+    draftConflictIds,
+    draftShapes,
+  ]);
 
   // Glide to the focused concept (search / home jumps) — a smooth pan+zoom
   // that frames the concept with its immediate connections, rather than a

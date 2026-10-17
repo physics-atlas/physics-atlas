@@ -1,0 +1,46 @@
+{
+  "id": "sample-jeans-mass",
+  "title": "Sample: Jeans mass, building on the Jeans scale proposal",
+  "state": "open",
+  "author": {
+    "name": "Sample contributor C"
+  },
+  "createdAt": "2026-10-08T09:00:00Z",
+  "claim": "**Sample data for testing.** This proposal relates to *Jeans scale*, which is itself only proposed — so it depends on that proposal. If *Jeans scale* is rejected, the relation to it is dropped and the rest stands.",
+  "evidence": [],
+  "nodes": [
+    {
+      "id": "jeans_mass_s4",
+      "type": "property",
+      "label": "Jeans mass",
+      "importance": 20,
+      "generality": 4,
+      "attrs": {
+        "description": "Sample: the mass enclosed in a sphere of one Jeans length.",
+        "domain": "Cosmology"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "s4_e1",
+      "source": "jeans_mass_s4",
+      "target": "jeans_scale_s1",
+      "relationship": "depends on"
+    },
+    {
+      "id": "s4_e2",
+      "source": "jeans_mass_s4",
+      "target": "structure_formation",
+      "relationship": "relates"
+    }
+  ],
+  "dependsOn": [
+    "sample-jeans-scale"
+  ],
+  "tally": {
+    "verify": 0,
+    "dispute": 0,
+    "clarify": 0
+  }
+}

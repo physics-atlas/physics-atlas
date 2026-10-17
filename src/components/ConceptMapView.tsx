@@ -1,14 +1,15 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
-import type { ConceptGraph, GraphEdge } from '../data/types';
-import { NEW_CONCEPT, draftLayer, hasContent } from '../community/draft';
-import { mergedGraph, overlayFor, proposalByNode, badgeText } from '../community/proposals';
+import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
+import { NEW_CONCEPT, draftRef, draftShape, hasContent, mapId, newDraft, newEditDraft, proposalTitle } from '../community/draft';
+import type { DraftContext, DraftShape } from '../community/draft';
+import { badgeText, mergedGraph, overlayFor, proposalByNode, proposalsAbout } from '../community/proposals';
 import { FixtureStore } from '../community/store';
 import type { Proposal } from '../community/types';
-import { useDraft } from '../community/useDraft';
+import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
 import { buildConceptIndex, conceptPathFor, neighborsOf } from '../graph/concepts';
-import type { ConceptIndex } from '../graph/concepts';
+import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
 import ConceptCard, { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
@@ -24,7 +25,8 @@ const ProposalCard = lazy(() => import('./ProposalCard'));
 const DraftEditor = lazy(() => import('./DraftEditor'));
 
 const NO_PROPOSALS: Proposal[] = [];
-const NO_NEAR = { ids: [] as string[], byHand: false };
+const NO_NEAR = { ids: [] as string[], byHand: false, ghost: '' };
+const NO_SHAPES: DraftShape[] = [];
 /** How many concepts the editor offers as connections at a time. */
 const OFFERED = 4;
 const PROGRESS_PREFIX = 'concept:';
@@ -98,83 +100,159 @@ export default function ConceptMapView({
     [activeProposals, graph, index],
   );
 
-  // The proposal editor (community preview): one draft, kept in this browser.
-  // The map shows it as a ghost the proposer can drag to see where it fits.
-  const drafts = useDraft();
+  // The proposal editor (community preview): drafts kept in this browser, one
+  // proposal each. The map shows each new concept as a ghost the proposer can
+  // drag, and previews an edit on the confirmed concept itself.
+  const drafts = useDrafts();
   const [editorOpen, setEditorOpen] = useState(false);
-  const draft = community && editorOpen ? drafts.draft : null;
-  const drafting = draft !== null;
+  const drafting = community && editorOpen && drafts.drafts.length > 0;
+  const draft = drafting ? (drafts.drafts.find((d) => d.suffix === drafts.active) ?? drafts.drafts[0]) : null;
   const [near, setNear] = useState(NO_NEAR);
   const [draftStatus, setDraftStatus] = useState('');
   const [draftRecall, setDraftRecall] = useState(0);
+  const draftCtx: DraftContext = useMemo(
+    () => ({ confirmed: graph, drafts: drafts.drafts, proposals: activeProposals }),
+    [graph, drafts.drafts, activeProposals],
+  );
+  const shapes = useMemo(
+    () => (drafting ? drafts.drafts.map((d) => draftShape(d, draftCtx)) : NO_SHAPES),
+    [drafting, drafts.drafts, draftCtx],
+  );
+  const own = draft ? mapId(draft) : '';
+  // Everything a draft can name, by its id on the map: confirmed concepts,
+  // other people's proposals, and the drafts (ghosts, and edits as previewed).
+  const byMapId: ConceptMap = useMemo(
+    () =>
+      new Map([
+        ...mergedIndex.byId,
+        ...shapes.flatMap((s) => [
+          ...(s.ghost ? [[s.ghost.id, s.ghost] as const] : []),
+          ...(s.subject && s.subjectId ? [[s.subjectId, s.subject] as const] : []),
+        ]),
+      ]),
+    [mergedIndex, shapes],
+  );
+  const editOf = draft?.editOf;
+  const connectable = useCallback(
+    (id: string) => byMapId.has(id) && id !== own && id !== editOf,
+    [byMapId, own, editOf],
+  );
   const onDraftNear = useCallback(
-    (ids: string[], byHand: boolean) =>
-      setNear((prev) => (prev.byHand === byHand && prev.ids.join() === ids.join() ? prev : { ids, byHand })),
-    [],
+    (ids: string[], byHand: boolean, ghost: string) => {
+      // Dragging a ghost is working on it: its draft becomes the one the editor shows.
+      const dragged = drafts.drafts.find((d) => draftRef(d.suffix) === ghost);
+      if (byHand && dragged && dragged.suffix !== drafts.active) drafts.setActive(dragged.suffix);
+      setNear((prev) =>
+        prev.byHand === byHand && prev.ghost === ghost && prev.ids.join() === ids.join() ? prev : { ids, byHand, ghost },
+      );
+    },
+    [drafts],
   );
-  const draftShape = useMemo(() => (draft ? draftLayer(draft) : null), [draft]);
   const draftLabel = draft?.label ?? '';
-  const similar = useMemo(
-    () => (drafting ? similarLabels(draftLabel, [...graph.nodes, ...activeProposals.flatMap((p) => p.nodes)]) : []),
-    [drafting, draftLabel, graph, activeProposals],
-  );
+  const similar = useMemo(() => {
+    if (!draft) return [];
+    const others = [
+      ...graph.nodes.filter((n) => n.id !== draft.editOf),
+      ...activeProposals.flatMap((p) => p.nodes),
+      ...shapes.flatMap((s) => (s.ghost && s.key !== draft.suffix ? [s.ghost] : [])),
+    ];
+    return similarLabels(draftLabel, others);
+  }, [draft, draftLabel, graph, activeProposals, shapes]);
   const connectedKey = draft
-    ? [...new Set(draft.relations.flatMap((r) => [r.source, r.target]))]
-        .filter((id) => id !== NEW_CONCEPT)
+    ? [
+        ...new Set([
+          ...draft.relations.flatMap((r) => [r.source, r.target]),
+          ...(draft.editOf ? neighborsOf(draft.editOf, index) : []),
+        ]),
+      ]
+        .filter((id) => id !== NEW_CONCEPT && id !== draft.editOf)
         .sort()
         .join(' ')
     : '';
+  const nearHere = near.ghost === own ? near : NO_NEAR;
   const suggestions = useMemo(() => {
     const connected = new Set(connectedKey ? connectedKey.split(' ') : []);
-    // Dragging the ghost offers what it's dragged next to. Until then,
-    // suggestions come from the graph around what's already connected — the
-    // same help without a pointer — and there are none before either.
-    const fromConnections = !near.byHand && connected.size > 0;
+    // Dragging a ghost offers what it's dragged next to. Until then (and
+    // always for an edit), suggestions come from the graph around what's
+    // already connected — the same help without a pointer.
+    const fromConnections = !nearHere.byHand && connected.size > 0;
     const pool = fromConnections
-      ? [...connected].flatMap((id) => neighborsOf(id, index))
-      : near.byHand
-        ? near.ids
+      ? [...connected].flatMap((id) => (mergedIndex.byId.has(id) ? neighborsOf(id, mergedIndex) : []))
+      : nearHere.byHand
+        ? nearHere.ids
         : [];
-    const ids = [...new Set(pool)].filter((id) => !connected.has(id) && index.byId.has(id)).slice(0, OFFERED);
+    const ids = [...new Set(pool)].filter((id) => !connected.has(id) && connectable(id)).slice(0, OFFERED);
     return { ids, from: fromConnections ? ('connections' as const) : ('map' as const) };
-  }, [connectedKey, near, index]);
+  }, [connectedKey, nearHere, mergedIndex, connectable]);
   const draftOverlay: DraftOverlay | null = useMemo(
-    () => draftShape && { ...draftShape, nearIds: suggestions.ids, conflictIds: similar.map((m) => m.node.id) },
-    [draftShape, suggestions.ids, similar],
-  );
-  const searchEntries: SearchEntry[] = useMemo(
     () =>
-      graph.nodes
-        .map((n) => ({ ref: n.id, title: n.label, context: NODE_TYPE_LABELS[n.type], color: TYPE_COLORS[n.type] }))
-        .sort((a, b) => a.title.localeCompare(b.title)),
-    [graph],
+      drafting
+        ? { drafts: shapes, activeKey: draft?.suffix ?? null, nearIds: suggestions.ids, conflictIds: similar.map((m) => m.node.id) }
+        : null,
+    [drafting, shapes, draft?.suffix, suggestions.ids, similar],
   );
-  const connect = (id: string) => {
-    const n = index.byId.get(id);
-    if (!n) return;
-    drafts.update((d) => ({
+  // The search offers confirmed concepts, other people's proposals and the other drafts.
+  const searchEntries: SearchEntry[] = useMemo(() => {
+    const entry = (ref: string, n: GraphNode, context: string) => ({ ref, title: n.label, context, color: TYPE_COLORS[n.type] });
+    return [
+      ...graph.nodes.map((n) => entry(n.id, n, NODE_TYPE_LABELS[n.type])),
+      ...activeProposals.flatMap((p) => p.nodes.map((n) => entry(n.id, n, `proposed · ${NODE_TYPE_LABELS[n.type]}`))),
+      ...shapes.flatMap((s) => (s.ghost && s.key !== draft?.suffix ? [entry(s.ghost.id, s.ghost, 'your draft')] : [])),
+    ]
+      .filter((e) => e.ref !== draft?.editOf)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [graph, activeProposals, shapes, draft?.suffix, draft?.editOf]);
+  const connect = (ref: string) => {
+    if (!draft || !connectable(ref)) return;
+    const label = byMapId.get(ref)?.label ?? ref;
+    drafts.update(draft.suffix, (d) => ({
       ...d,
       relations: [
         ...d.relations,
-        { key: `r${Date.now().toString(36)}${d.relations.length}`, source: NEW_CONCEPT, target: id, relationship: 'relates', conditions: [] },
+        { key: `r${Date.now().toString(36)}${d.relations.length}`, source: NEW_CONCEPT, target: ref, relationship: 'relates', conditions: [] },
       ],
     }));
-    setDraftStatus(`Connected to ${n.label} — choose the relation under Connections.`);
+    setDraftStatus(
+      index.byId.has(ref)
+        ? `Connected to ${label} — choose the relation under Connections.`
+        : `Connected to ${label}, which isn't accepted yet: this proposal now depends on it, and the relation is dropped if it's rejected.`,
+    );
   };
   // While drafting, clicking a concept on the map connects it instead of opening its card.
   const selectOnMap = (id: string | null) => {
-    if (!drafting || id === null) return onSelect(id);
-    if (id === NEW_CONCEPT) setDraftStatus('That’s your draft — drag it to where it seems to fit.');
-    else if (index.byId.has(id)) connect(id);
-    else setDraftStatus('A proposal can only connect to confirmed concepts.');
+    if (!draft || id === null) return onSelect(id);
+    if (id === own)
+      setDraftStatus(draft.editOf ? 'That’s the concept you’re editing.' : 'That’s your draft — drag it to where it seems to fit.');
+    else if (connectable(id)) connect(id);
+    else setDraftStatus('That can’t be connected.');
   };
   const editorButtonRef = useRef<HTMLButtonElement>(null);
   const openEditor = () => {
-    drafts.start();
+    if (drafts.drafts.length === 0) drafts.add(newDraft());
     setEditorOpen(true);
     setNear(NO_NEAR);
     setDraftStatus('');
     onSelect(null);
+  };
+  const addConceptDraft = () => {
+    drafts.add(newDraft());
+    setNear(NO_NEAR);
+    setDraftStatus('Started another concept. Each one is exported, and later submitted, on its own.');
+  };
+  const proposeEdit = (node: GraphNode) => {
+    const existing = drafts.drafts.find((d) => d.editOf === node.id);
+    if (existing) drafts.setActive(existing.suffix);
+    else drafts.add(newEditDraft(node));
+    setEditorOpen(true);
+    setNear(NO_NEAR);
+    setDraftStatus(existing ? `You were already editing ${node.label}.` : `Editing ${node.label}: the form is filled in from it.`);
+    // Keep the concept being edited in view (highlighted, not opened — the editor has the panel).
+    onFocus(node.id);
+  };
+  const switchDraft = (suffix: string) => {
+    drafts.setActive(suffix);
+    setNear(NO_NEAR);
+    setDraftStatus('');
   };
   // Closing leaves no card behind: a concept shown from the editor was a look, not a pick.
   const closeEditor = () => {
@@ -182,21 +260,33 @@ export default function ConceptMapView({
     onSelect(null);
   };
   const discardDraft = () => {
-    drafts.discard();
-    closeEditor();
+    if (!draft) return;
+    const name = proposalTitle(draft);
+    const removed = drafts.discard(draft.suffix);
+    setNear(NO_NEAR);
+    setDraftStatus(
+      `Discarded “${name}”.${removed ? ` Removed ${removed} relation${removed === 1 ? '' : 's'} from your other drafts that pointed at it.` : ''}`,
+    );
+    if (drafts.drafts.length <= 1) closeEditor();
   };
 
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
-  const selectedProposal = selectedId ? byProposedNode.get(selectedId) : undefined;
-  const proposedNode = selectedProposal && selectedId ? mergedIndex.byId.get(selectedId) : undefined;
+  // An edit proposal has no concept of its own: its card opens from the
+  // confirmed concept's "Open proposals" list, for as long as that's selected.
+  const [openProposal, setOpenProposal] = useState<{ id: string; on: string } | null>(null);
+  const listedProposal =
+    openProposal && openProposal.on === selectedId ? activeProposals.find((p) => p.id === openProposal.id) : undefined;
+  const selectedProposal = listedProposal ?? (selectedId ? byProposedNode.get(selectedId) : undefined);
+  const proposedNode = listedProposal
+    ? (listedProposal.edits?.[0] ?? listedProposal.nodes[0])
+    : selectedProposal && selectedId
+      ? mergedIndex.byId.get(selectedId)
+      : undefined;
   const cardOpen = Boolean(selected || proposedNode);
-  // Open proposals that attach to the selected confirmed concept.
+  // Open proposals about the selected confirmed concept.
   const proposalsHere = useMemo(
-    () =>
-      selected && showProposed
-        ? activeProposals.filter((p) => p.edges.some((e) => e.source === selected.id || e.target === selected.id))
-        : [],
-    [selected, activeProposals, showProposed],
+    () => (selected && showProposed ? proposalsAbout(selected.id, activeProposals, graph.edges) : []),
+    [selected, activeProposals, showProposed, graph.edges],
   );
   // A goal path owns the highlight; otherwise a click shows the concept's
   // direct connections (GraphView's directional select colours them).
@@ -283,7 +373,9 @@ export default function ConceptMapView({
           {community && !drafting && (
             <button ref={editorButtonRef} type="button" className="concept-propose" onClick={openEditor}>
               <span aria-hidden>＋ </span>
-              {drafts.draft && hasContent(drafts.draft) ? 'Continue your proposal' : 'Propose a concept'}
+              {drafts.drafts.some(hasContent)
+                ? `Continue your drafts (${drafts.drafts.length})`
+                : 'Propose a concept'}
             </button>
           )}
           <details className="concept-index">
@@ -292,7 +384,7 @@ export default function ConceptMapView({
               <div className="concept-index-group concept-index-proposals">
                 <h3 className="block-heading">
                   Proposed — not yet confirmed
-                  <span className="rel-count">{overlay.nodes.length}</span>
+                  <span className="rel-count">{overlay.nodes.length + overlay.edits.length}</span>
                 </h3>
                 <ul className="concept-index-list">
                   {overlay.nodes.map(({ node, badge }) => (
@@ -309,6 +401,28 @@ export default function ConceptMapView({
                       </button>
                     </li>
                   ))}
+                  {overlay.edits.map(({ id, badge, proposalId }) => {
+                    const n = index.byId.get(id);
+                    return (
+                      n && (
+                        <li key={proposalId}>
+                          <button
+                            className="concept-index-item"
+                            onClick={() => {
+                              onFocus(id);
+                              setOpenProposal({ id: proposalId, on: id });
+                            }}
+                          >
+                            <TypeBadge type={n.type} />
+                            <span>
+                              {n.label}
+                              <span className="concept-path-type">{badge}</span>
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -403,8 +517,8 @@ export default function ConceptMapView({
 
         {!cardOpen && !drafting && !goal && (
           <p className="map-hint">
-            Colour = kind of concept, size = how important it is — zoom in to reveal finer
-            detail. Each line names its relation —
+            Colour = kind of concept, size = how general it is — zoom in to reveal less
+            important concepts. Each line names its relation —
             hover one to highlight the two concepts it joins. Click a concept to see its direct
             connections — <span className="ink-pre">silver</span> leads into it,{' '}
             <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
@@ -423,10 +537,12 @@ export default function ConceptMapView({
             <Suspense fallback={<p className="concept-empty">Loading the editor…</p>}>
               <DraftEditor
                 draft={draft}
-                update={drafts.update}
-                confirmed={graph}
+                update={(change) => drafts.update(draft.suffix, change)}
+                ctx={draftCtx}
                 index={index}
-                proposals={activeProposals}
+                byMapId={byMapId}
+                onSwitch={switchDraft}
+                onAddConcept={addConceptDraft}
                 similar={similar}
                 suggestions={suggestions}
                 searchEntries={searchEntries}
@@ -458,15 +574,22 @@ export default function ConceptMapView({
           >
             {selectedProposal && proposedNode && (
               <Suspense fallback={<p className="concept-empty">Loading the proposal…</p>}>
+                {listedProposal && selected && (
+                  <button type="button" className="draft-link proposal-back" onClick={() => setOpenProposal(null)}>
+                    ← Back to {selected.label}
+                  </button>
+                )}
                 <ProposalCard
                   proposal={selectedProposal}
                   node={proposedNode}
                   byId={mergedIndex.byId}
+                  confirmed={graph}
+                  proposals={activeProposals}
                   onPick={onFocus}
                 />
               </Suspense>
             )}
-            {selected && (
+            {selected && !listedProposal && (
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
               {selected.type === 'equation' && (
@@ -571,13 +694,14 @@ export default function ConceptMapView({
                 <ul className="concept-relations">
                   {proposalsHere.map((p) => (
                     <li key={p.id}>
-                      {p.nodes.length > 0 ? (
-                        <button className="concept-relation-link" onClick={() => onFocus(p.nodes[0].id)}>
-                          {p.title}
-                        </button>
-                      ) : (
-                        p.title
-                      )}{' '}
+                      <button
+                        className="concept-relation-link"
+                        onClick={() =>
+                          p.nodes.length > 0 ? onFocus(p.nodes[0].id) : setOpenProposal({ id: p.id, on: selected.id })
+                        }
+                      >
+                        {p.title}
+                      </button>{' '}
                       <span className="concept-via">{badgeText(p)}</span>
                     </li>
                   ))}
@@ -585,11 +709,18 @@ export default function ConceptMapView({
               </section>
             )}
 
-            {selected.id !== goalId && (
+            {(selected.id !== goalId || (community && selected.type !== 'resource')) && (
               <div className="map-card-cta">
-                <button className="map-card-goal" onClick={() => onGoalChange(selected.id)}>
-                  ★ Show path to this
-                </button>
+                {selected.id !== goalId && (
+                  <button className="map-card-goal" onClick={() => onGoalChange(selected.id)}>
+                    ★ Show path to this
+                  </button>
+                )}
+                {community && selected.type !== 'resource' && (
+                  <button type="button" className="draft-button map-card-edit" onClick={() => proposeEdit(selected)}>
+                    <span aria-hidden>✎ </span>Propose an edit
+                  </button>
+                )}
               </div>
             )}
             </>

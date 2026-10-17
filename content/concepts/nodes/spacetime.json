@@ -2,7 +2,8 @@
   "id": "spacetime",
   "type": "physical_system",
   "label": "Spacetime",
-  "importance": 5,
+  "importance": 50,
+  "generality": 10,
   "attrs": {
     "description": "The four-dimensional continuum combining the three dimensions of space with one dimension of time, whose geometry is dynamical in general relativity.",
     "domain": "General relativity"

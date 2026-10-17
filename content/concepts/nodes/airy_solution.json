@@ -2,8 +2,8 @@
   "id": "airy_solution",
   "type": "formalism",
   "label": "Airy solution",
-  "importance": 2,
-  "generality": 3,
+  "importance": 20,
+  "generality": 6,
   "attrs": {
     "description": "Solutions built from the Airy function Ai(x), which solves y'' − xy = 0 — the universal wave pattern near a fold caustic.",
     "domain": "Mathematics"

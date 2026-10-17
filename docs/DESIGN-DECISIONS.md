@@ -431,6 +431,73 @@ in your head, and that's all the drag is for:
 edge-only proposals without a new concept (possible in the data, not offered by the editor);
 real edge drawing if experts ask for it.
 
+## Decision 22 — Generality sizes the circle, importance sets zoom visibility (2026-10)
+
+Supersedes the size half of Decision 17. Size and zoom visibility were both driven by
+`importance`; they're now two independent attributes:
+
+| Attribute | Scale | On the map |
+|---|---|---|
+| `generality` | 1 (most specific) – 10 (most general) | circle radius, 7 … 27 px |
+| `importance` | 1 (minor detail) – 50 (landmark) | how far out the concept stays visible, and its name's size (12 … 18 px) |
+
+The finer scales let authors rank concepts against each other without ties at every step.
+Zoom visibility is interpolated between the old five thresholds (`revealZoom()` in
+`src/graph/concepts.ts`), so 50 always shows and about 37 and up show on the overview, as 4
+and 5 did. Each attribute falls back to a connection-count estimate, never to the other, so a
+big general idea can be a minor stop and a narrow one a landmark.
+
+**Migration:** importance × 10, Sophie's 12 generality values × 2. The other 52 concepts got
+generality from their placeholder importance × 2, so their size didn't change. Ten circles
+changed size, so the layout cache key moved to v5. Both values are optional fields in the
+proposal editor, which also made the claim optional: without one, reviewers vote on the
+concepts and relations as written.
+
+**Open paths:** label size following generality instead of importance; a "size by" switch
+in the map controls.
+
+## Decision 23 — Many drafts, one proposal each; dependencies instead of bundles (2026-10)
+
+A subgraph proposal (several concepts reviewed as one) was considered and set aside: it
+makes votes all-or-nothing and reverses the "one proposal = one concept + its relations"
+rule. Instead:
+
+| Need | How |
+|---|---|
+| Sketch several related concepts | The editor holds several drafts; each new concept has its own ghost. Each draft is exported, and later submitted, on its own. |
+| Relate to something not yet accepted | A relation into another draft or into someone else's open proposal adds that proposal to `dependsOn`. |
+| That other proposal is rejected | `resolveDependencies()` drops the relations into it (they're listed as `dropped` on the card); the rest of the dependent proposal stands. Discarding one of your own drafts does the same to your other drafts. |
+| Order | A dependent proposal merges only after what it depends on (Phase 5). |
+| Change something that exists | An **edit proposal**: the same form, filled in from the concept (`edits`, `removals`, new `edges`). It keeps fields the form doesn't show, in the file's key order, so its diff and blame stay readable. |
+
+**Why not bundles:** reviewers judge one idea at a time, a disputed concept can't hold an
+uncontroversial one hostage, and the history stays one concept per pull request.
+
+**Open paths:** a "submit these together" convenience that opens several PRs at once;
+showing a dependency chain on the map; edits to relations themselves (today a changed
+relation is a removal plus a new one).
+
+## Decision 24 — Depth by zoom: much bigger general concepts, importance as depth (2026-10)
+
+Refines Decision 22's numbers; the graph stays a graph (nesting general concepts around
+specific ones was considered and set aside). The goal is a depth effect: zooming in around
+Dark Matter reveals specific concepts and relations that don't show until you're close.
+
+| Piece | Rule |
+|---|---|
+| Size | Generality 1–10 → radius 7 … 270 px, ×1.5 per step (10 is ten times the old maximum). Geometric, so small stays visibly small. |
+| Depth | Importance sets the reveal zoom: 50 always, 40 on the overview, each 8 points lower twice as close (`revealZoom()`), down to ~30× for 1. Every value is its own depth. |
+| Names | From radius 50 (generality 6), the name sits inside the circle on a plate, radius ÷ 3 in size, so the biggest concepts read on the overview. Smaller concepts keep 12–18 px names below the circle. |
+| Zoomed past | A circle wider than 90% of the view fades to a faint outline and stops catching clicks — you're looking at what's around it. |
+| Layout | Long-range repulsion uses one typical spacing for every pair; a node's size only counts when two nodes are close. Without this, ten huge circles spread the whole graph out and the specific concepts around them ended up a screen apart. Layout cache v6. |
+
+Verified: overview of 64 concepts shows 18, with 9 landmark names readable; 6× closer to
+Dark Matter shows Wave Dark Matter, PDF, Structure Formation, Vlasov eq.,
+Schrödinger–Poisson eq., Zel'dovich approximation and Airy solution with their relations.
+
+**Open paths:** label collision handling (importance as priority) once the graph is denser;
+a "you are near …" orientation line; tuning the reveal curve per the real content.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):

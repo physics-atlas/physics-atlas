@@ -2,7 +2,8 @@
   "id": "orthogonal_projection",
   "type": "method",
   "label": "Orthogonal Projection",
-  "importance": 2,
+  "importance": 20,
+  "generality": 4,
   "attrs": {
     "description": "Projection of a tensor or vector onto the subspace orthogonal to the fluid four-velocity.",
     "domain": "Relativity"

@@ -157,11 +157,11 @@ interface GraphNodeBase {
   id: string;
   label: string;
   /**
-   * 1 (minor detail) – 5 (landmark); drives node size and how far out the
-   * node stays visible when zooming out
+   * 1 (minor detail) – 50 (landmark): how far out the node stays visible when
+   * zooming out, and the size of its name
    */
   importance?: number;
-  /** 1 (most specific) – 5 (most general); the size fallback when importance is missing */
+  /** 1 (most specific) – 10 (most general): the size of the node's circle */
   generality?: number;
   /** How settled the concept is, e.g. "Candidate"; known values in conceptVocabulary.json */
   epistemicStatus?: string;

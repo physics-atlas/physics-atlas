@@ -104,7 +104,8 @@ git check-ignore -v src/data/concepts.json  # names the .gitignore line that ign
      "id": "test_concept",
      "type": "property",
      "label": "Test concept",
-     "importance": 5,
+     "importance": 50,
+     "generality": 10,
      "attrs": {
        "description": "A temporary concept for checking Phase 0.",
        "domain": "Cosmology"
@@ -142,7 +143,7 @@ terminal. The page keeps showing the **last good** data until the file is fixed.
 - **A one-time fresh layout:** because of the overlap fix, the map computes a new
   arrangement on first load (about 1–4 seconds of glide). In Chrome DevTools → *Application*
   → *Local Storage* → `http://localhost:5173`, the saved layout key is now
-  `physics-atlas-concept-layout-v4`.
+  `physics-atlas-concept-layout-v6`.
 - **Everything else unchanged:** clicking a concept, its card, the goal path ("★ Show path
   to this"), the legend definitions and zooming all behave as before.
 
@@ -182,8 +183,9 @@ shows the deploy job running a new `npm test` step.
 
 **What changed:**
 - With `?community=1`, the concept map shows **proposals** on top of the confirmed graph.
-  For now these are three sample proposals from `content/proposals-fixtures/`, clearly labelled
-  "Sample".
+  For now these are sample proposals from `content/proposals-fixtures/`, clearly labelled
+  "Sample". The steps below use the first three; Phase 2b added two more (a dependent
+  proposal and an edit), so the counts in your list and in the smoke output are now higher.
 - Each proposal is marked by its outline and a badge in its label, not by colour: the fill
   stays the type colour.
 - Proposals never move confirmed concepts.
@@ -334,7 +336,7 @@ npm run lint
 
 | Command | You should see |
 |---|---|
-| `npm test` | `Test Files 7 passed (7)` · `Tests 102 passed (102)`. New: conflict detection (similar names, duplicates, reversed relations, loops), the draft (ids, what it exports, missing fields, malformed evidence, reading it back), and an end-to-end check that **exported files pass the real validator** when dropped into a copy of `content/concepts/`. |
+| `npm test` | `Test Files 7 passed (7)` · `Tests 110 passed (110)`. New: conflict detection (similar names, duplicates, reversed relations, loops), the draft (ids, what it exports, missing fields, malformed evidence, generality / importance ranges, the optional claim, reading it back), and an end-to-end check that **exported files pass the real validator** when dropped into a copy of `content/concepts/`. |
 | `npm run build` | As before, plus a separate `DraftEditor-….js` chunk. The editor only loads when you open it. |
 | `npm run validate`, `npm run lint` | Unchanged. |
 
@@ -415,12 +417,19 @@ on the map**.
 
 ### 6. Fill in, check, export
 
-1. Fill in **Description**, tick a **Field** (e.g. Cosmology), and write a **claim** with maths,
-   e.g. `Growth stays linear while $\delta \ll 1$.` The preview below renders the formula.
-2. **Add evidence** with kind *arXiv id* and type `abc`. Under **Check and export**:
+1. Fill in **Description** and tick a **Field** (e.g. Cosmology).
+2. Type `10` in **Generality**: the ghost grows to the largest circle. Type `1`: it shrinks to
+   the smallest. Type `12`: **Check and export** lists *Generality is a whole number from 1 to
+   10.* Set it back to something in range. **Importance** (1–50) works the same way. It
+   changes how far out the concept stays visible, which the ghost doesn't show, because a
+   draft is always visible. Both fields are optional.
+3. The **claim** is optional too. Leave it empty and the export is still *Ready*, and the
+   pull-request text has no Claim section. Or write one with maths, e.g. `Growth stays linear
+   while $\delta \ll 1$.`; the preview below renders the formula.
+4. **Add evidence** with kind *arXiv id* and type `abc`. Under **Check and export**:
    *Evidence 1 isn't a valid arXiv id.* Each item there is a button that jumps to its field.
    Change it to `2101.01234` (a placeholder).
-3. When nothing is missing, **Check and export** says *Ready* and offers:
+5. When nothing is missing, **Check and export** says *Ready* and offers:
    - **Download the files (N)**: one node file plus one file per relation. Chrome may ask
      once to allow several downloads.
    - **Copy pull-request text**: title, claim, what it adds (as sentences), evidence links,
@@ -428,7 +437,7 @@ on the map**.
    - **Download as one proposal file**: the whole proposal, for
      `content/proposals-fixtures/`.
    - **Show the files**: exactly what's in each.
-4. Open a downloaded file: there's **no x, y or position** anywhere.
+6. Open a downloaded file: there's **no x, y or position** anywhere.
 
 **Try the files in the repo** (undo afterwards):
 
@@ -446,11 +455,11 @@ Or put the single proposal file into `content/proposals-fixtures/` and reload wi
 
 ### 7. Saved between visits; close and discard
 
-- **Reload** the page. The button now reads **＋ Continue your proposal**, and opening it
+- **Reload** the page. The button now reads **＋ Continue your drafts (1)**, and opening it
   restores everything. The ghost goes next to its connections: where you dragged it isn't
   kept, by design.
-- **Close — keep the draft** (or ×): the ghost disappears and focus returns to the button.
-- **Discard the draft…** asks *Discard everything?* with **Discard** / **Keep it**.
+- **Close — keep the drafts** (or ×): the ghost disappears and focus returns to the button.
+- **Discard this draft…** asks *Discard "Add …"?* with **Discard** / **Keep it**.
 - With **Show confirmed** off, the ghost, its lines and the concepts it connects to stay
   visible (those concepts faintly).
 
@@ -467,13 +476,143 @@ As in Phase 0 (two terminals). The new editor section prints:
 
 ```
 view kept through the toggles: true
-editor, keyboard: { editorFocused: true, rank: 1, draftEdges: 1, suggestions: 'Near what you connected＋ Connect to Structure Formation' }
-editor, pointer: { offered: [ '＋ Connect to Structure Formation' ], relations: 3, duplicate: true, ghostLabel: 'Smoke test concept\nDraft · not submitted', confirmedMoved: 0 }
-editor closed: { ghostGone: true, focusOnButton: true, button: '＋ Continue your proposal' }
+editor, keyboard: { editorFocused: true, rank: 1, draftEdges: 1, suggestions: 'Near what you connected＋ Connect to Structure Formation＋ Connect to Non-linear structure growth (not accepted yet)' }
+editor, pointer: { offered: [ '＋ Connect to Structure Formation', … ], relations: 3, duplicate: true, ghostLabel: 'Smoke test concept\nDraft · not submitted', confirmedMoved: 0 }
+editor closed: { ghostGone: true, focusOnButton: true, button: '＋ Continue your drafts (1)' }
 ```
 
 **rank** must be 1–3 (the ghost sits next to its connection), and **confirmedMoved** must be
-0. The run still ends with only the two known feature-20 failures.
+0. The run still ends with only the two known feature-20 failures. (Since Phase 2b,
+suggestions can include other people's proposals, marked *not accepted yet*.)
+
+---
+
+## Phase 2b — several drafts, dependencies, editing a concept (feature-42)
+
+**What changed:**
+- **One proposal is still one concept and its relations**, but the editor holds **several
+  drafts** at once. Each is exported, and later submitted, on its own.
+- A draft can relate to **another of your drafts**, or to **someone else's open proposal**.
+  That makes it **depend** on that proposal (`dependsOn`). If the dependency is rejected or
+  withdrawn, the relations pointing at it are **dropped**, and the rest of the dependent
+  proposal stands. Discarding one of your drafts does the same to your other drafts.
+- **Propose an edit** on any concept's card opens the same form, filled in from the concept.
+  You can change fields, add relations, and propose removing existing ones. The concept on the
+  map previews the edit.
+- Two new samples: *Jeans mass*, which depends on the *Jeans scale* proposal, and an **edit**
+  of *Vlasov eq.*
+
+### 1. Automated checks
+
+| Command | You should see |
+|---|---|
+| `npm test` | `Test Files 7 passed (7)` · `Tests 132 passed (132)`. New: relations between drafts and the dependencies they create; dropping relations when a dependency is gone (and a proposal of only relations disappearing); edits (filled in, "change something" check, fields the form doesn't show kept in the file's own key order, removals and the files to delete); reading a Phase 2 draft into the new format; the two samples; and the validator accepting an exported **edit** (file replaced, relation added, one deleted). |
+| `npm run validate`, `npm run build`, `npm run lint` | Unchanged. |
+
+### 2. The new samples on the map
+
+Open <http://localhost:5173/?mode=concepts&community=1>.
+
+1. Near *Jeans scale* there's a new dashed proposal, **Jeans mass**, with two dashed lines:
+   one to *Jeans scale* (itself only proposed) and one to *Structure Formation*.
+2. Click **Jeans mass**. Its card has a **Depends on** section: *Sample: Jeans scale…* — *still
+   open, it has to be accepted first*.
+3. **Vlasov eq.** (a confirmed concept) has a dashed ink outline and *✎ Edit proposed · ✓1
+   ✗0 ?0* under its name. The relation *Structure Formation → Vlasov eq.* is dotted and reads
+   *relates (removal proposed)*; a new dashed line reads *described by (proposed)*.
+4. Click **Vlasov eq.** Under **Open proposals about this concept**, click *Sample: edit Vlasov
+   eq.…*. The panel shows the **edit proposal**: an *EDIT PROPOSAL* pill, **What it would
+   change** with *Generality 4 → 6*, *Adds: …* and a struck-through *Removes: …*. **← Back to
+   Vlasov eq.** returns to the concept's card.
+5. The concept list's *Proposed — not yet confirmed* group now lists the edit too.
+
+### 3. Simulate a rejection
+
+1. Move `content/proposals-fixtures/sample-jeans-scale.json` out of the folder (e.g. to your
+   desktop). Reload.
+2. **Jeans scale** is gone. **Jeans mass** stays, with only its line to Structure Formation.
+   Its card now says the dependency is *no longer open — 1 relation dropped*, and lists the
+   dropped relation struck through under *Dropped, because what they pointed at was rejected
+   or withdrawn*.
+3. Put the file back and reload: the relation is back.
+
+### 4. Several drafts, and a dependency between them
+
+1. **＋ Propose a concept**. Name it *Test A*, choose a kind, and connect it to Structure
+   Formation (search or click).
+2. At the top of the editor, **Your drafts** lists *Test A · open*. Click **＋ Another
+   concept**: a second ghost appears, and *New concept · open* is now the open one.
+3. Name it *Test B*. On the map, **click Test A's ghost**. Test B gets the relation *Test B
+   relates to Test A*. Under it: *Depends on "Add Test A", which isn't accepted yet. If it's
+   rejected, this relation is dropped.* **Check and export** starts with *This proposal depends
+   on another proposal: Add Test A*. Once exported, Test B's proposal file lists it under
+   `"dependsOn"`, and its pull-request text has a **Depends on** section.
+4. Suggestions and the search now also offer other people's proposals (*not accepted yet*) and
+   your other drafts (*your draft*). Choosing one makes a dependency in the same way.
+5. **Dragging a ghost** makes its draft the open one. You can also switch with the **Your
+   drafts** buttons.
+6. Open *Test A* and **Discard this draft…**. The confirmation says *One of your other drafts
+   points at it; those relations will be removed.* Discard it. The status reads *Removed 1
+   relation from your other drafts that pointed at it*, and Test B is left with no relations
+   (its export now asks you to connect it).
+
+### 5. Propose an edit
+
+1. Close the editor, click **Kinetic theory**, and click **✎ Propose an edit** at the bottom
+   of its card.
+2. The editor opens as **Propose an edit: Kinetic theory**, filled in from the concept: name,
+   kind, description, field, generality, importance. The map glides to the concept, which now
+   reads *✎ Editing · draft* with a dashed glowing outline.
+3. **Check and export** says *Change something — a field, a new relation, or a relation to
+   remove.*
+4. Change **Generality**: the concept's circle on the map grows or shrinks as you type.
+5. Under **Connections → Its relations now**, press **Propose removing** on one relation. It's
+   struck through with *removal proposed*, and on the map that line turns dotted with *(your
+   draft removes this)*. Press it again to undo.
+6. Export: the node file has the **same name** as the concept's file (it replaces it), and
+   fields the form doesn't show (review notes, equation variables) are kept, in the same key
+   order. The removed relations are listed as *Delete `content/concepts/edges/…json`*.
+7. **✎ Propose an edit** on the same concept again opens the draft you already have, not a new
+   one.
+
+### 6. Smoke test
+
+The community section now also prints:
+
+```
+proposed layer: 4 concepts, 7 relations, contested ultralight_bound_s3; confirmed nodes moved: 0
+dependent proposal and edit: { dependent: true, editLabel: 'Vlasov eq.\n✎ Edit proposed · ✓1 ✗0 ?0', removal: true }
+two drafts: { ghosts: 2, between: 1, deps: '…Add Smoke test concept…' } after discarding the first: { ghosts: 1, draftEdges: 0, status: '…Removed 1 relation from your other drafts that pointed at it.' }
+edit form: { title: 'Propose an edit: Kinetic theory', name: 'Kinetic theory', subject: true, existing: 1 }
+```
+
+As before, only the two known feature-20 failures.
+
+---
+
+## Map depth — zooming reveals detail (feature-43)
+
+Not part of the community-review phases, but tested the same way. Open
+<http://localhost:5173/?mode=concepts> (with or without `community=1`).
+
+1. **The whole map:** only the landmarks show (about 18 of 64 concepts). The biggest ones —
+   Dark Matter, Spacetime, Einstein Field Equations, Differential Geometry, … — have their
+   name inside the circle, on a dark plate, readable at this zoom.
+2. **Zoom towards Dark Matter** (wheel or +). At about 3× more concepts appear around it; at
+   about 6× you see Wave Dark Matter, PDF, Structure Formation, Vlasov eq.,
+   Schrödinger–Poisson eq., Zel'dovich approximation and Airy solution, with the relations
+   between them.
+3. **Keep zooming** past Dark Matter: once its circle is wider than the screen it fades to a
+   faint outline, and what's around it — the specific concepts and their relation names —
+   takes over.
+4. **Show all concepts** (map controls) turns the depth off: everything shows at any zoom.
+5. Change a concept's `importance` in `content/concepts/nodes/<id>.json` (the dev server
+   reloads): lower it and the concept appears later as you zoom in (each 8 points lower,
+   twice as close); `50` makes it always visible. Change `generality` and its circle grows or
+   shrinks by 1.5× per step. Undo with `git restore content/concepts`.
+
+`npm test` covers the rules (radius per generality, label sizes, every importance its own
+depth).
 
 ---
 

@@ -2,7 +2,8 @@
   "id": "fourteen_moment_approximation",
   "type": "method",
   "label": "14-moment approximation",
-  "importance": 2,
+  "importance": 20,
+  "generality": 4,
   "attrs": {
     "description": "A moment expansion that approximates a kinetic distribution function using a finite set of macroscopic moments.",
     "domain": "Kinetic theory"

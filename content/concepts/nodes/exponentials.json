@@ -2,7 +2,8 @@
   "id": "exponentials",
   "type": "formalism",
   "label": "exponentials",
-  "importance": 3,
+  "importance": 30,
+  "generality": 6,
   "attrs": {
     "description": "Exponential functions used to model continuous growth or decay processes.",
     "domain": "Mathematics"

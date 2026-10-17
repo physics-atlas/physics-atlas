@@ -165,6 +165,11 @@ export function forceLayout(
   const r = ids.map((id) => reach(boxes[id]));
   const k = (i: number, j: number) => EDGE_ROOM + r[i] + r[j];
   const meanK = EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1);
+  // Long-range repulsion uses one typical spacing for every pair, so a few
+  // very big concepts don't spread the whole graph out; their size only
+  // counts once two nodes are actually close (the contact push below).
+  const sorted = [...r].sort((a, b) => a - b);
+  const typicalK = EDGE_ROOM + 2 * (sorted[Math.floor(sorted.length / 2)] ?? 0);
   const side = meanK * Math.sqrt(n);
   const initial = ids.map((id) => fixed[id] ?? start[id] ?? { x: (rng() - 0.5) * side, y: (rng() - 0.5) * side });
   const x = initial.map((p) => p.x);
@@ -186,8 +191,11 @@ export function forceLayout(
           dy = rng() - 0.5;
           d = Math.hypot(dx, dy);
         }
-        // Repulsion k²/d, applied along the unit vector (dx, dy) / d.
-        const f = (k(i, j) * k(i, j)) / (d * d);
+        // Repulsion typicalK²/d, applied along the unit vector (dx, dy) / d,
+        // plus a contact push while the pair is closer than its own spacing.
+        const kij = k(i, j);
+        const contact = d < kij ? (kij - d) / d : 0;
+        const f = (typicalK * typicalK) / (d * d) + contact;
         fx[i] += dx * f;
         fy[i] += dy * f;
         fx[j] -= dx * f;
