@@ -17,7 +17,7 @@ import { useTheme } from './lib/useTheme';
 import { useMotion } from './lib/motion';
 import './App.css';
 
-type Mode = 'home' | 'map' | 'goal' | 'topic' | 'concepts';
+type Mode = 'home' | 'map' | 'goal' | 'topic' | 'concepts' | 'community';
 
 const VIEW_TITLES: Record<Mode, string> = {
   home: 'Learn by prerequisites',
@@ -25,17 +25,22 @@ const VIEW_TITLES: Record<Mode, string> = {
   goal: 'Learning goal',
   topic: 'Topic',
   concepts: 'Concept map',
+  community: 'Community review',
 };
 
-// Community-review preview (Phases 1–5 of .claude/plans/epic-community-review.md):
-// `?community=1` shows the proposed layer. Read once — it's a flag, not state.
-const COMMUNITY = new URLSearchParams(window.location.search).get('community') === '1';
+// The community view (.claude/plans/epic-community-review.md) is the concept
+// map with the proposed layer and the proposal editor. Open to everyone for
+// now — sign-in comes with Phase 3.
+const isConceptView = (m: Mode) => m === 'concepts' || m === 'community';
 
 function initialMode(): Mode {
-  const m = new URLSearchParams(window.location.search).get('mode');
+  const params = new URLSearchParams(window.location.search);
+  const m = params.get('mode');
   if (m === 'map' || m === 'explore') return 'map';
   if (m === 'goal') return 'goal';
   if (m === 'topic') return 'topic';
+  // `?mode=concepts&community=1` was the community preview's address before it had a tab.
+  if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
   if (m === 'concepts') return 'concepts';
   return 'home';
 }
@@ -63,7 +68,7 @@ function initialGoal(): string {
 function initialConceptGoal(): string | null {
   const params = new URLSearchParams(window.location.search);
   const g = params.get('goal');
-  if (params.get('mode') !== 'concepts' || !g) return null;
+  if ((params.get('mode') !== 'concepts' && params.get('mode') !== 'community') || !g) return null;
   return concepts.nodes.some((n) => n.id === g) ? g : null;
 }
 
@@ -140,11 +145,10 @@ export default function App() {
           ? `?mode=goal&goal=${encodeURIComponent(goalRef)}`
           : mode === 'topic'
             ? `?mode=topic&id=${encodeURIComponent(topicPageId)}`
-            : mode === 'concepts' && conceptGoal
-              ? `?mode=concepts&goal=${encodeURIComponent(conceptGoal)}`
+            : isConceptView(mode) && conceptGoal
+              ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
               : `?mode=${mode}`;
-    // The community preview flag survives navigation between views.
-    const target = COMMUNITY ? `${view ? `${view}&` : '?'}community=1` : view;
+    const target = view;
     if (window.location.search === target) {
       firstUrlSync.current = false;
       return;
@@ -240,7 +244,7 @@ export default function App() {
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
-          {mode === 'concepts' ? (
+          {isConceptView(mode) ? (
             <SearchBox
               key="concepts"
               entries={conceptSearchEntries}
@@ -258,6 +262,14 @@ export default function App() {
               onClick={() => setMode('concepts')}
             >
               Concept map
+            </button>
+            <button
+              className={`mode-tab ${mode === 'community' ? 'mode-tab-active' : ''}`}
+              aria-current={mode === 'community' ? 'page' : undefined}
+              onClick={() => setMode('community')}
+              title="Propose concepts and edits, and see open proposals"
+            >
+              Community
             </button>
             <button
               className={`mode-tab ${mode === 'goal' ? 'mode-tab-active' : ''}`}
@@ -280,6 +292,7 @@ export default function App() {
             topics={data.topics}
             onSearchPick={homeSearchPick}
             onExplore={() => setMode('concepts')}
+            onCommunity={() => setMode('community')}
             onPickGoal={pickGoal}
             motionButton={motionButton}
             still={motion.reduced}
@@ -328,7 +341,7 @@ export default function App() {
             theme={theme}
           />
         )}
-        {mode === 'concepts' && (
+        {isConceptView(mode) && (
           <ConceptMapView
             graph={concepts}
             progress={progress}
@@ -339,7 +352,7 @@ export default function App() {
             onFocus={focusOn}
             focus={focus}
             theme={theme}
-            community={COMMUNITY}
+            community={mode === 'community'}
           />
         )}
       </main>

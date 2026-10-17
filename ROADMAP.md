@@ -6,6 +6,23 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-44: Community tab
+
+**Status:** ✅ Implemented <!-- status-line: feature-44 -->
+**Planned:** 2026-10-17 — requested so the community view can be used before sign-in
+**Implemented:** 2026-10-17
+
+### Implemented
+- `src/App.tsx` — a `community` view (`?mode=community`, title "Community review") with its own header tab between Concept map and Learning goal; `?mode=concepts&community=1` opens it too; the two tabs share one map, so switching keeps zoom and position
+- `src/components/Home.tsx` — "Propose concepts and review" next to "Explore the concept map"
+- Smoke: the tab, back to the plain map (no proposals), the home button, the old address
+- Docs: testing guide, AUTHORING, CLAUDE.md, fixtures README
+
+### Review
+Not run — direct session. build / lint / test clean; smoke passes (only the 2 pre-existing feature-20 failures).
+
+<!-- impl-marker: feature-44 -->
+
 ## feature-43: Depth by zoom
 
 **Status:** ✅ Implemented <!-- status-line: feature-43 -->

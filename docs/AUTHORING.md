@@ -515,7 +515,7 @@ random suffix (`jeans_scale_k3f9`), so two proposals never pick the same id.
 
 ### Taking in a proposal from the editor
 
-The proposal editor (`?mode=concepts&community=1` → **Propose a concept**) exports
+The proposal editor (`?mode=community` → **Propose a concept**) exports
 exactly the files a merge adds:
 
 1. **Download the files** gives `<id>.json` for the concept and `<id>_e1.json`, `<id>_e2.json`, …

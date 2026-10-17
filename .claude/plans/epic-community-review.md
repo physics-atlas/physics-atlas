@@ -147,7 +147,8 @@ Every concept of the brief maps onto something GitHub already does reliably:
 ## Phases
 
 Each phase can be shipped on its own and tested in the browser. Each one is worth keeping even
-if we stopped after it. Phases 1–5 run behind `?community=1` until Phase 5 is complete.
+if we stopped after it. Phases 1–5 live in the **Community** view (`?mode=community`, a header tab
+since feature-44, open to everyone until sign-in in Phase 3); it replaced the `?community=1` flag.
 
 **Hands-on testing:** `docs/TESTING-COMMUNITY-REVIEW.md` has a step-by-step check for every
 built phase. Each phase's work isn't done until its section there is written and verified.

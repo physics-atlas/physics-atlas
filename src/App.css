@@ -309,6 +309,18 @@ body {
     border-color 0.25s;
 }
 
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* The community entry: dashed, like a proposal — the word says what it is. */
+.home-community {
+  border-style: dashed;
+}
+
 .home-explore:hover {
   border-color: rgba(143, 183, 255, 0.7);
   box-shadow: 0 0 30px rgba(57, 135, 229, 0.35);

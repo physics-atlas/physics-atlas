@@ -8,6 +8,11 @@ hand, with what you should see.
 Commands are for **PowerShell** (the default terminal in VS Code on Windows), run from the
 `physics-atlas` folder.
 
+**Where it lives:** the **Community** tab in the header (or **Propose concepts and review** on
+the home page) opens the community view, <http://localhost:5173/?mode=community>: the concept
+map with the proposals and the proposal editor. It's open to everyone until sign-in arrives in
+Phase 3. Older links with `?mode=concepts&community=1` still work and open the same view.
+
 ## One-time setup
 
 1. Open a **new** terminal, so it picks up Node on the PATH, and check:
@@ -182,7 +187,7 @@ shows the deploy job running a new `npm test` step.
 ## Phase 1 — the proposed layer, read-only (feature-34)
 
 **What changed:**
-- With `?community=1`, the concept map shows **proposals** on top of the confirmed graph.
+- In the **Community** view, the concept map shows **proposals** on top of the confirmed graph.
   For now these are sample proposals from `content/proposals-fixtures/`, clearly labelled
   "Sample". The steps below use the first three; Phase 2b added two more (a dependent
   proposal and an edit), so the counts in your list and in the smoke output are now higher.
@@ -192,7 +197,7 @@ shows the deploy job running a new `npm test` step.
 - New toggles: **Show confirmed** and **Show proposed**.
 - Clicking a proposal opens a **proposal card** with the claim (with LaTeX), evidence and a
   read-only vote tally.
-- Without `?community=1`, nothing changes.
+- The plain **Concept map** tab is unchanged.
 
 ### 1. Automated checks
 
@@ -211,7 +216,7 @@ npm run lint
 
 ### 2. See the proposed layer
 
-1. `npm run dev`, then open <http://localhost:5173/?mode=concepts&community=1>.
+1. `npm run dev`, then open <http://localhost:5173/?mode=community>.
 2. In the legend (bottom left), a new row reads **Confirmed · Proposed — dashed outline ·
    ⚑ Contested — double outline**, each with a matching outline swatch.
 3. Search for **Structure Formation**. Next to it you'll find:
@@ -258,7 +263,9 @@ when the page loads.
   open a card if you like, then flip **Show all concepts**, **Show confirmed** and **Show
   proposed** on and off: the zoom and position stay exactly where you left them. Use ⤢
   (Show the whole map) if you want to re-frame.
-- Switching to **Learning goal** and back to **Concept map** keeps `community=1` in the URL
+- **Concept map** and **Community** are two tabs on the same map: switching between them keeps
+  your zoom and position, and only the proposals come and go. (This replaced keeping
+  `community=1` in the URL)
   and the proposals on the map.
 
 ### 5. Keyboard and screen reader
@@ -309,7 +316,7 @@ afterwards.
 ## Phase 2 — the proposal editor, local drafts (feature-35)
 
 **What changed:**
-- With `?community=1`, the concept map has a **＋ Propose a concept** button. It opens an
+- The **Community** view has a **＋ Propose a concept** button. It opens an
   editor where the concept card usually sits, and a dashed, glowing **ghost** concept
   appears on the map.
 - **Drag the ghost** to work out where the idea fits. The concepts nearest it are offered as
@@ -342,7 +349,7 @@ npm run lint
 
 ### 2. Open the editor
 
-1. `npm run dev`, then open <http://localhost:5173/?mode=concepts&community=1>.
+1. `npm run dev`, then open <http://localhost:5173/?mode=community>.
 2. Top left, above "All concepts as a list": **＋ Propose a concept**. Click it.
 3. The editor opens on the right, with a dashed pill **DRAFT · NOT SUBMITTED · SAVED IN THIS
    BROWSER**, and focus moves into it.
@@ -444,14 +451,14 @@ on the map**.
 1. Put the node file into `content/concepts/nodes/` and the relation files into
    `content/concepts/edges/`.
 2. `npm run validate` → `✓ content/concepts valid — 65 nodes …`.
-3. The running dev server recompiles. Reload the page **without** `community=1`: your
+3. The running dev server recompiles. Open the plain **Concept map** tab: your
    concept is an ordinary solid node, placed by the normal layout, and its card opens like
    any other.
 4. `git clean -n content/concepts` lists the new files; delete them (or run `git clean -f
    content/concepts`).
 
 Or put the single proposal file into `content/proposals-fixtures/` and reload with
-`community=1`: it shows as a dashed proposal with your claim. Delete it afterwards.
+the **Community** tab: it shows as a dashed proposal with your claim. Delete it afterwards.
 
 ### 7. Saved between visits; close and discard
 
@@ -511,7 +518,7 @@ suggestions can include other people's proposals, marked *not accepted yet*.)
 
 ### 2. The new samples on the map
 
-Open <http://localhost:5173/?mode=concepts&community=1>.
+Open <http://localhost:5173/?mode=community>.
 
 1. Near *Jeans scale* there's a new dashed proposal, **Jeans mass**, with two dashed lines:
    one to *Jeans scale* (itself only proposed) and one to *Structure Formation*.
@@ -593,7 +600,7 @@ As before, only the two known feature-20 failures.
 ## Map depth — zooming reveals detail (feature-43)
 
 Not part of the community-review phases, but tested the same way. Open
-<http://localhost:5173/?mode=concepts> (with or without `community=1`).
+<http://localhost:5173/?mode=concepts> (or the **Community** tab).
 
 1. **The whole map:** only the landmarks show (about 18 of 64 concepts). The biggest ones —
    Dark Matter, Spacetime, Einstein Field Equations, Differential Geometry, … — have their

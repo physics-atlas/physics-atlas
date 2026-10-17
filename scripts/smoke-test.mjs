@@ -290,8 +290,34 @@ if (exploreNodeCount !== 64)
 const tabTexts = await page.$$eval('.mode-tab', (els) => els.map((e) => e.textContent?.trim()));
 console.log('mode tabs:', tabTexts);
 if (tabTexts.some((t) => t === 'Full map')) errors.push('a "Full map" tab is still in the header nav');
+
 const firstTabActive = await page.$eval('.mode-tab', (el) => el.classList.contains('mode-tab-active'));
 if (!firstTabActive) errors.push('first header tab is not active in concepts mode');
+
+// The Community tab: the concept map with proposals and the editor, open to everyone for now.
+const clickTab = (name) =>
+  page.evaluate((n) => [...document.querySelectorAll('.mode-tab')].find((b) => b.textContent.trim() === n).click(), name);
+await clickTab('Community');
+await page.waitForFunction(() => window.__cy?.nodes('.overlay').length > 0, { timeout: 10000 });
+const communityTab = await page.evaluate(() => ({
+  search: window.location.search,
+  current: document.querySelector('.mode-tab[aria-current="page"]')?.textContent?.trim(),
+  propose: Boolean(document.querySelector('.concept-propose')),
+  title: document.title,
+}));
+await clickTab('Concept map');
+await new Promise((r) => setTimeout(r, 600));
+const plainAgain = await page.evaluate(() => ({ search: window.location.search, proposals: window.__cy.nodes('.overlay').length }));
+await page.goto(`${URL}/`, { waitUntil: 'networkidle0' });
+await page.click('.home-community');
+await new Promise((r) => setTimeout(r, 600));
+const fromHome = await page.evaluate(() => window.location.search);
+console.log('community tab:', communityTab, 'back to concept map:', plainAgain, 'from home:', fromHome);
+if (communityTab.search !== '?mode=community' || communityTab.current !== 'Community' || !communityTab.propose)
+  errors.push(`the Community tab didn't open the community view: ${JSON.stringify(communityTab)}`);
+if (plainAgain.search !== '?mode=concepts' || plainAgain.proposals !== 0)
+  errors.push(`the Concept map tab still shows proposals: ${JSON.stringify(plainAgain)}`);
+if (fromHome !== '?mode=community') errors.push(`home's community button landed on ${fromHome}`);
 
 // --- Concept map (pilot): the second GraphView input variant ---
 await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
@@ -397,7 +423,7 @@ if (!layer.editLabel?.includes('✎ Edit proposed') || !layer.removal)
 if (layer.contested.join() !== 'ultralight_bound_s3') errors.push(`expected one contested proposal, got ${layer.contested}`);
 if (moved.length) errors.push(`proposals moved confirmed concepts: ${moved.slice(0, 5).join(', ')}`);
 if (!layer.jeansLabel?.includes('Proposed · ✓2 ✗0 ?1')) errors.push(`proposal badge missing: ${layer.jeansLabel}`);
-if (!layer.url.includes('community=1')) errors.push(`community flag dropped from the URL: ${layer.url}`);
+if (layer.url !== '?mode=community') errors.push(`the old community address didn't open the community view: ${layer.url}`);
 await page.screenshot({ path: `${OUT}/community-layer.png` });
 
 await page.evaluate(() => window.__cy.$id('jeans_scale_s1').emit('tap'));

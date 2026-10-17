@@ -37,7 +37,7 @@ backlog/roadmap entries and commit messages.
 | Test | `npm test` | Vitest unit tests (`src/**/*.test.ts`, `scripts/**/*.test.mjs`) — pure logic: layout geometry, sentences, the concept file format |
 | Smoke | `CHROME_BIN=/usr/bin/google-chrome npm run smoke` | Browser smoke via puppeteer; needs a running dev server |
 | Dev server | `npm run dev` | Vite |
-| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=explore` for the explorer view; `?mode=concepts&community=1` for the community-review preview |
+| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=explore` for the explorer view; `?mode=community` for the community view (the **Community** tab; open to everyone until sign-in, Phase 3) |
 | DB migrate | *(empty — no backend)* | |
 
 ## Architecture Overview

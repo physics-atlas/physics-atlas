@@ -52,6 +52,7 @@ orientation in the graph) and a11y polish. Don't invent new physics content
 - [x] feature-41: Generality (1–10) sizes the circle, importance (1–50) sets zoom visibility; both in the proposal editor; the claim is optional (Decision 22).
 - [x] feature-42: Phase 2b — several drafts in the editor (still one proposal each), dependencies between proposals (`dependsOn`, relations dropped when a dependency is rejected), edit proposals for confirmed concepts (Decision 23).
 - [x] feature-43: Depth by zoom — generality 10 is 10× the old largest circle (×1.5 per step), importance is a depth (each 8 points = twice as close), big names inside their circle, circles you've zoomed past fade, layout spacing no longer scaled by the biggest nodes (Decision 24).
+- [x] feature-44: A **Community** tab (and a home-page button) for the community view, `?mode=community`, open to everyone until sign-in (Phase 3); old `?mode=concepts&community=1` links still work.
 
 ## Client feedback (2026-07-20) — deferred
 

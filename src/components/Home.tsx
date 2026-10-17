@@ -7,13 +7,15 @@ interface HomeProps {
   topics: Topic[];
   onSearchPick: (id: string) => void;
   onExplore: () => void;
+  /** Opens the community view: proposals and the proposal editor */
+  onCommunity: () => void;
   onPickGoal: (id: string) => void;
   /** The reduce-motion switch — the galaxy animates indefinitely, so it must be stoppable here too */
   motionButton: React.ReactNode;
   still: boolean;
 }
 
-export default function Home({ topics, onSearchPick, onExplore, onPickGoal, motionButton, still }: HomeProps) {
+export default function Home({ topics, onSearchPick, onExplore, onCommunity, onPickGoal, motionButton, still }: HomeProps) {
   const featured = topics.filter((t) => t.featured);
 
   return (
@@ -47,10 +49,16 @@ export default function Home({ topics, onSearchPick, onExplore, onPickGoal, moti
             </button>
           ))}
         </div>
-        <button className="home-explore" onClick={onExplore}>
-          Explore the concept map
-          <span aria-hidden> →</span>
-        </button>
+        <div className="home-actions">
+          <button className="home-explore" onClick={onExplore}>
+            Explore the concept map
+            <span aria-hidden> →</span>
+          </button>
+          <button className="home-explore home-community" onClick={onCommunity}>
+            Propose concepts and review
+            <span aria-hidden> →</span>
+          </button>
+        </div>
       </div>
     </div>
   );
