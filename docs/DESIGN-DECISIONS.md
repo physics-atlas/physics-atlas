@@ -498,6 +498,32 @@ Schrödinger–Poisson eq., Zel'dovich approximation and Airy solution with thei
 **Open paths:** label collision handling (importance as priority) once the graph is denser;
 a "you are near …" orientation line; tuning the reveal curve per the real content.
 
+## Decision 25 — A GitHub App opens proposals; people only sign in (2026-10)
+
+Phase 3 (submitting proposals) while the repository stays **private** and is shared with many
+experts, none of whom should be able to push.
+
+| Option | Verdict |
+|---|---|
+| Repository collaborators | ↩ rejected: on a personal account a collaborator can always push; read-only roles need an organisation, and branch protection on a private repository needs a paid plan |
+| Fork + pull request | ↩ rejected: needs every expert to have read access first, invited one by one |
+| **A GitHub App writes; people only sign in** | ✅ chosen |
+
+How it works: a proposer signs in with GitHub (the App reads their profile once and discards
+the token). The App's own installation token creates a branch, one commit **authored by the
+proposer** (their noreply address), and the pull request. Only handles on the invite list
+(`community/experts.json`) may submit while the repository is private. Everyone else still
+browses, drafts and exports. The pull request carries the proposal as hidden JSON, so the map
+rebuilds the proposed layer from open pull requests. The backend is a Cloudflare Pages
+Function (`server/api.ts`): no database, a signed session cookie, short caches.
+
+**Trade-off:** attribution rests on the App and this backend, not on GitHub's own review
+records. Every action is still in the pull request's history. Once the repository is public,
+native reviews can take over voting (Phase 4) without changing submission.
+
+**Open paths:** ORCID linking for the badge; a public mode where anyone signed in may
+propose; hiding open proposals from people who aren't invited, if that's ever wanted.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):

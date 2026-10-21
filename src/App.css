@@ -3314,3 +3314,57 @@ textarea.draft-input {
 .map-card-edit {
   align-self: flex-start;
 }
+
+/* Community account (Phase 3): who's signed in, where proposals come from */
+.community-account {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(var(--panel-rgb), 0.92);
+  font-size: 13px;
+}
+
+.community-account p {
+  margin: 0;
+}
+
+.community-account-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.community-avatar {
+  border-radius: 50%;
+}
+
+.community-account-note {
+  font-style: italic;
+}
+
+.community-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.draft-submit {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.draft-submit p {
+  margin: 0;
+}
+
+.draft-submit a.draft-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

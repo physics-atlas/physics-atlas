@@ -6,6 +6,25 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-36: Community review, Phase 3 — sign in with GitHub, submit as a pull request
+
+**Status:** ✅ Implemented <!-- status-line: feature-36 -->
+**Planned:** 2026-10-15 — [.claude/plans/epic-community-review.md](.claude/plans/epic-community-review.md) (Phase 3, Decision 25)
+**Implemented:** 2026-10-21
+
+### Implemented
+- `server/` — `api.ts` (routes: me, sign-in, callback, sign-out, list, submit), `github.ts` (App token, sign-in exchange, branch/tree/commit/PR/labels), `session.ts` (signed cookie), `crypto.ts` (HMAC, RS256, PKCS#1→PKCS#8), `proposalPr.ts` (proposal ↔ PR description, files from the proposal, invite list), `config.ts`
+- `functions/api/[[path]].ts` (Cloudflare Pages) and `worker/index.ts` (Worker projects); `tsconfig.server.json`
+- `src/community/api.ts` — `fetchMe`, sign-in link, `submitProposal`, `GitHubStore`; the Community view uses GitHub when connected, samples otherwise, refreshing every 45 s
+- `ConceptMapView.tsx` — account panel (sample notice / sign in / signed in / not invited / submitted #N); `DraftEditor.tsx` — "Submit as a pull request" (held back while a dependency is unsubmitted); `ProposalCard.tsx` — handle and pull-request link; `afterSubmission()` keeps other drafts' relations pointing at the submitted concept
+- `community/experts.json` + README; `.github/workflows/checks.yml` replaces the GitHub Pages deploy; `docs/COMMUNITY-BACKEND-SETUP.md`
+- Tests: 150 (17 backend tests against a simulated GitHub); smoke: the flow against a simulated backend
+
+### Review
+Not run — direct session. validate / build / lint / test clean; smoke passes (only the 2 pre-existing feature-20 failures). Live checks (PR in the test repo, a second browser, CI on the PR) wait for the GitHub App and Cloudflare settings.
+
+<!-- impl-marker: feature-36 -->
+
 ## feature-44: Community tab
 
 **Status:** ✅ Implemented <!-- status-line: feature-44 -->

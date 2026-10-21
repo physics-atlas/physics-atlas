@@ -597,6 +597,59 @@ As before, only the two known feature-20 failures.
 
 ---
 
+## Phase 3 — sign in with GitHub, submit as a pull request (feature-36)
+
+**What changed:**
+- A small **backend** on Cloudflare (`functions/api/[[path]].ts` → `server/api.ts`): sign in
+  with GitHub, the list of open proposals, and submitting one.
+- **Submitting** opens one pull request per proposal in the repository, through a **GitHub
+  App**: the proposer needs no access to the repository. The commit is authored by them; the
+  pull request carries the readable description and, hidden at the end, the proposal itself.
+- **Who may submit:** signed-in GitHub users on the invite list (`community/experts.json`, or
+  the `ALLOWED_PROPOSERS` setting). Everyone can still browse, draft and export.
+- The **Community** view shows the open pull requests as proposals (refreshed every 45 s), or
+  the sample proposals where the backend isn't set up — including `npm run dev`.
+- A **Checks** workflow runs validate, lint, test and build on every push and pull request
+  (it replaced the old GitHub Pages deploy).
+
+### 1. Automated checks (no set-up needed)
+
+| Command | You should see |
+|---|---|
+| `npm test` | `Test Files 8 passed (8)` · `Tests 150 passed (150)`. New: `server/api.test.ts` runs the whole backend against a simulated GitHub — the App token (and turning GitHub's key format into one Web Crypto accepts), sign-in and its state check, refusing a tampered session and off-site redirects, the invite list, refusing cross-site submissions, the commit authored by the proposer with the right files (an edit's deleted relations too), the server deciding the author and tally itself, dependencies that aren't open yet, and the list rebuilt from pull requests. |
+| `npm run build` | Also type-checks `server/` and `functions/`. |
+| Smoke test | A new line, against a simulated backend: `phase 3 (simulated backend): { noBackend: true, signInHref: '/api/auth/login?return=%2F%3Fmode%3Dcommunity', sent: 'Add Smoke submitted concept', editorOpen: false, proposals: [ 'Smoke submitted concept\nProposed · ✓0 ✗0 ?0' ], … #12 … }` |
+
+### 2. Locally (no backend)
+
+`npm run dev` → **Community** tab. At the top of the left panel: *Showing **sample** proposals —
+this site isn't connected to GitHub yet. You can still draft and export.* The editor's
+**Check and export** has no Submit button, only the downloads — as before.
+
+### 3. On Cloudflare, with the test repository
+
+Follow `docs/COMMUNITY-BACKEND-SETUP.md` (test repository, GitHub App, settings). Then:
+
+1. `https://<preview-site>/api/me` → `"configured": true`.
+2. **Community** tab → **Sign in with GitHub** → GitHub asks to let *Physics Atlas (test)* read
+   your profile → back on the same page: *Signed in as … @you*.
+3. Not on the invite list? The panel says so, and **Check and export** explains you can't
+   submit yet. Add yourself (step 3 of the set-up guide) and reload within five minutes.
+4. Write a proposal. **Check and export** → **Submit as a pull request**. The editor closes,
+   the panel says *Submitted "Add …": pull request #N ↗*, and the proposal is on the map,
+   dashed. Its card has **Pull request #N on GitHub ↗**.
+5. In the test repository: a pull request labelled `proposal`, a branch `proposal/…`, one
+   commit **authored by you** with the node and relation files (an edit also deletes the
+   relations it removes), and the **Checks** workflow running.
+6. A second browser (or a private window) shows the proposal within a minute.
+7. **Two drafts that depend on each other:** Submit is held back on the second — *Submit "Add
+   …" first* — until the first is in. Then the second's pull request lists it under **Depends
+   on**.
+8. **Sign out** (in the panel) and the Submit button turns back into *Sign in with GitHub to
+   submit*.
+
+---
+
 ## Map depth — zooming reveals detail (feature-43)
 
 Not part of the community-review phases, but tested the same way. Open
@@ -630,7 +683,6 @@ when it's built.
 
 | Phase | You'll check |
 |---|---|
-| **3 — Sign-in and submitting** | On a staging site connected to a **test repository**: sign in with GitHub, link an ORCID iD, submit a proposal, and see a pull request appear in the test repo. A second browser shows the proposal dashed within a minute. |
 | **4 — Voting and contested** | Verify, Dispute and Needs clarification on a proposal. The quorum status updates ("2 of 3 verified-expert votes, 1 open dispute"). The "Quorum" check on the PR turns green or red. Marking a proposal contested shows ⚑ and its dispute thread. |
 | **5 — Moderation** | As a steward: the review queue lists your domain's proposals, each with a mini-map. Merge one, and after the deploy it shows solid. As a curator: merge two duplicates and check no relation is left dangling. |
 | **6 — Accountability** | Every confirmed concept shows its history (created / edited / approved by whom, with links). The audit log matches the test repo's pull requests. Expert badges show where they should. |

@@ -1,10 +1,23 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
-import { NEW_CONCEPT, draftRef, draftShape, hasContent, mapId, newDraft, newEditDraft, proposalTitle } from '../community/draft';
+import {
+  NEW_CONCEPT,
+  draftProposal,
+  draftRef,
+  draftShape,
+  hasContent,
+  mapId,
+  newDraft,
+  newEditDraft,
+  proposalTitle,
+  pullRequestText,
+} from '../community/draft';
 import type { DraftContext, DraftShape } from '../community/draft';
 import { badgeText, mergedGraph, overlayFor, proposalByNode, proposalsAbout } from '../community/proposals';
 import { FixtureStore } from '../community/store';
+import { GitHubStore, fetchMe, loginHref, logout, submitProposal } from '../community/api';
+import type { Me, SubmitResult } from '../community/api';
 import type { Proposal } from '../community/types';
 import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
@@ -80,14 +93,52 @@ export default function ConceptMapView({
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [showConfirmed, setShowConfirmed] = useState(true);
   const [showProposed, setShowProposed] = useState(true);
+  // Phase 3: proposals come from GitHub (open pull requests) when the
+  // community backend is set up, and from the sample fixtures otherwise —
+  // `npm run dev`, or a deploy before set-up.
+  const [me, setMe] = useState<Me | null>(null);
+  const [backendChecked, setBackendChecked] = useState(false);
+  const [listTick, setListTick] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [lastSubmitted, setLastSubmitted] = useState<{ number: number; url: string; title: string } | null>(null);
   useEffect(() => {
     if (!community) return;
     let alive = true;
-    void new FixtureStore(graph).list().then((list) => alive && setProposals(list));
+    void fetchMe().then((m) => {
+      if (!alive) return;
+      setMe(m);
+      setBackendChecked(true);
+    });
     return () => {
       alive = false;
     };
-  }, [community, graph]);
+  }, [community]);
+  const live = Boolean(me?.configured);
+  useEffect(() => {
+    if (!community || !backendChecked) return;
+    let alive = true;
+    const store = live ? new GitHubStore() : new FixtureStore(graph);
+    const load = () =>
+      store
+        .list()
+        .then((list) => {
+          if (!alive) return;
+          setProposals(list);
+          setLoadError('');
+        })
+        .catch((e: Error) => alive && setLoadError(e.message));
+    void load();
+    // A proposal someone else just submitted shows within a minute.
+    const timer = live ? window.setInterval(load, 45_000) : 0;
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [community, backendChecked, live, graph, listTick]);
+  const signOut = async () => {
+    await logout();
+    setMe(await fetchMe());
+  };
   const activeProposals = community ? proposals : NO_PROPOSALS;
   const overlay = useMemo(
     () => (activeProposals.length ? overlayFor(activeProposals) : null),
@@ -269,6 +320,21 @@ export default function ConceptMapView({
     );
     if (drafts.drafts.length <= 1) closeEditor();
   };
+  // Submit: one pull request, opened by the Physics Atlas app on the signed-in
+  // proposer's behalf. The draft then lives on as an open proposal.
+  const submitDraft = async (): Promise<SubmitResult> => {
+    if (!draft || !me?.user) return { ok: false, error: 'Sign in with GitHub first.' };
+    const signed = { ...draft, author: me.user.name || me.user.login };
+    const result = await submitProposal(draftProposal(signed, draftCtx), pullRequestText(signed, draftCtx));
+    if (result.ok) {
+      setLastSubmitted({ number: result.number, url: result.url, title: proposalTitle(draft) });
+      setNear(NO_NEAR);
+      setDraftStatus(`Submitted “${proposalTitle(draft)}” as pull request #${result.number}.`);
+      drafts.submitted(draft.suffix);
+      setListTick((t) => t + 1);
+    }
+    return result;
+  };
 
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
   // An edit proposal has no concept of its own: its card opens from the
@@ -370,6 +436,15 @@ export default function ConceptMapView({
         )}
 
         <div className="concept-side">
+          {community && (
+            <CommunityAccount
+              checked={backendChecked}
+              me={me}
+              loadError={loadError}
+              lastSubmitted={lastSubmitted}
+              onSignOut={signOut}
+            />
+          )}
           {community && !drafting && (
             <button ref={editorButtonRef} type="button" className="concept-propose" onClick={openEditor}>
               <span aria-hidden>＋ </span>
@@ -555,6 +630,16 @@ export default function ConceptMapView({
                 onClose={closeEditor}
                 onDiscard={discardDraft}
                 status={draftStatus}
+                submission={
+                  live && me
+                    ? {
+                        user: me.user,
+                        invited: me.invited,
+                        loginHref: loginHref(`${window.location.pathname}${window.location.search}`),
+                        onSubmit: submitDraft,
+                      }
+                    : null
+                }
               />
             </Suspense>
             <button className="map-card-close" onClick={closeEditor} aria-label="Close the proposal editor (the draft is kept)">
@@ -788,6 +873,77 @@ export default function ConceptMapView({
         <Legend variant="type" statuses={Boolean(overlay) || drafting} draft={drafting} />
       </div>
     </div>
+  );
+}
+
+/**
+ * Where the community view's proposals come from, and who's signed in. Signing
+ * in is only needed to submit — browsing, drafting and exporting don't.
+ */
+function CommunityAccount({
+  checked,
+  me,
+  loadError,
+  lastSubmitted,
+  onSignOut,
+}: {
+  checked: boolean;
+  me: Me | null;
+  loadError: string;
+  lastSubmitted: { number: number; url: string; title: string } | null;
+  onSignOut: () => void;
+}) {
+  if (!checked) return null;
+  const here = `${window.location.pathname}${window.location.search}`;
+  return (
+    <section className="community-account" aria-label="Community account">
+      {!me?.configured ? (
+        <p className="community-account-note">
+          Showing <strong>sample</strong> proposals — this site isn't connected to GitHub yet. You can still draft and
+          export.
+        </p>
+      ) : me.user ? (
+        <>
+          <p className="community-account-who">
+            {me.user.avatar && <img className="community-avatar" src={me.user.avatar} alt="" width={24} height={24} />}
+            <span>
+              Signed in as <strong>{me.user.name}</strong> <span className="concept-via">@{me.user.login}</span>
+            </span>
+          </p>
+          {!me.invited && (
+            <p className="community-account-note">
+              You're not on the invite list yet, so you can't submit. You can still draft and export — ask a curator
+              to add <strong>@{me.user.login}</strong>.
+            </p>
+          )}
+          <button type="button" className="draft-link" onClick={onSignOut}>
+            Sign out
+          </button>
+        </>
+      ) : (
+        <>
+          <a className="draft-button community-signin" href={loginHref(here)}>
+            Sign in with GitHub
+          </a>
+          <p className="community-account-note">
+            Only needed to submit a proposal. Physics Atlas reads your public GitHub profile — nothing else.
+          </p>
+        </>
+      )}
+      {me?.configured && <p className="community-account-note">Proposals: open pull requests on GitHub.</p>}
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {loadError || (lastSubmitted ? `Submitted as pull request ${lastSubmitted.number}.` : '')}
+      </p>
+      {loadError && <p className="draft-warning">{loadError}</p>}
+      {lastSubmitted && (
+        <p className="community-account-note">
+          Submitted “{lastSubmitted.title}”:{' '}
+          <a className="concept-resource-link" href={lastSubmitted.url} target="_blank" rel="noreferrer">
+            pull request #{lastSubmitted.number} ↗
+          </a>
+        </p>
+      )}
+    </section>
   );
 }
 

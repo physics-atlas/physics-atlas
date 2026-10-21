@@ -119,6 +119,8 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   a fixed label and exposes its state with `aria-pressed`. A display toggle (Show all
   concepts, Show confirmed, Show proposed) changes what's drawn, never where the view
   is.
+- **Signing in** is a plain link ("Sign in with GitHub") with the reason next to it; the
+  submit result is announced (a polite status for success, an alert for a refusal, in words).
 - **Forms:** every field has a visible `<label>`; hints are tied to their field with
   `aria-describedby`; groups of checkboxes are a `fieldset` with a `legend`; problems are
   listed in words, each a button that moves focus to its field. Destructive actions ask

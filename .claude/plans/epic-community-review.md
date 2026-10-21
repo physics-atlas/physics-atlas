@@ -307,7 +307,34 @@ reviewed on its own (the Risks row below stands), but the editor works on severa
   `resolveDependencies()`. An edit PR replaces the node file and deletes the removed edge
   files.
 
-### Phase 3 — Identity and submitting proposals *(GitHub backend goes live)*
+### Phase 3 — Identity and submitting proposals *(GitHub backend goes live)* — ✅ built 2026-10-21 (feature-36); live once the set-up in docs/COMMUNITY-BACKEND-SETUP.md is done
+
+> **As built:**
+> - **Hosting: Cloudflare** (moved from GitHub Pages). The backend is a Pages Function,
+>   `functions/api/[[path]].ts` → `server/api.ts` (`worker/index.ts` if the project is a
+>   Worker). No database; state lives in git and in a signed session cookie.
+> - **A GitHub App writes; people only sign in.** Sign-in is the App's OAuth (read the
+>   profile, discard the token). Submitting is the App's installation token: branch
+>   `proposal/<id>`, one commit **authored by the proposer** (their noreply address), the pull
+>   request labelled `proposal`. Proposers need no repository access, so the repository can
+>   stay private (Decision 25).
+> - **Invite list while private:** `community/experts.json` (plus `ALLOWED_PROPOSERS`). The
+>   "Verified expert" badge comes from `verified` there.
+> - **The pull request carries the proposal:** readable description + the proposal as JSON
+>   in a hidden block; `GET /api/proposals` rebuilds the proposed layer from open pull
+>   requests (30 s cache; the page refreshes every 45 s), with the same validation and
+>   dependency rules as the map.
+> - **The server decides** author, date, state and tally; derives the files from the
+>   proposal; refuses cross-site posts, uninvited users, a second copy, a proposal that
+>   doesn't fit the map, and one whose dependencies aren't open yet.
+> - **CI:** `.github/workflows/checks.yml` (validate, lint, test, build) on pushes and pull
+>   requests, replacing the GitHub Pages deploy.
+> - **Not yet:** ORCID linking (needs an ORCID client registration; it only feeds the badge,
+>   which `experts.json` already covers) — moved to Phase 4. Votes stay read-only.
+> - **Exit status:** everything is verified locally — 17 backend tests against a simulated
+>   GitHub, and the browser flow against a simulated backend. The live exit checks (a PR in
+>   the test repo, a second browser, CI on the PR) need the GitHub App and Cloudflare settings,
+>   which only the account owner can create.
 
 - **Scope:**
   - The serverless proxy: GitHub OAuth, a read cache, ORCID OAuth linking.
@@ -409,11 +436,11 @@ aid whose positions are never saved (see Phase 2).
 | # | Decision | Recommendation | Status | Blocks |
 |---|---|---|---|---|
 | D1 | Backend | **GitHub repo + PRs + a serverless proxy** (vs own Postgres + server-side git) | ✅ Accepted | Phase 3 |
-| D2 | Identity | **GitHub login for all; ORCID linking for the expert badge**; institutional e-mail later | Open | Phase 3 |
+| D2 | Identity | **GitHub login for all; ORCID linking for the expert badge**; institutional e-mail later | ✅ GitHub sign-in at submit, through a GitHub App (2026-10-21); ORCID later | Phase 3 |
 | D3 | Expertise attestation | **A curator or steward approves tags through a reviewed PR to `experts.json`** | ✅ Accepted | Phase 4 |
 | D4 | Quorum defaults | **3 verified-expert Verify votes + no open Dispute; bootstrap = 1 steward approval while a domain has fewer than 5 experts** | ✅ Bootstrap principle accepted; the exact numbers are defaults in `policy.json`, to be tuned | Phase 4 |
 | D5 | Initial stewards and curators | Sophie as curator + steward for her domains; who else? | Open | Phase 5 |
-| D6 | Who may propose | **Anyone signed in**; only verified experts' votes count toward quorum, other votes show as "community signal" | Open | Phase 3 |
+| D6 | Who may propose | **Anyone signed in**; only verified experts' votes count toward quorum, other votes show as "community signal" | ✅ While the repo is private: invited GitHub handles (`community/experts.json`); anyone signed in once it's public (2026-10-21) | Phase 3 |
 | D7 | Public identity in the audit log | **Display names + ORCID shown; commits reference pseudonymous ids** (GDPR — needs a legal check) | Open | Phase 6 |
 
 ## Risks

@@ -56,8 +56,11 @@ sophie_scicom/
 │   │                 # ContentList, Legend
 │   ├── App.tsx       # mode switch (goal | explore), reads ?mode= from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
+├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
+├── functions/        # Cloudflare Pages Function: /api/* → server/api.ts (worker/ if it's a Worker project)
+├── community/        # experts.json — the invite list while the repo is private
 ├── scripts/          # compile-*.mjs (content → src/data), validate-*.mjs, lib/concept-files.mjs
-└── docs/             # DESIGN-DECISIONS.md, AUTHORING.md
+└── docs/             # DESIGN-DECISIONS.md, AUTHORING.md, COMMUNITY-BACKEND-SETUP.md
 ```
 
 ## Key Patterns / Modules
@@ -131,7 +134,8 @@ second place for the same truth. No agent pushes; you do that by hand.
 ## Deliberately not now
 
 - No own server or database. The community-review epic (`.claude/plans/epic-community-review.md`,
-  Decision 18) adds GitHub as the backend plus a tiny serverless proxy — nothing beyond that.
+  Decisions 18 and 25) uses GitHub as the backend plus a small Cloudflare function (`server/`):
+  no database, nothing beyond that. Hosting is Cloudflare; CI is `.github/workflows/checks.yml`.
 - No native mobile app.
 - No D3/React Flow rewrite (deliberate paths, see DESIGN-DECISIONS.md).
 - Agents don't invent new physics *content* — Sophie curates content.

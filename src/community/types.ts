@@ -64,6 +64,8 @@ export interface Proposal {
   tally: VoteTally;
   /** Why it's contested — required when state is `contested` */
   dispute?: { summary: string };
+  /** The pull request it lives in, once submitted (Phase 3) */
+  pr?: { number: number; url: string };
   /** Computed when loading, never authored: relations dropped because a dependency is no longer open */
   dropped?: DroppedRelation[];
 }

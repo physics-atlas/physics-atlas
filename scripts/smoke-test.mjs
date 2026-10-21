@@ -615,6 +615,70 @@ if (!editForm.title.includes('Propose an edit: Kinetic theory') || editForm.name
 await page.evaluate(() => [...document.querySelectorAll('.draft-footer .draft-button')].find((b) => b.textContent.startsWith('Close')).click());
 await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
 
+// --- Community, Phase 3: sign in and submit, against a simulated backend ---
+// The dev server has no /api (that runs on Cloudflare), so the page answers
+// it here; server/api.test.ts covers the backend itself.
+const noBackend = await page.evaluate(async () => {
+  await new Promise((r) => setTimeout(r, 300));
+  return document.querySelector('.community-account')?.textContent ?? '';
+});
+const p3 = await browser.newPage();
+await p3.setViewport({ width: 1440, height: 900 });
+const sim = { user: null, proposals: [], submitted: null };
+await p3.setRequestInterception(true);
+p3.on('request', (req) => {
+  const u = new globalThis.URL(req.url());
+  if (!u.pathname.startsWith('/api/')) return req.continue();
+  const reply = (data, status = 200) => req.respond({ status, contentType: 'application/json', body: JSON.stringify(data) });
+  if (u.pathname === '/api/me') return reply({ configured: true, user: sim.user, invited: true });
+  if (u.pathname === '/api/proposals' && req.method() === 'GET') return reply({ proposals: sim.proposals });
+  if (u.pathname === '/api/proposals' && req.method() === 'POST') {
+    sim.submitted = JSON.parse(req.postData());
+    const pr = { number: 12, url: 'https://github.com/example/atlas-test/pull/12' };
+    sim.proposals = [{ ...sim.submitted.proposal, author: { name: 'Ada L', handle: 'ada' }, pr }];
+    return reply(pr, 201);
+  }
+  return reply({ error: 'Not found' }, 404);
+});
+await p3.evaluateOnNewDocument(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
+await p3.goto(`${URL}/?mode=community`, { waitUntil: 'networkidle0' });
+await p3.waitForSelector('.community-signin', { timeout: 10000 });
+const signInHref = await p3.$eval('.community-signin', (a) => a.getAttribute('href'));
+sim.user = { login: 'ada', id: 42, name: 'Ada L' };
+await p3.reload({ waitUntil: 'networkidle0' });
+await p3.waitForSelector('.community-account');
+await p3.click('.concept-propose');
+await p3.waitForSelector('.draft-editor');
+const p3ids = await p3.$$eval('.draft-editor [id]', (els) => els.map((e) => e.id));
+const p3field = (end) => p3ids.find((i) => i.endsWith('-' + end) && !i.endsWith('h-' + end));
+await p3.type(`[id="${p3field('label')}"]`, 'Smoke submitted concept');
+await p3.select(`[id="${p3field('type')}"]`, 'property');
+await p3.type(`[id="${p3field('description')}"]`, 'Sample: a smoke-test concept.');
+await p3.focus('.draft-search input');
+await p3.keyboard.type('Structure Form');
+await wait(150);
+await p3.keyboard.press('Enter');
+await wait(1600);
+await p3.evaluate(() => [...document.querySelectorAll('.draft-submit button')].find((b) => b.textContent.includes('Submit as a pull request'))?.click());
+await wait(1500);
+const submitted = await p3.evaluate(() => ({
+  editorOpen: Boolean(document.querySelector('.draft-editor')),
+  proposals: window.__cy.nodes('.overlay').map((n) => n.data('label')),
+  account: document.querySelector('.community-account')?.textContent ?? '',
+}));
+console.log('phase 3 (simulated backend):', {
+  noBackend: noBackend.includes('sample'),
+  signInHref,
+  sent: sim.submitted?.proposal.title,
+  ...submitted,
+});
+if (!noBackend.includes('sample')) errors.push('without a backend the community view should say it shows sample proposals');
+if (signInHref !== '/api/auth/login?return=%2F%3Fmode%3Dcommunity') errors.push(`sign-in link: ${signInHref}`);
+if (sim.submitted?.proposal.title !== 'Add Smoke submitted concept') errors.push('the submitted proposal did not reach the backend');
+if (submitted.editorOpen || !submitted.proposals.some((l) => l.startsWith('Smoke submitted concept')) || !submitted.account.includes('#12'))
+  errors.push(`after submitting: ${JSON.stringify(submitted)}`);
+await p3.close();
+
 console.log('console errors:', errors.length ? errors : 'none');
 await browser.close();
 process.exit(errors.length ? 1 : 0);

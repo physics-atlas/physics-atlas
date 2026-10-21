@@ -69,9 +69,17 @@ export default function ProposalCard({ proposal: p, node, byId, confirmed, propo
         )}
         <p className="proposal-meta">
           Proposed by <strong>{p.author.name}</strong>
+          {p.author.handle && <span className="concept-via"> @{p.author.handle}</span>}
           {p.author.verified && <span className="verified-badge">✓ Verified expert</span>} ·{' '}
           <time dateTime={p.createdAt}>{date}</time>
         </p>
+        {p.pr && (
+          <p className="proposal-meta">
+            <a className="concept-resource-link" href={p.pr.url} target="_blank" rel="noreferrer">
+              Pull request #{p.pr.number} on GitHub ↗
+            </a>
+          </p>
+        )}
       </section>
 
       {contested && p.dispute && (

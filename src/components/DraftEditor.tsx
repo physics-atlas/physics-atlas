@@ -12,12 +12,14 @@ import {
   isDraftRef,
   mapId,
   proposalFile,
+  proposalId,
   proposalTitle,
   pullRequestText,
   removedFiles,
 } from '../community/draft';
 import type { Draft, DraftContext, DraftField, DraftRelation, ExportFile } from '../community/draft';
 import type { Evidence, EvidenceKind } from '../community/types';
+import type { SignedInUser, SubmitResult } from '../community/api';
 import { edgeConflicts } from '../graph/conflicts';
 import type { EdgeConflict, LabelMatch } from '../graph/conflicts';
 import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts } from '../graph/concepts';
@@ -56,6 +58,13 @@ interface DraftEditorProps {
   onDiscard: () => void;
   /** What just happened on the map, for the live region ("Connected to …") */
   status: string;
+  /** Submitting as a pull request (Phase 3) — null where the site isn't connected to GitHub */
+  submission: {
+    user: SignedInUser | null;
+    invited: boolean;
+    loginHref: string;
+    onSubmit: () => Promise<SubmitResult>;
+  } | null;
 }
 
 const RELATION_TYPES = Object.keys(EDGE_SENTENCE_TEMPLATES) as EdgeType[];
@@ -122,12 +131,15 @@ export default function DraftEditor({
   onClose,
   onDiscard,
   status,
+  submission,
 }: DraftEditorProps) {
   const uid = useId();
   const fieldId = (f: DraftField | string) => `${uid}-${f}`;
   const [note, setNote] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [pairFrom, setPairFrom] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<{ error: string; problems?: string[] } | null>(null);
   const exportRef = useRef<HTMLElement>(null);
 
   const shape = useMemo(() => draftShape(draft, ctx), [draft, ctx]);
@@ -162,6 +174,19 @@ export default function DraftEditor({
     isDraftRef(id)
       ? proposalTitle(ctx.drafts.find((d) => `@draft:${d.suffix}` === id) ?? draft)
       : ctx.proposals.find((p) => p.nodes.some((n) => n.id === id))?.title;
+  // Drafts this one depends on that aren't submitted yet: they go first.
+  const unsubmitted = deps.filter((x) => ctx.drafts.some((d) => d.suffix !== draft.suffix && proposalId(d) === x.id));
+  const send = async () => {
+    if (!submission) return;
+    setSending(true);
+    setSendError(null);
+    const result = await submission.onSubmit();
+    setSending(false);
+    if (!result.ok) {
+      setSendError({ error: result.error, problems: result.problems });
+      setNote(`Not submitted: ${result.error}`);
+    }
+  };
   const dependents = ctx.drafts.filter((d) =>
     d.relations.some((r) => r.source === `@draft:${draft.suffix}` || r.target === `@draft:${draft.suffix}`),
   ).length;
@@ -785,8 +810,64 @@ export default function DraftEditor({
           </>
         ) : (
           <>
+            {submission && (
+              <div className="draft-submit">
+                {!submission.user ? (
+                  <p>
+                    Ready to submit.{' '}
+                    <a className="draft-button draft-button-primary" href={submission.loginHref}>
+                      Sign in with GitHub to submit
+                    </a>
+                  </p>
+                ) : !submission.invited ? (
+                  <p>
+                    Ready — but <strong>@{submission.user.login}</strong> isn't on the invite list yet, so it can't be
+                    submitted from here. Download the files below instead, or ask a curator to invite you.
+                  </p>
+                ) : unsubmitted.length > 0 ? (
+                  <p>
+                    Submit {unsubmitted.map((x) => `“${x.title}”`).join(', ')} first: this proposal depends on{' '}
+                    {unsubmitted.length === 1 ? 'it' : 'them'}.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Ready. Submitting opens a pull request for reviewers, as <strong>@{submission.user.login}</strong>
+                      ; the draft then shows on the map as a proposal for everyone.
+                    </p>
+                    <div className="draft-row-actions">
+                      <button
+                        type="button"
+                        className="draft-button draft-button-primary"
+                        onClick={() => void send()}
+                        disabled={sending}
+                        aria-disabled={sending}
+                      >
+                        {sending ? 'Submitting…' : 'Submit as a pull request'}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {sendError && (
+                  <div className="draft-warning" role="alert">
+                    <p>
+                      <span aria-hidden>⚠ </span>
+                      {sendError.error}
+                    </p>
+                    {sendError.problems && (
+                      <ul className="draft-problems">
+                        {sendError.problems.map((p) => (
+                          <li key={p}>{p}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                <p className="draft-hint">Or do it by hand:</p>
+              </div>
+            )}
             <p>
-              Ready. Download the files and put them into <code>content/concepts/</code>
+              {submission ? 'Download' : 'Ready. Download'} the files and put them into <code>content/concepts/</code>
               {draft.editOf ? ' (the concept’s file replaces the old one)' : ''}
               {deletions.length ? ', delete the files listed below' : ''}, run <code>npm run validate</code>, and open a
               pull request with the text below as its description.

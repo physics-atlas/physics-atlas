@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { parseDraft, withoutDraft } from './draft';
+import { afterSubmission, parseDraft, withoutDraft } from './draft';
 import type { Draft } from './draft';
 
 const STORAGE_KEY = 'physics-atlas-proposal-drafts-v2';
@@ -47,6 +47,8 @@ export interface DraftStore {
   update: (suffix: string, change: (d: Draft) => Draft) => void;
   /** Removes a draft, and the relations other drafts had into it; returns how many relations went. */
   discard: (suffix: string) => number;
+  /** A draft was submitted: it leaves, and other drafts now point at its proposed concept. */
+  submitted: (suffix: string) => void;
 }
 
 /** The proposals being written, kept in this browser between visits (the useProgress pattern). */
@@ -77,5 +79,14 @@ export function useDrafts(): DraftStore {
     [change, state.drafts],
   );
 
-  return { drafts: state.drafts, active: state.active, setActive, add, update, discard };
+  const submitted = useCallback(
+    (suffix: string) =>
+      change((s) => {
+        const drafts = afterSubmission(s.drafts, suffix);
+        return { drafts, active: s.active === suffix ? (drafts.at(-1)?.suffix ?? null) : s.active };
+      }),
+    [change],
+  );
+
+  return { drafts: state.drafts, active: state.active, setActive, add, update, discard, submitted };
 }

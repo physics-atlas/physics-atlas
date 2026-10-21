@@ -536,6 +536,26 @@ export function withoutDraft(drafts: Draft[], suffix: string): { drafts: Draft[]
   return { drafts: rest, removed };
 }
 
+/**
+ * After a draft is submitted it lives on as an open proposal (a pull request),
+ * so it leaves the drafts — and the relations other drafts had into it now
+ * point at its proposed concept, keeping their dependency on it.
+ */
+export function afterSubmission(drafts: Draft[], suffix: string): Draft[] {
+  const submitted = drafts.find((d) => d.suffix === suffix);
+  if (!submitted) return drafts;
+  const ref = draftRef(suffix);
+  const id = conceptId(submitted);
+  const point = (x: string) => (x === ref ? id : x);
+  return drafts
+    .filter((d) => d.suffix !== suffix)
+    .map((d) =>
+      d.relations.some((r) => r.source === ref || r.target === ref)
+        ? { ...d, relations: d.relations.map((r) => ({ ...r, source: point(r.source), target: point(r.target) })) }
+        : d,
+    );
+}
+
 const isString = (v: unknown): v is string => typeof v === 'string';
 
 /**

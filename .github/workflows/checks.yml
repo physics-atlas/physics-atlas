@@ -1,0 +1,27 @@
+name: Checks
+
+# Every push to main and every pull request — including the ones the Physics
+# Atlas app opens for proposals — runs the same gates. Cloudflare builds and
+# deploys the site itself.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build

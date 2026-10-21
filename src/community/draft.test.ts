@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { concepts } from '../data/loadConcepts';
 import {
   NEW_CONCEPT,
+  afterSubmission,
   conceptId,
   draftDependencies,
   draftEdges,
@@ -241,6 +242,15 @@ describe('several drafts, and relations between them', () => {
     expect(removed).toBe(1);
     expect(drafts).toHaveLength(1);
     expect(drafts[0].relations).toEqual([]);
+  });
+  it('once one is submitted, the others point at its proposed concept and still depend on it', () => {
+    const rest = afterSubmission([a, b], a.suffix);
+    expect(rest.map((d) => d.suffix)).toEqual([b.suffix]);
+    expect(rest[0].relations[0].target).toBe(conceptId(a));
+    const submitted = { ...draftProposal(a, ctx), pr: { number: 12, url: 'https://github.com/o/r/pull/12' } };
+    const later: DraftContext = { confirmed: concepts, drafts: rest, proposals: [submitted] };
+    expect(draftProposal(rest[0], later).dependsOn).toEqual([proposalId(a)]);
+    expect(draftProblems(rest[0], later)).toEqual([]);
   });
   it('a relation whose other end is gone is flagged, not exported', () => {
     const lone = alone(b);
