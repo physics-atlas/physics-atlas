@@ -1,0 +1,10 @@
+{
+  "id": "test_mkon",
+  "label": "test",
+  "type": "finding",
+  "importance": 3,
+  "generality": 4,
+  "attrs": {
+    "description": "test"
+  }
+}

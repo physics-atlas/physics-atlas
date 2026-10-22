@@ -1,0 +1,6 @@
+{
+  "id": "test_mkon_e1",
+  "source": "test_mkon",
+  "target": "conservation_equations",
+  "relationship": "relates"
+}
