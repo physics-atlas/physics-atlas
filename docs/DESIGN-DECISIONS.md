@@ -514,8 +514,8 @@ the token). The App's own installation token creates a branch, one commit **auth
 proposer** (their noreply address), and the pull request. Only handles on the invite list
 (`community/experts.json`) may submit while the repository is private. Everyone else still
 browses, drafts and exports. The pull request carries the proposal as hidden JSON, so the map
-rebuilds the proposed layer from open pull requests. The backend is a Cloudflare Pages
-Function (`server/api.ts`): no database, a signed session cookie, short caches.
+rebuilds the proposed layer from open pull requests. The backend runs in the site's Cloudflare
+Worker (`worker/index.ts` → `server/api.ts`): no database, a signed session cookie, short caches.
 
 **Trade-off:** attribution rests on the App and this backend, not on GitHub's own review
 records. Every action is still in the pull request's history. Once the repository is public,

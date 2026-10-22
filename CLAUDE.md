@@ -57,7 +57,7 @@ sophie_scicom/
 │   ├── App.tsx       # mode switch (goal | explore), reads ?mode= from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
-├── functions/        # Cloudflare Pages Function: /api/* → server/api.ts (worker/ if it's a Worker project)
+├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
 ├── community/        # experts.json — the invite list while the repo is private
 ├── scripts/          # compile-*.mjs (content → src/data), validate-*.mjs, lib/concept-files.mjs
 └── docs/             # DESIGN-DECISIONS.md, AUTHORING.md, COMMUNITY-BACKEND-SETUP.md

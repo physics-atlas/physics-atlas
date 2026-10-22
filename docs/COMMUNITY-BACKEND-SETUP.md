@@ -1,135 +1,114 @@
 # Setting up the community backend (Phase 3)
 
-The site runs on Cloudflare. Its small backend — `functions/api/[[path]].ts`, which calls
-`server/api.ts` — signs people in with GitHub and opens a pull request for each proposal. It
-uses a **GitHub App**, so proposers need no access to the repository at all. Until it's set up,
-the site works exactly as before, with the sample proposals.
+The site is a **Cloudflare Worker**: the built site (static assets from `dist/`) plus a small
+script, `worker/index.ts`, that sends `/api/*` to the community backend (`server/api.ts`).
+`wrangler.jsonc` at the repository root ties the two together. The backend signs people in
+with GitHub and opens a pull request for each proposal through a **GitHub App**, so proposers
+need no access to the repository.
 
-Do it on a **test repository** first, so nothing touches the real one while you try it out.
-Each step names where to click; nothing here needs the command line except step 1.
+Until the settings below are in place, the site works exactly as before, with the sample
+proposals — so it's safe to deploy the code first.
 
-## 1. A test repository
+Proposals go into this repository, but only ever as a `proposal/…` branch and a pull request:
+nothing reaches `main` until someone merges it. To undo a test, close the pull request and
+delete its branch.
 
-1. On GitHub, create a new **private** repository, e.g. `physics-atlas-test` (empty: no README,
-   no licence).
-2. From the `physics-atlas` folder, push a copy of the project into it:
+## 1. The GitHub App (done)
 
-   ```powershell
-   git push https://github.com/<owner>/physics-atlas-test.git main
-   ```
-
-3. In the test repo, open **Settings → Actions → General** and make sure Actions are allowed:
-   the **Checks** workflow runs the validator on every proposal's pull request.
-
-## 2. The GitHub App
-
-**Settings → Developer settings → GitHub Apps → New GitHub App** (your personal settings, or
-the organisation's if the repo belongs to one).
+It belongs to the organisation and is installed on `physics-atlas`. For reference, these are
+the settings it needs (organisation → Settings → Developer settings → GitHub Apps → the App):
 
 | Field | Value |
 |---|---|
-| GitHub App name | `Physics Atlas (test)` (names are global; add something if it's taken) |
-| Homepage URL | your site, e.g. `https://physics-atlas.pages.dev` |
-| Callback URL | `https://<your-site>/api/auth/callback` — add one per address you'll sign in on (the preview address too, see step 4) |
-| Expire user authorization tokens | leave as it is (the site uses the token once, at sign-in) |
-| Request user authorization (OAuth) during installation | off |
-| Webhook → Active | **off** (no webhooks needed) |
-| Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write** (labels and the list of open proposals); Metadata: Read-only (set automatically) |
+| Callback URL | `https://<your-site>/api/auth/callback` (one per address you sign in on) |
+| Webhook → Active | off |
+| Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write**; Metadata: Read-only |
 | Account permissions | none |
-| Where can this GitHub App be installed? | Only on this account |
 
-Then, on the App's page:
+From the App's page you need: the **App ID**, the **Client ID**, a **client secret**
+(*Generate a new client secret*, shown once) and a **private key** (*Generate a private key*,
+a `.pem` file downloads).
 
-1. Note the **App ID** and the **Client ID**.
-2. **Generate a new client secret** — copy it now, it's shown once.
-3. **Generate a private key** — a `.pem` file downloads. Keep it safe; you'll paste its whole
-   contents into Cloudflare. (It's in the "RSA PRIVATE KEY" format; the backend converts it, so
-   paste it exactly as downloaded.)
-4. **Install App** → choose the account → **Only select repositories** → the **test** repository.
+## 2. Deploy the Worker script
 
-## 3. The invite list
+1. Check that `"name"` in `wrangler.jsonc` is your Worker's name, exactly as in the Cloudflare
+   dashboard (Workers & Pages). If it differs, change the file — otherwise Cloudflare's build
+   stops with a name mismatch.
+2. In the Worker's **Settings → Build**: build command `npm run build`, deploy command
+   `npx wrangler deploy` (no extra flags — `wrangler.jsonc` says where the assets are), and a
+   build variable `NODE_VERSION` = `22`.
+3. Commit and push. When the build finishes, open `https://<your-site>/api/me`: it should say
+   `{"configured":false,…}`. That means the script runs; it just has no settings yet. The site
+   itself is unchanged.
 
-While the repository is private, only invited GitHub handles can submit. Add yourself:
+Now that the Worker has a script, its **Settings → Variables and Secrets** can be edited.
 
-- either edit `community/experts.json` in the test repository (see `community/README.md`):
+## 3. The settings
+
+In the Worker: **Settings → Variables and Secrets → Add**. Use type **Secret** for the secret
+ones (their values can't be read back afterwards — keep the originals somewhere safe).
+
+| Name | Value | Type |
+|---|---|---|
+| `GITHUB_REPO` | `<organisation>/physics-atlas` | Text |
+| `GITHUB_APP_ID` | the App ID | Text |
+| `GITHUB_CLIENT_ID` | the Client ID | Text |
+| `GITHUB_CLIENT_SECRET` | the client secret | **Secret** |
+| `GITHUB_APP_PRIVATE_KEY` | the whole `.pem` file, including the `-----BEGIN …-----` and `-----END …-----` lines | **Secret** |
+| `SESSION_SECRET` | a long random string, e.g. from `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"` | **Secret** |
+| `ALLOWED_PROPOSERS` | optional: invited GitHub handles, comma-separated (on top of `community/experts.json`) | Text |
+| `GITHUB_BASE` | optional: the branch proposals start from (default `main`) | Text |
+
+Saving them deploys the Worker again with the new settings. `wrangler.jsonc` has
+`"keep_vars": true`, so later pushes keep them.
+
+## 4. The invite list
+
+While the repository is private, only invited GitHub handles can submit. Either:
+
+- add them to `community/experts.json` (see `community/README.md`) and push:
 
   ```json
-  { "experts": [{ "github": "<your-handle>", "name": "Your name", "verified": false }] }
+  { "experts": [{ "github": "<handle>", "name": "Display name", "verified": false }] }
   ```
 
-- or, for a quick test, put your handle in the `ALLOWED_PROPOSERS` setting below.
+- or, for a first test, put your handle in `ALLOWED_PROPOSERS`.
 
-## 4. The Cloudflare settings
-
-In the Cloudflare dashboard, open the site's project.
-
-**Build settings** (Settings → Build): build command `npm run build`, output directory `dist`,
-and an environment variable `NODE_VERSION` = `22`.
-
-**Variables and secrets** (Settings → Variables and secrets). Add these for the **Preview**
-environment first (the test repo), and later for **Production** (the real repo). Mark the
-secret ones as *Secret*.
-
-| Name | Value | Secret? |
-|---|---|---|
-| `GITHUB_REPO` | `<owner>/physics-atlas-test` | no |
-| `GITHUB_APP_ID` | the App ID | no |
-| `GITHUB_CLIENT_ID` | the Client ID | no |
-| `GITHUB_CLIENT_SECRET` | the client secret | **yes** |
-| `GITHUB_APP_PRIVATE_KEY` | the whole `.pem` file, including the `-----BEGIN …-----` lines | **yes** |
-| `SESSION_SECRET` | a long random string — e.g. run `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"` | **yes** |
-| `ALLOWED_PROPOSERS` | optional: extra invited handles, comma-separated | no |
-| `GITHUB_BASE` | optional: the branch proposals start from (default `main`) | no |
-
-Settings apply to the **next** deployment: push a commit (or use **Retry deployment**) after
-changing them.
-
-**Which address to test on:** Cloudflare gives each branch its own preview address,
-`<branch>.<project>.pages.dev`. Push this work to a branch (e.g. `staging`), and add
-`https://staging.<project>.pages.dev/api/auth/callback` as a callback URL in the GitHub App.
-
-### If your project is a Worker
-
-The `functions/` folder is how a Cloudflare **Pages** project runs code. If your project was
-created as a **Worker** (the dashboard says "Worker", and there's no "Functions" tab), add a
-`wrangler.jsonc` at the repository root instead:
-
-```jsonc
-{
-  "name": "physics-atlas",
-  "main": "worker/index.ts",
-  "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./dist", "binding": "ASSETS" }
-}
-```
-
-`worker/index.ts` sends `/api/*` to the backend and everything else to the built site. The
-variables and secrets are the same.
+The site re-reads the list within five minutes.
 
 ## 5. Check that it works
 
-1. Open `https://<your-site>/api/me`. It should say `"configured": true`. If it says
-   `"configured": false`, a setting is missing — `/api/proposals` lists which ones.
-2. Open the **Community** tab. The account box says **Sign in with GitHub**; the sample
-   proposals are gone (the map now shows the test repo's open proposals — none yet).
-3. Sign in. GitHub asks you to authorise *Physics Atlas (test)* to read your profile. Back on
-   the site: *Signed in as … @you*.
-4. Write a proposal and press **Submit as a pull request**. A pull request appears in the test
-   repository, labelled `proposal`, authored by you (opened by the app), with the content files
-   and the **Checks** workflow running on it.
-5. In a second browser (or a private window), open the Community tab: the proposal shows,
-   dashed, within a minute.
+1. `https://<your-site>/api/me` → `"configured": true`. If it still says `false`,
+   `https://<your-site>/api/proposals` lists the missing settings.
+2. **Community** tab: the account box says **Sign in with GitHub**, and the sample proposals
+   are gone (the map shows this repository's open proposals — none yet).
+3. Sign in. GitHub asks you to authorise the App to read your profile; back on the site:
+   *Signed in as … @you*.
+4. Write a proposal → **Check and export** → **Submit as a pull request**. In the repository:
+   a pull request labelled `proposal`, a `proposal/…` branch, one commit authored by you, and
+   the **Checks** workflow running on it.
+5. A second browser (or a private window) shows the proposal, dashed, within a minute.
 
-## Going live
+If something fails, the Worker's **Logs** tab shows the backend's errors (logging is on in
+`wrangler.jsonc`).
 
-When you're ready to take proposals into the real repository: install the App there too (or
-create a second App for production), set the **Production** variables with
-`GITHUB_REPO=<owner>/physics-atlas`, and add the production callback URL. Invite people
-through `community/experts.json` in the real repository.
+## Trying the backend locally (optional)
+
+`npm run dev` has no backend (the Community view shows the samples). To run the Worker
+itself locally, put the settings in a `.dev.vars` file at the repository root (it's in
+`.gitignore` — never commit it), build, and run it:
+
+```powershell
+npm run build
+npx wrangler dev
+```
+
+Signing in locally needs `http://localhost:8787/api/auth/callback` as an extra callback URL
+in the App.
 
 ## Security notes
 
-- The App can only touch the repositories it's installed on, and only contents, pull requests
+- The App can only touch the repository it's installed on, and only contents, pull requests
   and issues. Proposers' own GitHub tokens are used once, to read who they are, and never
   stored.
 - The session is a signed cookie (HttpOnly, Secure, SameSite=Lax). Submissions from other

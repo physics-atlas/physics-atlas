@@ -30,3 +30,7 @@ dist-ssr
 # Generated from content/concepts/** by scripts/compile-concepts.mjs —
 # edit the per-entity files instead (docs/AUTHORING.md)
 src/data/concepts.json
+
+# Local Cloudflare secrets (wrangler dev) — never commit
+.dev.vars
+.wrangler/

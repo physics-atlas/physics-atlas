@@ -310,9 +310,12 @@ reviewed on its own (the Risks row below stands), but the editor works on severa
 ### Phase 3 — Identity and submitting proposals *(GitHub backend goes live)* — ✅ built 2026-10-21 (feature-36); live once the set-up in docs/COMMUNITY-BACKEND-SETUP.md is done
 
 > **As built:**
-> - **Hosting: Cloudflare** (moved from GitHub Pages). The backend is a Pages Function,
->   `functions/api/[[path]].ts` → `server/api.ts` (`worker/index.ts` if the project is a
->   Worker). No database; state lives in git and in a signed session cookie.
+> - **Hosting: a Cloudflare Worker** (moved from GitHub Pages): static assets plus
+>   `worker/index.ts` (`wrangler.jsonc`), which sends `/api/*` to `server/api.ts`. No
+>   database; state lives in git and in a signed session cookie.
+> - **No test repository:** the repository is private and proposals only ever create a
+>   `proposal/…` branch and a pull request, so the live checks run on `physics-atlas`
+>   itself (decided 2026-10-22). The App belongs to the organisation.
 > - **A GitHub App writes; people only sign in.** Sign-in is the App's OAuth (read the
 >   profile, discard the token). Submitting is the App's installation token: branch
 >   `proposal/<id>`, one commit **authored by the proposer** (their noreply address), the pull

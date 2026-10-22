@@ -1,6 +1,7 @@
-// Only for a Cloudflare *Worker* project (static assets + this script). A
-// Cloudflare *Pages* project uses functions/api/[[path]].ts instead and ignores
-// this file. See docs/COMMUNITY-BACKEND-SETUP.md → "If your project is a Worker".
+// The Cloudflare Worker (wrangler.jsonc): requests for a file in dist/ never
+// reach this — Cloudflare serves those as static assets. Everything else
+// arrives here: /api/* goes to the community backend, the rest back to the
+// assets (which answer 404). See docs/COMMUNITY-BACKEND-SETUP.md.
 import { handle } from '../server/api';
 import type { Env } from '../server/config';
 

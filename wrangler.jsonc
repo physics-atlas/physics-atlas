@@ -1,0 +1,22 @@
+// Cloudflare Worker: the built site (static assets) plus the community backend.
+// Requests for a file in dist/ are served straight from the assets; everything
+// else — in practice /api/* — runs worker/index.ts, which hands /api/* to
+// server/api.ts. See docs/COMMUNITY-BACKEND-SETUP.md.
+{
+  // Must match the Worker's name in the Cloudflare dashboard.
+  "name": "physics-atlas",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  // Keep the variables set in the dashboard (GITHUB_REPO, GITHUB_APP_ID, …):
+  // without this, every deploy would remove the ones not listed here.
+  // Secrets are kept either way.
+  "keep_vars": true,
+  // The backend's errors show under the Worker's "Logs" tab.
+  "observability": {
+    "enabled": true
+  }
+}

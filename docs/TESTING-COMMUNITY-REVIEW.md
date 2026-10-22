@@ -600,7 +600,7 @@ As before, only the two known feature-20 failures.
 ## Phase 3 — sign in with GitHub, submit as a pull request (feature-36)
 
 **What changed:**
-- A small **backend** on Cloudflare (`functions/api/[[path]].ts` → `server/api.ts`): sign in
+- A small **backend** on Cloudflare (the Worker script `worker/index.ts` → `server/api.ts`): sign in
   with GitHub, the list of open proposals, and submitting one.
 - **Submitting** opens one pull request per proposal in the repository, through a **GitHub
   App**: the proposer needs no access to the repository. The commit is authored by them; the
@@ -617,7 +617,7 @@ As before, only the two known feature-20 failures.
 | Command | You should see |
 |---|---|
 | `npm test` | `Test Files 8 passed (8)` · `Tests 150 passed (150)`. New: `server/api.test.ts` runs the whole backend against a simulated GitHub — the App token (and turning GitHub's key format into one Web Crypto accepts), sign-in and its state check, refusing a tampered session and off-site redirects, the invite list, refusing cross-site submissions, the commit authored by the proposer with the right files (an edit's deleted relations too), the server deciding the author and tally itself, dependencies that aren't open yet, and the list rebuilt from pull requests. |
-| `npm run build` | Also type-checks `server/` and `functions/`. |
+| `npm run build` | Also type-checks `server/` and `worker/`. |
 | Smoke test | A new line, against a simulated backend: `phase 3 (simulated backend): { noBackend: true, signInHref: '/api/auth/login?return=%2F%3Fmode%3Dcommunity', sent: 'Add Smoke submitted concept', editorOpen: false, proposals: [ 'Smoke submitted concept\nProposed · ✓0 ✗0 ?0' ], … #12 … }` |
 
 ### 2. Locally (no backend)
@@ -626,11 +626,11 @@ As before, only the two known feature-20 failures.
 this site isn't connected to GitHub yet. You can still draft and export.* The editor's
 **Check and export** has no Submit button, only the downloads — as before.
 
-### 3. On Cloudflare, with the test repository
+### 3. On Cloudflare, with this repository
 
-Follow `docs/COMMUNITY-BACKEND-SETUP.md` (test repository, GitHub App, settings). Then:
+Follow `docs/COMMUNITY-BACKEND-SETUP.md` (deploy the Worker script, the settings, the invite list). Then:
 
-1. `https://<preview-site>/api/me` → `"configured": true`.
+1. `https://<your-site>/api/me` → `"configured": true`.
 2. **Community** tab → **Sign in with GitHub** → GitHub asks to let *Physics Atlas (test)* read
    your profile → back on the same page: *Signed in as … @you*.
 3. Not on the invite list? The panel says so, and **Check and export** explains you can't
@@ -638,7 +638,7 @@ Follow `docs/COMMUNITY-BACKEND-SETUP.md` (test repository, GitHub App, settings)
 4. Write a proposal. **Check and export** → **Submit as a pull request**. The editor closes,
    the panel says *Submitted "Add …": pull request #N ↗*, and the proposal is on the map,
    dashed. Its card has **Pull request #N on GitHub ↗**.
-5. In the test repository: a pull request labelled `proposal`, a branch `proposal/…`, one
+5. In the repository: a pull request labelled `proposal`, a branch `proposal/…`, one
    commit **authored by you** with the node and relation files (an edit also deletes the
    relations it removes), and the **Checks** workflow running.
 6. A second browser (or a private window) shows the proposal within a minute.

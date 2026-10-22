@@ -14,14 +14,14 @@
 
 ### Implemented
 - `server/` — `api.ts` (routes: me, sign-in, callback, sign-out, list, submit), `github.ts` (App token, sign-in exchange, branch/tree/commit/PR/labels), `session.ts` (signed cookie), `crypto.ts` (HMAC, RS256, PKCS#1→PKCS#8), `proposalPr.ts` (proposal ↔ PR description, files from the proposal, invite list), `config.ts`
-- `functions/api/[[path]].ts` (Cloudflare Pages) and `worker/index.ts` (Worker projects); `tsconfig.server.json`
+- `worker/index.ts` + `wrangler.jsonc` (a Cloudflare Worker: static assets + the backend, `keep_vars`, logs on); `tsconfig.server.json`
 - `src/community/api.ts` — `fetchMe`, sign-in link, `submitProposal`, `GitHubStore`; the Community view uses GitHub when connected, samples otherwise, refreshing every 45 s
 - `ConceptMapView.tsx` — account panel (sample notice / sign in / signed in / not invited / submitted #N); `DraftEditor.tsx` — "Submit as a pull request" (held back while a dependency is unsubmitted); `ProposalCard.tsx` — handle and pull-request link; `afterSubmission()` keeps other drafts' relations pointing at the submitted concept
 - `community/experts.json` + README; `.github/workflows/checks.yml` replaces the GitHub Pages deploy; `docs/COMMUNITY-BACKEND-SETUP.md`
 - Tests: 150 (17 backend tests against a simulated GitHub); smoke: the flow against a simulated backend
 
 ### Review
-Not run — direct session. validate / build / lint / test clean; smoke passes (only the 2 pre-existing feature-20 failures). Live checks (PR in the test repo, a second browser, CI on the PR) wait for the GitHub App and Cloudflare settings.
+Not run — direct session. validate / build / lint / test clean; smoke passes (only the 2 pre-existing feature-20 failures). Live checks (a PR in physics-atlas, a second browser, CI on the PR) wait for the Worker settings; `wrangler deploy --dry-run` bundles and accepts the Worker.
 
 <!-- impl-marker: feature-36 -->
 
