@@ -9,7 +9,12 @@
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // /api/* always reaches the backend, never the site's files.
+    "run_worker_first": ["/api/*"],
+    // The site only uses ?mode=… addresses, so an unknown path is a real 404 —
+    // not the main page (which would hide a missing backend).
+    "not_found_handling": "none"
   },
   // Keep the variables set in the dashboard (GITHUB_REPO, GITHUB_APP_ID, …):
   // without this, every deploy would remove the ones not listed here.
