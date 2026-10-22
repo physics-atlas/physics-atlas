@@ -149,7 +149,7 @@ const ZOOM_STEP = 1.5;
 const NO_IDS: string[] = [];
 const NO_SHAPES: DraftShape[] = [];
 /** What an edit draft overrides on the confirmed concept while it's previewed. */
-const SUBJECT_KEYS = ['title', 'label', 'badge', 'color', 'size', 'radius', 'importance', 'fontSize', 'type', 'icon'];
+const SUBJECT_KEYS = ['title', 'label', 'badge', 'color', 'size', 'radius', 'importance', 'fontSize', 'fontSizeEmph', 'type', 'icon'];
 const DRAFT_BADGE = 'Draft · not submitted';
 /** The zoom the editor opens at, at least: mid-importance names are readable (15px × 0.75 ≥ 9px). */
 const DRAFT_ZOOM = 0.75;
@@ -167,10 +167,24 @@ const FIT_MAX_ZOOM = 1.3;
 const fitZoom = (bb: { w: number; h: number }, w: number, h: number) =>
   Math.min(FIT_MAX_ZOOM, w / Math.max(bb.w, 1), h / Math.max(bb.h, 1));
 
+/**
+ * Call before reading bounds. Cytoscape applies style changes lazily, and its
+ * bounds code decides whether a label needs re-measuring before it applies
+ * them — so the first read after a label, badge or font change measures the
+ * old label and keeps that box, and the renderer then draws the name clipped
+ * and stretched into it. Reading any style applies the pending changes first.
+ */
+function settleStyles(eles: cytoscape.Collection | cytoscape.NodeCollection) {
+  eles.forEach((e) => {
+    e.numericStyle('font-size');
+  });
+}
+
 /** The zoom at which the whole graph fits — the level-of-detail reference. */
 function overviewZoom(cy: cytoscape.Core, insets: Insets): number {
   const w = Math.max(cy.width() - insets.left - insets.right - 2 * FIT_PADDING, 1);
   const h = Math.max(cy.height() - insets.bottom - 2 * FIT_PADDING, 1);
+  settleStyles(cy.elements());
   return fitZoom(cy.elements().boundingBox(), w, h);
 }
 
@@ -203,6 +217,7 @@ function visibleCentre(cy: cytoscape.Core, insets: Insets): Pos {
 
 /** Whether `eles` are fully on screen, clear of the panels. */
 function inView(cy: cytoscape.Core, eles: cytoscape.CollectionReturnValue, insets: Insets): boolean {
+  settleStyles(eles);
   const bb = eles.renderedBoundingBox({ includeLabels: true });
   return bb.x1 >= insets.left && bb.x2 <= cy.width() - insets.right && bb.y1 >= 0 && bb.y2 <= cy.height() - insets.bottom;
 }
@@ -219,6 +234,7 @@ function fitBeside(
   // panels cover the canvas anyway — fit the full width.
   if (insets.left + insets.right > cy.width() * 0.75) insets = { ...insets, left: 0 };
   if (insets.right > cy.width() * 0.75) insets = { ...insets, right: 0 };
+  settleStyles(eles);
   const bb = eles.boundingBox();
   const w = cy.width() - insets.left - insets.right - 2 * FIT_PADDING;
   const h = cy.height() - insets.bottom - 2 * FIT_PADDING;
@@ -294,6 +310,8 @@ const styleFor = (large: boolean, light: boolean) => {
       // names too small to read on screen are dropped.
       'font-size': 'data(fontSize)',
       'min-zoomed-font-size': 9,
+      // Every glow (hover, selection, edge ends) follows the circle.
+      'underlay-shape': 'ellipse',
       'transition-property': 'opacity, text-opacity, background-opacity, border-width, border-color',
       'transition-duration': fadeDuration,
     },
@@ -418,11 +436,18 @@ const styleFor = (large: boolean, light: boolean) => {
   // Offered as a connection ("＋ Connect?" in the label) / named like the draft ("≈ Similar name").
   {
     selector: 'node.draft-near',
-    style: { 'underlay-color': accent, 'underlay-opacity': 0.16, 'underlay-padding': 7, 'underlay-shape': 'ellipse' },
+    style: {
+      'underlay-color': accent,
+      'underlay-opacity': 0.16,
+      'underlay-padding': 7,
+      'underlay-shape': 'ellipse',
+      'text-max-width': 'data(labelWidthWide)',
+    },
   },
   {
     selector: 'node.conflict-match',
     style: {
+      'text-max-width': 'data(labelWidthWide)',
       'border-width': 4,
       'border-color': gold,
       'border-opacity': 1,
@@ -690,7 +715,7 @@ const styleFor = (large: boolean, light: boolean) => {
   },
   // Circles are sized by generality — keep the grow small and the fill
   // stronger than the topic boxes' tint, or small circles vanish on hover.
-  { selector: 'node.concept-node.hovered', style: { padding: '3px' } },
+  { selector: 'node.concept-node.hovered', style: { padding: '3px', 'font-size': 'data(fontSizeEmph)' } },
   {
     selector: 'node.concept-node.chosen, node.concept-node.hovered',
     style: { 'background-opacity': 0.85 },
@@ -703,7 +728,7 @@ const styleFor = (large: boolean, light: boolean) => {
       'background-opacity': 0.85,
       'border-width': 3,
       color: ink,
-      'font-size': 15,
+      'font-size': 'data(fontSizeEmph)',
       'font-weight': 'bold',
       'text-margin-y': 6,
       'text-background-color': surface,
@@ -715,6 +740,8 @@ const styleFor = (large: boolean, light: boolean) => {
       'z-index': 20,
     },
   },
+  // A name written inside its circle stays where it is, under the glyph.
+  { selector: 'node.concept-node.label-inside.edge-end', style: { 'text-margin-y': 'data(labelShift)' } },
 ] as unknown as cytoscape.StylesheetJson;
 };
 
@@ -969,9 +996,12 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
       radius,
       importance,
       fontSize: labelSize(importance, radius),
+      // Hover emphasis grows a small name but never shrinks a big one.
+      fontSizeEmph: Math.max(labelSize(importance, radius), 15),
       // A big concept's name sits inside its circle, in its lower half.
       labelWidth: inside ? 1.5 * radius : 140,
-      labelWidthWide: inside ? 1.5 * radius : 220,
+      // Room for the badge line: inside, the circle's full width.
+      labelWidthWide: inside ? 2 * radius : 220,
       labelShift: inside ? 0.4 * radius : 4,
       type: n.type,
       icon: typeIconUri(n.type, iconColor) ?? undefined,
@@ -1024,6 +1054,7 @@ function overlayElements(overlay: ConceptOverlay, iconColor: string): cytoscape.
 /** Label-inclusive extents of the given nodes, as offsets from each centre. */
 function nodeBoxes(nodes: cytoscape.NodeCollection): Record<string, NodeBox> {
   const boxes: Record<string, NodeBox> = {};
+  settleStyles(nodes);
   nodes.forEach((n) => {
     const p = n.position();
     const bb = n.boundingBox({ includeLabels: true });
@@ -1318,6 +1349,7 @@ export default function GraphView({
       }
       hoverZoomActiveIdRef.current = n.id();
       const eles = n.union(n.children());
+      settleStyles(eles);
       cy.stop();
       if (reducedMotion()) {
         cy.fit(eles, 180);
@@ -1673,6 +1705,7 @@ export default function GraphView({
     if (!node.length) return;
     const eles = node.closedNeighborhood();
     const padding = large ? 130 : 80;
+    settleStyles(eles);
     cy.stop();
     if (reducedMotion()) {
       cy.fit(eles, padding);
@@ -1723,7 +1756,10 @@ export default function GraphView({
     if (!cy) return;
     viewportTouchedRef.current = false;
     if (concepts) fitBeside(cy, cy.elements(), overviewInsets());
-    else cy.animate({ fit: { eles: cy.elements(), padding: large ? 40 : 24 } }, { duration: reducedMotion() ? 0 : 500 });
+    else {
+      settleStyles(cy.elements());
+      cy.animate({ fit: { eles: cy.elements(), padding: large ? 40 : 24 } }, { duration: reducedMotion() ? 0 : 500 });
+    }
   };
 
   return (

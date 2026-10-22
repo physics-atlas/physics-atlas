@@ -801,6 +801,31 @@ body {
   font-style: italic;
 }
 
+/* One row per family of types: its name in a fixed column, the types beside it */
+.legend-type-group {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: baseline;
+  gap: 0 8px;
+  width: 100%;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.legend-type-group-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.legend-type-group-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
 /* The legend itself lets canvas drags through; only its type buttons and the
    definition panel take clicks. */
 .legend-type-button {

@@ -36,3 +36,20 @@ export const TYPE_COLORS: Record<NodeType, string> = {
 };
 
 export const TYPE_ORDER = Object.keys(NODE_TYPE_LABELS) as NodeType[];
+
+const LEARNING_TYPES: NodeType[] = ['learning_goal', 'resource', 'misconception'];
+const RESEARCH_TYPES: NodeType[] = ['claim', 'finding', 'experiment', 'dataset', 'method'];
+
+/**
+ * The legend's three families of types — a reading aid only; colours don't
+ * change. Knowledge takes every other type, so a new vocabulary type lands there.
+ */
+export const TYPE_GROUPS: { key: string; label: string; types: NodeType[] }[] = [
+  { key: 'learning', label: 'Learning', types: LEARNING_TYPES },
+  { key: 'research', label: 'Research', types: RESEARCH_TYPES },
+  {
+    key: 'knowledge',
+    label: 'Knowledge',
+    types: TYPE_ORDER.filter((t) => !LEARNING_TYPES.includes(t) && !RESEARCH_TYPES.includes(t)),
+  },
+];

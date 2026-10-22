@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_ORDER } from '../graph/categoryColors';
-import { TYPE_ORDER } from '../graph/typeColors';
+import { TYPE_GROUPS } from '../graph/typeColors';
 import { NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
 import type { NodeType } from '../data/types';
 import TypeBadge from './TypeBadge';
@@ -71,19 +71,28 @@ function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) 
           </button>
         </section>
       )}
-      {TYPE_ORDER.map((type) => (
-        <button
-          key={type}
-          type="button"
-          className={`legend-entry legend-type-button ${open === type ? 'legend-type-button-active' : ''}`}
-          aria-expanded={open === type}
-          aria-controls={open === type ? DEFINITION_ID : undefined}
-          title={`What is a ${NODE_TYPE_LABELS[type].toLowerCase()}?`}
-          onClick={() => setOpen(open === type ? null : type)}
-        >
-          <TypeBadge type={type} />
-          {NODE_TYPE_LABELS[type]}
-        </button>
+      {TYPE_GROUPS.map((group) => (
+        <div key={group.key} className="legend-type-group" role="group" aria-labelledby={`legend-group-${group.key}`}>
+          <span className="legend-type-group-name" id={`legend-group-${group.key}`}>
+            {group.label}
+          </span>
+          <span className="legend-type-group-entries">
+            {group.types.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`legend-entry legend-type-button ${open === type ? 'legend-type-button-active' : ''}`}
+                aria-expanded={open === type}
+                aria-controls={open === type ? DEFINITION_ID : undefined}
+                title={`What is a ${NODE_TYPE_LABELS[type].toLowerCase()}?`}
+                onClick={() => setOpen(open === type ? null : type)}
+              >
+                <TypeBadge type={type} />
+                {NODE_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </span>
+        </div>
       ))}
       <span className="legend-entry legend-size-note">larger circle = more general · zoom in for less important concepts</span>
       {statuses && (
