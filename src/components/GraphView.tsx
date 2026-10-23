@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import cytoscape from 'cytoscape';
-import dagre from 'cytoscape-dagre';
-import type { ConceptGraph, GraphEdge, GraphNode, Topic } from '../data/types';
+import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import type { ConceptOverlay } from '../community/proposals';
 import type { DraftShape } from '../community/draft';
-import { buildTopicMap, buildUnitGraph, parseUnitId, resolveSubtopicRef } from '../graph/dag';
-import { CATEGORY_COLORS, categoryOf } from '../graph/categoryColors';
 import {
   buildConceptIndex,
   INSIDE_LABEL_RADIUS,
+  edgeWeight,
   effectiveImportance,
   joinList,
   labelSize,
@@ -28,13 +26,15 @@ import {
   packComponents,
   placeNew,
   removeOverlaps,
+  SPACING,
 } from '../graph/layoutOptimize';
 import { reducedMotion } from '../lib/motion';
 import type { LayoutScore, NodeBox, Pos, Positions, Segment } from '../graph/layoutOptimize';
 
-cytoscape.use(dagre);
-
 const ICON_BOOST_PX = 14;
+/** A line's width in model px when zoomed in — and highlighted (hover, path, proposal). */
+const EDGE_WIDTH = 1.5;
+const EDGE_WIDTH_EMPH = 2.5;
 /** A circle wider than this share of the view has been zoomed past: it fades to an outline. */
 const PAST_VIEW = 0.9;
 /** Classes that keep a concept on screen at any zoom — what the user is looking at. */
@@ -64,37 +64,27 @@ const NEAR_RADIUS = 450;
 
 interface GraphViewProps {
   /**
-   * The input variant: pass exactly one of `topics` (topic/subtopic DAG) or
-   * `concepts` (typed concept graph — circles sized by generality, 1-hop
-   * hover, relation-labelled edges, map-style zoom level of detail).
+   * The typed concept graph — circles sized by generality, 1-hop hover,
+   * relation-labelled edges, map-style zoom level of detail.
    */
-  topics?: Topic[];
-  concepts?: ConceptGraph;
+  concepts: ConceptGraph;
   selectedId: string | null;
-  /** Nodes to emphasize (e.g. selected topic + its ancestors); others dim. */
+  /** Nodes to emphasize (e.g. a goal's learning path); others dim. */
   highlightIds: Set<string> | null;
-  /** Topics marked as learned — shown with a ✓ label badge. */
+  /** Concepts marked as learned — shown with a ✓ label badge. */
   doneIds?: Set<string>;
   /** Bump `tick` to animate-center the viewport on `id` (e.g. after a search). */
   focus?: { id: string | null; tick: number };
-  /** Roomier layout + bigger labels for the full-screen map. */
-  large?: boolean;
   /**
-   * Clicking a node sticks the full silver/gold tree (prerequisites +
-   * everything it unlocks) until another node is clicked. When false, the
-   * `highlightIds` set drives an ancestors-only dim (goal / curriculum view).
+   * Clicking a node sticks its direct connections (what leads into it, what
+   * it leads to) until another node is clicked. When false, the
+   * `highlightIds` set drives the dim (a goal's learning path).
    */
   directionalSelect?: boolean;
-  /** Annotated topics rendered as compound nodes with their subtopics inside. */
-  expandedIds?: Set<string>;
-  /** Double-tapping an annotated topic toggles its expansion. */
-  onToggleExpand?: (id: string) => void;
   /** Light theme swaps the ink/edge palette (canvas can't use CSS vars). */
   theme?: 'dark' | 'light';
-  /** The golden-marked goal node (unit or topic id). */
+  /** The golden-marked goal concept. */
   goalId?: string | null;
-  /** Units to connect with cross-topic unit edges (the goal-path closure). */
-  unitPathIds?: Set<string> | null;
   /**
    * Animate-fit the viewport to these nodes whenever the set changes; going
    * back to null re-fits the whole graph.
@@ -249,15 +239,18 @@ function fitBeside(
   else cy.animate({ zoom, pan }, { duration: 700, easing: 'ease-in-out-cubic' });
 }
 
-const styleFor = (large: boolean, light: boolean) => {
+const styleFor = (light: boolean) => {
   const ink = light ? '#1c2333' : '#eef2fb';
   const surface = light ? '#f3f5fa' : '#070b14';
   // Relation names: full-contrast ink, told apart from concept names by italics
   // and their background plate rather than by a dimmer grey.
   const relationInk = light ? '#2f3a52' : '#e3e9f6';
   const fadeDuration = reducedMotion() ? '0s' : '0.3s';
-  const edge = light ? 'rgba(70, 90, 135, 0.4)' : 'rgba(160, 180, 224, 0.28)';
-  const edgeArrow = light ? 'rgba(70, 90, 135, 0.5)' : 'rgba(160, 180, 224, 0.35)';
+  // A line's opacity follows the more important of its two concepts
+  // (data(strength), 0–1); arrowheads share it.
+  const edge = light ? 'rgb(70, 90, 135)' : 'rgb(160, 180, 224)';
+  const edgeArrow = light ? 'rgb(60, 78, 120)' : 'rgb(178, 196, 236)';
+  const edgeOpacity = light ? 'mapData(strength, 0, 1, 0.42, 0.75)' : 'mapData(strength, 0, 1, 0.3, 0.65)';
   const onpath = light ? 'rgba(47, 111, 196, 0.85)' : 'rgba(143, 183, 255, 0.85)';
   const onpathArrow = light ? 'rgba(47, 111, 196, 0.9)' : 'rgba(143, 183, 255, 0.9)';
   const silver = light ? '#7d8db0' : '#cdd6e8';
@@ -272,10 +265,6 @@ const styleFor = (large: boolean, light: boolean) => {
   {
     selector: 'node',
     style: {
-      shape: 'round-rectangle',
-      width: 'label',
-      height: 'label',
-      padding: large ? '14px' : '10px',
       'background-color': 'data(color)',
       'background-opacity': 0.16,
       'border-width': 1.5,
@@ -283,12 +272,10 @@ const styleFor = (large: boolean, light: boolean) => {
       'border-opacity': 0.85,
       label: 'data(label)',
       color: ink,
-      'font-size': large ? 14 : 12,
       'font-family': 'system-ui, -apple-system, "Segoe UI", sans-serif',
       'text-valign': 'center',
       'text-halign': 'center',
       'text-wrap': 'wrap',
-      'text-max-width': large ? '170px' : '130px',
       // Tween highlight/dim changes instead of snapping — the "flowing" feel.
       'transition-property': 'opacity, background-opacity, border-width, border-color',
       'transition-duration': '0.3s',
@@ -368,7 +355,7 @@ const styleFor = (large: boolean, light: boolean) => {
     style: {
       'line-style': 'dashed',
       'line-dash-pattern': [8, 5],
-      width: 2,
+      width: 'data(widthEmph)',
       'line-color': ink,
       'target-arrow-color': ink,
       'line-opacity': 0.75,
@@ -397,7 +384,7 @@ const styleFor = (large: boolean, light: boolean) => {
     style: {
       'line-style': 'dashed',
       'line-dash-pattern': [6, 4],
-      width: 2.5,
+      width: 'data(widthEmph)',
       'line-color': accent,
       'target-arrow-color': accent,
       'line-opacity': 0.95,
@@ -405,7 +392,7 @@ const styleFor = (large: boolean, light: boolean) => {
   },
   // The draft the editor shows glows strongest; the others stay dashed but quieter.
   { selector: 'node.draft.draft-active', style: { 'border-width': 4, 'underlay-opacity': 0.38, 'underlay-padding': 12 } },
-  { selector: 'edge.draft.draft-idle', style: { 'line-opacity': 0.55, width: 2 } },
+  { selector: 'edge.draft.draft-idle', style: { 'line-opacity': 0.55, width: 'data(width)' } },
   // An edit draft previews on the confirmed concept itself ("✎ Editing · draft").
   {
     selector: 'node.draft-subject',
@@ -424,7 +411,7 @@ const styleFor = (large: boolean, light: boolean) => {
   // Removals: dotted, with the reason in words on the line ("(removal proposed)").
   {
     selector: 'edge.removal-draft',
-    style: { 'line-style': 'dotted', 'line-color': accent, 'target-arrow-color': accent, width: 2.5 },
+    style: { 'line-style': 'dotted', 'line-color': accent, 'target-arrow-color': accent, 'line-opacity': 1, width: 'data(widthEmph)' },
   },
   // Someone else's open edit: the confirmed concept gets a dashed ink outline
   // and "✎ Edit proposed · ✓…" in its label.
@@ -488,32 +475,12 @@ const styleFor = (large: boolean, light: boolean) => {
   { selector: 'node.dimmed', style: { opacity: 0.16 } },
   { selector: 'node.done', style: { 'background-opacity': 0.06, 'border-style': 'dashed' } },
   {
-    selector: 'node:parent',
-    style: {
-      'background-opacity': 0.05,
-      'border-opacity': 0.5,
-      'border-style': 'dashed',
-      'text-valign': 'top',
-      'text-margin-y': large ? -6 : -4,
-      padding: large ? '18px' : '12px',
-      'font-weight': 'bold',
-    },
-  },
-  {
-    selector: 'node.subtopic-node',
-    style: {
-      'font-size': large ? 12 : 10.5,
-      'background-opacity': 0.14,
-      padding: large ? '9px' : '7px',
-      'text-max-width': large ? '130px' : '100px',
-    },
-  },
-  {
     selector: 'edge',
     style: {
       'curve-style': 'bezier',
-      width: 1.5,
+      width: 'data(width)',
       'line-color': edge,
+      'line-opacity': edgeOpacity,
       'target-arrow-shape': 'triangle',
       'target-arrow-color': edgeArrow,
       'arrow-scale': 0.8,
@@ -543,13 +510,10 @@ const styleFor = (large: boolean, light: boolean) => {
     },
   },
   {
-    selector: 'edge.optional-edge',
-    style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 5] },
-  },
-  {
     selector: 'edge.onpath',
     style: {
-      width: 2.5,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': onpath,
       'target-arrow-color': onpathArrow,
     },
@@ -566,7 +530,8 @@ const styleFor = (large: boolean, light: boolean) => {
   {
     selector: 'edge.sel-pre',
     style: {
-      width: 2.5,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': silverEdge,
       'target-arrow-color': silverArrow,
     },
@@ -578,7 +543,8 @@ const styleFor = (large: boolean, light: boolean) => {
   {
     selector: 'edge.sel-post',
     style: {
-      width: 2.5,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': goldEdge,
       'target-arrow-color': goldArrow,
     },
@@ -646,7 +612,8 @@ const styleFor = (large: boolean, light: boolean) => {
     selector: 'edge.hover-pre',
     style: {
       opacity: 1,
-      width: 2.5,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': silverEdge,
       'target-arrow-color': silverArrow,
     },
@@ -665,7 +632,8 @@ const styleFor = (large: boolean, light: boolean) => {
     selector: 'edge.hover-post',
     style: {
       opacity: 1,
-      width: 2.5,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': goldEdge,
       'target-arrow-color': goldArrow,
     },
@@ -675,8 +643,6 @@ const styleFor = (large: boolean, light: boolean) => {
     style: {
       opacity: 1,
       'text-opacity': 1,
-      'font-size': large ? 16.5 : 14,
-      padding: large ? '17px' : '13px',
       'border-width': 3,
       'background-opacity': 0.4,
       'font-weight': 'bold',
@@ -702,7 +668,8 @@ const styleFor = (large: boolean, light: boolean) => {
     selector: 'edge.concept-edge.edge-hovered',
     style: {
       opacity: 1,
-      width: 3,
+      width: 'data(widthEmph)',
+      'line-opacity': 1,
       'line-color': onpath,
       'target-arrow-color': onpathArrow,
       color: ink,
@@ -714,7 +681,7 @@ const styleFor = (large: boolean, light: boolean) => {
     },
   },
   // Circles are sized by generality — keep the grow small and the fill
-  // stronger than the topic boxes' tint, or small circles vanish on hover.
+  // strong, or small circles vanish on hover.
   { selector: 'node.concept-node.hovered', style: { padding: '3px', 'font-size': 'data(fontSizeEmph)' } },
   {
     selector: 'node.concept-node.chosen, node.concept-node.hovered',
@@ -745,15 +712,6 @@ const styleFor = (large: boolean, light: boolean) => {
 ] as unknown as cytoscape.StylesheetJson;
 };
 
-const layoutFor = (large: boolean) =>
-  ({
-    name: 'dagre',
-    rankDir: 'BT',
-    nodeSep: large ? 44 : 24,
-    rankSep: large ? 110 : 60,
-    padding: large ? 32 : 16,
-  }) as cytoscape.LayoutOptions;
-
 // Concept layout: each connected component is arranged on its own (so
 // unrelated sub-graphs never interleave) by a direction-free force layout,
 // then the components are packed side by side. A first, quick pass shows
@@ -761,9 +719,9 @@ const layoutFor = (large: boolean) =>
 // arrangement has the fewest crossings, edges through nodes and overlapping
 // names, glides to it, and caches it per graph.
 const SEARCH_SEEDS = 24;
-const COMPONENT_GAP = 120;
-const LONE_NODE_GAP = 40;
-const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v6';
+const COMPONENT_GAP = 120 * SPACING;
+const LONE_NODE_GAP = 40 * SPACING;
+const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v8';
 const layoutCache = new Map<string, Positions>();
 
 interface ConceptComponent {
@@ -811,7 +769,6 @@ function setPositions(cy: cytoscape.Core, positions: Positions) {
  */
 function layoutConcepts(
   cy: cytoscape.Core,
-  large: boolean,
   onImproved: (positions: Positions) => void,
 ): () => void {
   const all = cy
@@ -829,7 +786,7 @@ function layoutConcepts(
   const key = layoutKey(
     cy.nodes().map((n) => n.id()),
     comps.flatMap((c) => c.segments),
-    large ? 'large' : 'small',
+    'concepts',
   );
   const cached = layoutCache.get(key) ?? readStoredLayout(key);
   if (cached) {
@@ -890,92 +847,6 @@ function layoutConcepts(
   return () => window.clearTimeout(timer);
 }
 
-function topicElements(
-  topics: Topic[],
-  expandedIds: Set<string> | undefined,
-  unitPathIds: Set<string> | null,
-): cytoscape.ElementDefinition[] {
-  const present = new Set(topics.map((t) => t.id));
-  const elements: cytoscape.ElementDefinition[] = [
-    ...topics.map((t) => ({
-      data: { id: t.id, title: t.title, label: t.title, color: CATEGORY_COLORS[categoryOf(t)] },
-    })),
-    ...topics.flatMap((t) =>
-      t.prerequisites
-        .filter((p) => present.has(p))
-        .map((p) => ({ data: { id: `${p}->${t.id}`, source: p, target: t.id } })),
-    ),
-    ...topics.flatMap((t) =>
-      (t.optionalPrerequisites ?? [])
-        .filter((p) => present.has(p) && !t.prerequisites.includes(p))
-        .map((p) => ({
-          data: { id: `${p}~opt->${t.id}`, source: p, target: t.id },
-          classes: 'optional-edge',
-        })),
-    ),
-  ];
-
-  // Compound expansion: an opened annotated topic renders its subtopics as
-  // child nodes with their internal (same-topic) prerequisite order. Edges
-  // to other topics stay at the topic level (drawn to the compound box).
-  const tmap = buildTopicMap(topics);
-  for (const t of topics) {
-    if (!expandedIds?.has(t.id) || !t.subtopics?.length) continue;
-    for (const s of t.subtopics)
-      elements.push({
-        data: {
-          id: `${t.id}/${s.id}`,
-          parent: t.id,
-          title: s.title,
-          label: s.title,
-          color: CATEGORY_COLORS[categoryOf(t)],
-        },
-        classes: 'subtopic-node',
-      });
-    for (const s of t.subtopics) {
-      const uid = `${t.id}/${s.id}`;
-      const addInternal = (raw: string, optional: boolean) => {
-        const r = resolveSubtopicRef(raw, t, tmap);
-        if (r && r !== uid && parseUnitId(r).topicId === t.id)
-          elements.push({
-            data: { id: `${r}=>${uid}${optional ? '~o' : ''}`, source: r, target: uid },
-            classes: optional ? 'optional-edge' : undefined,
-          });
-      };
-      for (const raw of s.prerequisites) addInternal(raw, false);
-      for (const raw of s.optionalPrerequisites ?? []) addInternal(raw, true);
-    }
-  }
-
-  // Cross-topic unit edges for an active goal path: GraphView otherwise
-  // only draws topic-level edges, so units in different (unexpanded)
-  // topics would render as disconnected islands even though the goal
-  // path connects them at unit granularity.
-  if (unitPathIds) {
-    const unitMap = buildUnitGraph(topics);
-    const nodeIdFor = (u: string) => {
-      const { topicId, subId } = parseUnitId(u);
-      return subId && expandedIds?.has(topicId) ? u : topicId;
-    };
-    const seenEdges = new Set<string>();
-    for (const u of unitPathIds) {
-      const unit = unitMap.get(u);
-      if (!unit) continue;
-      const targetId = nodeIdFor(u);
-      for (const p of unit.prerequisites) {
-        if (!unitPathIds.has(p)) continue;
-        const sourceId = nodeIdFor(p);
-        if (sourceId === targetId) continue;
-        const edgeId = `${sourceId}~u->${targetId}`;
-        if (seenEdges.has(edgeId)) continue;
-        seenEdges.add(edgeId);
-        elements.push({ data: { id: edgeId, source: sourceId, target: targetId } });
-      }
-    }
-  }
-  return elements;
-}
-
 /** A node's label: goal/learned markers, its name, and a status badge on a second line. */
 function nodeLabel(title: string, { goal = false, done = false, badge }: { goal?: boolean; done?: boolean; badge?: string }) {
   return `${goal ? '★ ' : ''}${done ? '✓ ' : ''}${title}${badge ? `\n${badge}` : ''}`;
@@ -1018,7 +889,16 @@ function conceptEdgeElement(e: GraphEdge, classes = '', status?: string) {
   // The assumption goes on its own line under the relation name, then the status.
   const lines = [relation, assumed.length ? `assuming ${joinList(assumed)}` : '', status ? `(${status})` : ''];
   return {
-    data: { id: e.id, source: e.source, target: e.target, relation: lines.filter(Boolean).join('\n') },
+    // width and strength are recomputed with the zoom (applyFade); these hold until then.
+    data: {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      relation: lines.filter(Boolean).join('\n'),
+      width: EDGE_WIDTH,
+      widthEmph: EDGE_WIDTH_EMPH,
+      strength: 0,
+    },
     classes: `concept-edge ${classes}`.trim(),
   };
 }
@@ -1064,19 +944,14 @@ function nodeBoxes(nodes: cytoscape.NodeCollection): Record<string, NodeBox> {
 }
 
 export default function GraphView({
-  topics,
   concepts,
   selectedId,
   highlightIds,
   doneIds,
   focus,
-  large = false,
   directionalSelect = false,
-  expandedIds,
-  onToggleExpand,
   theme = 'dark',
   goalId = null,
-  unitPathIds = null,
   fitIds = null,
   fitInsets,
   onSelect,
@@ -1092,15 +967,6 @@ export default function GraphView({
   const cyRef = useRef<cytoscape.Core | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  const onToggleExpandRef = useRef(onToggleExpand);
-  onToggleExpandRef.current = onToggleExpand;
-  const lastTapRef = useRef<{ id: string; t: number }>({ id: '', t: 0 });
-  const goalIdRef = useRef(goalId);
-  goalIdRef.current = goalId;
-  const hoverZoomEnterRef = useRef<number | null>(null);
-  const hoverZoomExitRef = useRef<number | null>(null);
-  const preHoverViewportRef = useRef<{ zoom: number; pan: cytoscape.Position } | null>(null);
-  const hoverZoomActiveIdRef = useRef<string | null>(null);
   const applyFadeRef = useRef<(() => void) | null>(null);
   /** Positions for the overlay given confirmed positions — null when there's no overlay. */
   const placeOverlayRef = useRef<((confirmed: Positions) => Positions) | null>(null);
@@ -1150,19 +1016,15 @@ export default function GraphView({
     onDraftNearRef.current?.(near, draftPlaceRef.current.get(ghostId)?.byHand ?? false, ghostId);
   };
 
-  // (Re)build the graph when the topic/concept set (or expansion) changes
+  // (Re)build the graph when the concept set or the theme changes
   useEffect(() => {
-    const elements = concepts
-      ? conceptElements(concepts, buildConceptIndex(concepts), theme === 'light' ? '#1c2333' : '#ffffff')
-      : topicElements(topics ?? [], expandedIds, unitPathIds);
+    const elements = conceptElements(concepts, buildConceptIndex(concepts), theme === 'light' ? '#1c2333' : '#ffffff');
 
     const cy = cytoscape({
       container: containerRef.current,
       elements,
-      style: styleFor(large, theme === 'light'),
+      style: styleFor(theme === 'light'),
       wheelSensitivity: 1,
-      // Concept nodes opt out one by one (grabbable: false) so the draft alone can be dragged.
-      autoungrabify: !concepts,
     });
     // A user pan/zoom before the background layout search finishes means the
     // improved layout should not re-fit the viewport under them.
@@ -1170,43 +1032,37 @@ export default function GraphView({
     cy.on('scrollzoom dragpan pinchzoom', () => {
       viewportTouchedRef.current = true;
     });
-    let cancelLayoutSearch = () => {};
-    if (concepts) {
-      cancelLayoutSearch = layoutConcepts(cy, large, (improved) => {
-        // Proposals follow the confirmed graph into its better arrangement.
-        const positions = { ...improved, ...(placeOverlayRef.current?.(improved) ?? {}) };
-        const reduced = reducedMotion();
-        const refit = () => {
-          const ids = fitIdsRef.current;
-          if (!viewportTouchedRef.current) {
-            if (ids) fitBeside(cy, cy.nodes().filter((n) => ids.has(n.id())), fitInsetsRef.current ?? NO_INSETS);
-            else fitBeside(cy, cy.elements(), overviewInsets());
-          }
-          // The overview zoom moved with the layout, even if the viewport didn't.
-          applyFadeRef.current?.();
-        };
-        if (reduced) {
-          setPositions(cy, positions);
-          refit();
-          return;
+    const cancelLayoutSearch = layoutConcepts(cy, (improved) => {
+      // Proposals follow the confirmed graph into its better arrangement.
+      const positions = { ...improved, ...(placeOverlayRef.current?.(improved) ?? {}) };
+      const reduced = reducedMotion();
+      const refit = () => {
+        const ids = fitIdsRef.current;
+        if (!viewportTouchedRef.current) {
+          if (ids) fitBeside(cy, cy.nodes().filter((n) => ids.has(n.id())), fitInsetsRef.current ?? NO_INSETS);
+          else fitBeside(cy, cy.elements(), overviewInsets());
         }
-        const glide = cy.layout({
-          name: 'preset',
-          // The draft keeps its place; the proposer put it there.
-          positions: (n: cytoscape.NodeSingular) => positions[n.id()] ?? n.position(),
-          fit: false,
-          animate: true,
-          animationDuration: 600,
-          animationEasing: 'ease-in-out-cubic',
-        } as cytoscape.LayoutOptions);
-        glide.one('layoutstop', refit);
-        glide.run();
-      });
-    } else {
-      cy.layout(layoutFor(large)).run();
-    }
-    if (concepts) fitBeside(cy, cy.elements(), overviewInsets(), false);
-    else cy.fit(undefined, large ? 40 : 24);
+        // The overview zoom moved with the layout, even if the viewport didn't.
+        applyFadeRef.current?.();
+      };
+      if (reduced) {
+        setPositions(cy, positions);
+        refit();
+        return;
+      }
+      const glide = cy.layout({
+        name: 'preset',
+        // The draft keeps its place; the proposer put it there.
+        positions: (n: cytoscape.NodeSingular) => positions[n.id()] ?? n.position(),
+        fit: false,
+        animate: true,
+        animationDuration: 600,
+        animationEasing: 'ease-in-out-cubic',
+      } as cytoscape.LayoutOptions);
+      glide.one('layoutstop', refit);
+      glide.run();
+    });
+    fitBeside(cy, cy.elements(), overviewInsets(), false);
 
     // Map-style level of detail: as you zoom out, less important concepts
     // (and the lines to them) disappear, leaving the landmarks; zooming in
@@ -1230,80 +1086,67 @@ export default function GraphView({
           n.toggleClass('icon-boost', (n.data('radius') as number) * z < ICON_BOOST_PX);
         });
         cy.edges().forEach((e) => {
-          e.toggleClass('zoom-hidden', e.source().hasClass('zoom-hidden') || e.target().hasClass('zoom-hidden'));
+          const [s, t] = [e.source(), e.target()];
+          e.toggleClass('zoom-hidden', s.hasClass('zoom-hidden') || t.hasClass('zoom-hidden'));
+          // Zoomed out, a line keeps an on-screen width that follows the more
+          // general of its two concepts; zoomed in, it grows with the map.
+          const { px, strength } = edgeWeight(
+            [s.data('radius') as number, t.data('radius') as number],
+            [s.data('importance') as number, t.data('importance') as number],
+          );
+          const width = Math.round(100 * Math.max(EDGE_WIDTH, px / z)) / 100;
+          const emph = Math.round(100 * Math.max(EDGE_WIDTH_EMPH, (px + 1.5) / z)) / 100;
+          if (e.data('width') !== width) e.data({ width, widthEmph: emph });
+          if (e.data('strength') !== strength) e.data('strength', strength);
         });
       });
     };
-    if (concepts) {
-      applyFade();
-      cy.on('zoom', () => {
-        if (!fadeFrame) fadeFrame = window.requestAnimationFrame(applyFade);
-      });
-      applyFadeRef.current = applyFade;
-    }
+    applyFade();
+    cy.on('zoom', () => {
+      if (!fadeFrame) fadeFrame = window.requestAnimationFrame(applyFade);
+    });
+    applyFadeRef.current = applyFade;
 
     // Dragging the draft is how the proposer works out where it fits: the
     // concepts nearest it are offered as connections as it moves.
     let dragFrame = 0;
-    if (concepts) {
-      cy.on('drag', 'node.draft', (e) => {
-        const n = e.target as cytoscape.NodeSingular;
-        const anchors = draftPlaceRef.current.get(n.id())?.anchors ?? '';
-        draftPlaceRef.current.set(n.id(), { pos: { ...n.position() }, byHand: true, anchors });
-        if (!dragFrame)
-          dragFrame = window.requestAnimationFrame(() => {
-            dragFrame = 0;
-            reportNear(n.id());
-          });
-      });
-      cy.on('grab', 'node.draft', () => {
-        if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
-      });
-      cy.on('free', 'node.draft', (e) => {
-        if (containerRef.current) containerRef.current.style.cursor = 'grab';
-        reportNear((e.target as cytoscape.NodeSingular).id());
-      });
-    }
+    cy.on('drag', 'node.draft', (e) => {
+      const n = e.target as cytoscape.NodeSingular;
+      const anchors = draftPlaceRef.current.get(n.id())?.anchors ?? '';
+      draftPlaceRef.current.set(n.id(), { pos: { ...n.position() }, byHand: true, anchors });
+      if (!dragFrame)
+        dragFrame = window.requestAnimationFrame(() => {
+          dragFrame = 0;
+          reportNear(n.id());
+        });
+    });
+    cy.on('grab', 'node.draft', () => {
+      if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
+    });
+    cy.on('free', 'node.draft', (e) => {
+      if (containerRef.current) containerRef.current.style.cursor = 'grab';
+      reportNear((e.target as cytoscape.NodeSingular).id());
+    });
 
-    // One core-level tap handler (not a delegated 'node' one) so a tap on a
-    // subtopic child fires exactly once with the true target — a delegated
-    // handler would also fire for the compound parent it bubbles through and
-    // re-select the whole topic. Single tap selects; a quick second tap on an
-    // annotated topic toggles it open/closed into its subtopics.
-    const annotated = new Set((topics ?? []).filter((t) => t.subtopics?.length).map((t) => t.id));
     cy.on('tap', (e) => {
       const tgt = e.target;
       if (tgt === cy) {
         onSelectRef.current(null);
         return;
       }
-      if (typeof tgt.isNode !== 'function' || !tgt.isNode()) return;
-      const id = tgt.id();
-      const now = performance.now();
-      const prev = lastTapRef.current;
-      lastTapRef.current = { id, t: now };
-      if (onToggleExpandRef.current && annotated.has(id) && prev.id === id && now - prev.t < 350) {
-        onToggleExpandRef.current(id);
-        return;
-      }
-      onSelectRef.current(id);
+      if (typeof tgt.isNode === 'function' && tgt.isNode()) onSelectRef.current(tgt.id());
     });
 
-    // Hover: grow the node a touch and light up its related tree —
-    // prerequisites in silver, unlocked topics in gold; soften the rest.
-    // Concepts light 1 hop only: a transitive closure over mixed relation
-    // types ("relates" chains) would light half the graph.
+    // Hover: light up the concept's direct connections — what leads into it
+    // in silver, what it leads to in gold; soften the rest. One hop only: a
+    // transitive closure over mixed relation types ("relates" chains) would
+    // light half the graph.
     cy.on('mouseover', 'node', (e) => {
       const n = e.target;
       cy.batch(() => {
         cy.elements().addClass('hover-soft');
-        if (concepts) {
-          n.incomers().removeClass('hover-soft').addClass('hover-pre');
-          n.outgoers().removeClass('hover-soft').addClass('hover-post');
-        } else {
-          n.predecessors().removeClass('hover-soft').addClass('hover-pre');
-          n.successors().removeClass('hover-soft').addClass('hover-post');
-        }
+        n.incomers().removeClass('hover-soft').addClass('hover-pre');
+        n.outgoers().removeClass('hover-soft').addClass('hover-post');
         n.removeClass('hover-soft').addClass('hovered');
       });
       if (containerRef.current) containerRef.current.style.cursor = n.hasClass('draft') ? 'grab' : 'pointer';
@@ -1314,93 +1157,18 @@ export default function GraphView({
       );
       if (containerRef.current) containerRef.current.style.cursor = '';
     });
-    if (concepts) {
-      cy.on('mouseover', 'edge.concept-edge', (e) => {
-        const edge = e.target as cytoscape.EdgeSingular;
-        cy.batch(() => {
-          edge.addClass('edge-hovered');
-          edge.connectedNodes().addClass('edge-end');
-        });
+    cy.on('mouseover', 'edge.concept-edge', (e) => {
+      const edge = e.target as cytoscape.EdgeSingular;
+      cy.batch(() => {
+        edge.addClass('edge-hovered');
+        edge.connectedNodes().addClass('edge-end');
       });
-      cy.on('mouseout', 'edge.concept-edge', () => {
-        cy.batch(() => {
-          cy.edges().removeClass('edge-hovered');
-          cy.nodes().removeClass('edge-end');
-        });
-      });
-    }
-
-    // Hover-zoom: on the big explorer map, before a goal is chosen, dwelling
-    // over an open (expanded) topic softly zooms the viewport to it + its
-    // subtopics — a pure fit/revert, no re-layout, no expandedIds change.
-    const clearHoverZoomTimers = () => {
-      if (hoverZoomEnterRef.current !== null) {
-        window.clearTimeout(hoverZoomEnterRef.current);
-        hoverZoomEnterRef.current = null;
-      }
-      if (hoverZoomExitRef.current !== null) {
-        window.clearTimeout(hoverZoomExitRef.current);
-        hoverZoomExitRef.current = null;
-      }
-    };
-    const zoomToNode = (n: cytoscape.NodeSingular) => {
-      if (!preHoverViewportRef.current) {
-        preHoverViewportRef.current = { zoom: cy.zoom(), pan: cy.pan() };
-      }
-      hoverZoomActiveIdRef.current = n.id();
-      const eles = n.union(n.children());
-      settleStyles(eles);
-      cy.stop();
-      if (reducedMotion()) {
-        cy.fit(eles, 180);
-        return;
-      }
-      cy.animate({ fit: { eles, padding: 180 } }, { duration: 500, easing: 'ease-in-out-cubic' });
-    };
-    cy.on('mouseover', 'node', (e) => {
-      const n = e.target;
-      if (!large || goalIdRef.current) return;
-      // Moving from a compound topic's header onto its own child subtopics
-      // is still "inside" that hover session — cancel a pending revert
-      // instead of treating the child as a new, ineligible target.
-      const activeId = hoverZoomActiveIdRef.current;
-      if (activeId && !n.isParent() && n.parent().id() === activeId) {
-        if (hoverZoomExitRef.current !== null) {
-          window.clearTimeout(hoverZoomExitRef.current);
-          hoverZoomExitRef.current = null;
-        }
-        return;
-      }
-      if (!n.isParent()) return;
-      if (hoverZoomExitRef.current !== null) {
-        window.clearTimeout(hoverZoomExitRef.current);
-        hoverZoomExitRef.current = null;
-        zoomToNode(n);
-        return;
-      }
-      if (hoverZoomEnterRef.current !== null) window.clearTimeout(hoverZoomEnterRef.current);
-      hoverZoomEnterRef.current = window.setTimeout(() => {
-        hoverZoomEnterRef.current = null;
-        zoomToNode(n);
-      }, 350);
     });
-    cy.on('mouseout', 'node', () => {
-      if (hoverZoomEnterRef.current !== null) {
-        window.clearTimeout(hoverZoomEnterRef.current);
-        hoverZoomEnterRef.current = null;
-      }
-      if (!preHoverViewportRef.current) return;
-      if (hoverZoomExitRef.current !== null) window.clearTimeout(hoverZoomExitRef.current);
-      hoverZoomExitRef.current = window.setTimeout(() => {
-        hoverZoomExitRef.current = null;
-        hoverZoomActiveIdRef.current = null;
-        const v = preHoverViewportRef.current;
-        preHoverViewportRef.current = null;
-        if (v) {
-          cy.stop();
-          cy.viewport(v);
-        }
-      }, 180);
+    cy.on('mouseout', 'edge.concept-edge', () => {
+      cy.batch(() => {
+        cy.edges().removeClass('edge-hovered');
+        cy.nodes().removeClass('edge-end');
+      });
     });
 
     if (import.meta.env.DEV) (window as unknown as { __cy?: cytoscape.Core }).__cy = cy;
@@ -1411,20 +1179,17 @@ export default function GraphView({
       if (dragFrame) window.cancelAnimationFrame(dragFrame);
       cancelLayoutSearch();
       applyFadeRef.current = null;
-      clearHoverZoomTimers();
-      preHoverViewportRef.current = null;
-      hoverZoomActiveIdRef.current = null;
       cy.destroy();
       cyRef.current = null;
     };
-  }, [topics, concepts, large, expandedIds, theme, unitPathIds]);
+  }, [concepts, theme]);
 
   // Proposed layer: added after the confirmed layout (so it never enters the
   // layout search or its cache), placed around its connections with every
   // confirmed node fixed. Re-runs whenever the graph is rebuilt.
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy || !concepts) return;
+    if (!cy) return;
     cy.remove('.overlay');
     cy.nodes().removeClass('overlay-anchor');
     if (!overlay || (overlay.nodes.length === 0 && overlay.edges.length === 0)) {
@@ -1448,7 +1213,7 @@ export default function GraphView({
     return () => {
       placeOverlayRef.current = null;
     };
-  }, [overlay, topics, concepts, large, expandedIds, theme, unitPathIds]);
+  }, [overlay, concepts, theme]);
 
   // The drafts: a ghost per new concept, which the proposer drags to see where
   // the idea fits, and for an edit the confirmed concept itself, previewed as
@@ -1460,7 +1225,7 @@ export default function GraphView({
   const draftConflictIds = draft?.conflictIds ?? NO_IDS;
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy || !concepts) return;
+    if (!cy) return;
     const insets = fitInsetsRef.current ?? NO_INSETS;
     const iconColor = theme === 'light' ? '#1c2333' : '#ffffff';
     const places = draftPlaceRef.current;
@@ -1571,7 +1336,7 @@ export default function GraphView({
       }
     }
     if (!animating) reportNear();
-  }, [draftShapes, activeDraft, theme, topics, concepts, large, expandedIds, unitPathIds]);
+  }, [draftShapes, activeDraft, theme, concepts]);
 
   // "Bring the draft into view": after panning or a search jump, the active
   // ghost may be off screen — this puts it in the middle of the view, as if
@@ -1599,7 +1364,7 @@ export default function GraphView({
   const showOverlay = layers?.overlay ?? true;
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy || !concepts) return;
+    if (!cy) return;
     cy.batch(() => {
       cy.elements().removeClass('layer-hidden layer-context anchor-pinned edit-proposed removal-proposed');
       cy.nodes().forEach((n) => {
@@ -1624,7 +1389,7 @@ export default function GraphView({
       }
     });
     applyFadeRef.current?.();
-  }, [showConfirmed, showOverlay, overlay, draftShapes, topics, concepts, large, expandedIds, theme, unitPathIds]);
+  }, [showConfirmed, showOverlay, overlay, draftShapes, concepts, theme]);
 
   // Apply selection/path highlighting without re-layout
   useEffect(() => {
@@ -1652,14 +1417,13 @@ export default function GraphView({
         if (similar.has(n.id())) n.addClass('conflict-match');
       });
       if (directionalSelect) {
-        // Sticky both-directions tree: silver up (prerequisites), gold down
-        // (everything it unlocks); the rest recede but stay legible.
-        // Concepts stick to 1 hop, as on hover.
+        // Sticky direct connections, as on hover: silver into it, gold out
+        // of it; the rest recede but stay legible.
         if (selectedId) {
           const n = cy.$id(selectedId);
           cy.elements().addClass('sel-soft');
-          (concepts ? n.incomers() : n.predecessors()).removeClass('sel-soft').addClass('sel-pre');
-          (concepts ? n.outgoers() : n.successors()).removeClass('sel-soft').addClass('sel-post');
+          n.incomers().removeClass('sel-soft').addClass('sel-pre');
+          n.outgoers().removeClass('sel-soft').addClass('sel-post');
           n.removeClass('sel-soft').addClass('chosen');
         }
       } else {
@@ -1683,7 +1447,6 @@ export default function GraphView({
     selectedId,
     highlightIds,
     doneIds,
-    topics,
     concepts,
     directionalSelect,
     goalId,
@@ -1704,7 +1467,7 @@ export default function GraphView({
     const node = cy.$id(focus.id);
     if (!node.length) return;
     const eles = node.closedNeighborhood();
-    const padding = large ? 130 : 80;
+    const padding = 130;
     settleStyles(eles);
     cy.stop();
     if (reducedMotion()) {
@@ -1712,7 +1475,7 @@ export default function GraphView({
       return;
     }
     cy.animate({ fit: { eles, padding } }, { duration: 900, easing: 'ease-in-out-cubic' });
-  }, [focus, large]);
+  }, [focus]);
 
   // Sub-view fit — declared after the focus glide so it wins when both fire.
   // Only a different set re-fits: a re-render that rebuilds the same set (a
@@ -1755,11 +1518,7 @@ export default function GraphView({
     const cy = cyRef.current;
     if (!cy) return;
     viewportTouchedRef.current = false;
-    if (concepts) fitBeside(cy, cy.elements(), overviewInsets());
-    else {
-      settleStyles(cy.elements());
-      cy.animate({ fit: { eles: cy.elements(), padding: large ? 40 : 24 } }, { duration: reducedMotion() ? 0 : 500 });
-    }
+    fitBeside(cy, cy.elements(), overviewInsets());
   };
 
   return (
@@ -1775,17 +1534,15 @@ export default function GraphView({
         <button type="button" className="graph-control" onClick={fitAll} aria-label="Show the whole map" title="Show the whole map">
           <span aria-hidden>⤢</span>
         </button>
-        {concepts && (
-          <button
-            type="button"
-            className="graph-control graph-control-text"
-            aria-pressed={showAll}
-            onClick={() => setShowAll((s) => !s)}
-            title="Show every concept at any zoom"
-          >
-            Show all concepts
-          </button>
-        )}
+        <button
+          type="button"
+          className="graph-control graph-control-text"
+          aria-pressed={showAll}
+          onClick={() => setShowAll((s) => !s)}
+          title="Show every concept at any zoom"
+        >
+          Show all concepts
+        </button>
         {extraControls}
       </div>
     </>

@@ -112,6 +112,24 @@ export function nodeRadius(node: GraphNode, degree: number): number {
   return MIN_RADIUS * STEP ** (effectiveGenerality(node, degree) - 1);
 }
 
+/** A relation's line on screen: from this width (two specific concepts)… */
+const EDGE_MIN_PX = 1;
+/** …to this one (a landmark at either end) — the circles' 7–270 range, damped. */
+const EDGE_MAX_PX = 4;
+
+/**
+ * How a relation stands out: it takes the larger generality (its on-screen
+ * width) and the larger importance (its strength, 0–1, which sets its
+ * opacity) of the two concepts it joins. `px` is the narrowest the line gets
+ * on screen however far out you zoom.
+ */
+export function edgeWeight(radii: [number, number], importances: [number, number]): { px: number; strength: number } {
+  const r = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, ...radii));
+  const generality = Math.log(r / MIN_RADIUS) / Math.log(MAX_RADIUS / MIN_RADIUS);
+  const importance = (Math.min(IMPORTANCE_MAX, Math.max(1, ...importances)) - 1) / (IMPORTANCE_MAX - 1);
+  return { px: EDGE_MIN_PX + (EDGE_MAX_PX - EDGE_MIN_PX) * generality, strength: importance };
+}
+
 /**
  * From this radius (generality 6 and up) the name is written inside the
  * circle, like a region's name on a map: the concept then claims only the
@@ -184,8 +202,8 @@ export interface ConceptPath {
 }
 
 /**
- * The concept counterpart of goalPathFor(): closure over CURRICULUM_EDGE_TYPES,
- * ordered by the same kahnOrder() rule as topic curricula.
+ * A goal's learning path: the closure over CURRICULUM_EDGE_TYPES, in
+ * kahnOrder() — prerequisites first, ties by depth then id.
  */
 export function conceptPathFor(goalId: string, index: ConceptIndex): ConceptPath | null {
   if (!index.byId.has(goalId)) return null;

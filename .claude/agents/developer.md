@@ -31,9 +31,9 @@ the spec.
 - **Match the neighbours' style exactly.** No abstraction the spec doesn't call for.
 - **No comments**, except for a non-obvious WHY (Cytoscape quirk, browser workaround).
 - **No new dependencies** unless the spec requires them.
-- **No magic hex** in components — level/category colours come from `src/graph/levelColors.ts`,
+- **No magic hex** in components — node-type colours come from `src/graph/typeColors.ts`,
   app-chrome tokens from `src/App.css :root`.
-- **Graph logic lives in `src/graph/dag.ts`**, not in components. Cytoscape is touched only in
+- **Graph logic lives in `src/graph/concepts.ts` / `dag.ts`**, not in components. Cytoscape is touched only in
   `src/components/GraphView.tsx`.
 - **Viewport, not re-layout.** Focusing/zooming is `cy.animate({fit})` — no
   `layout().run()`, no `expandedIds` change when nothing new needs to appear.
@@ -41,8 +41,8 @@ the spec.
   legend entry.
 - **`prefers-reduced-motion`** for every new animation.
 - **A schema change = three places in one pass:** `src/data/types.ts`,
-  `scripts/validate-topics.mjs`, `docs/AUTHORING.md`.
-- **Content stays data** — never hard-code anything from `topics.json` in `.ts`/`.tsx`, and
+  `scripts/validate-concepts.mjs`, `docs/AUTHORING.md`.
+- **Content stays data** — never hard-code anything from `content/concepts/` in `.ts`/`.tsx`, and
   never invent physics content (Sophie curates; placeholder skeletons only when the spec names
   them).
 - **Don't create assets.** A missing asset is a stop, not an invitation to improvise.

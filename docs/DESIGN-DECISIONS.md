@@ -14,6 +14,10 @@ fundamentals. Content (books, YouTube lectures, courses) is attached to each
 topic. A student picks a goal — ambitious (cosmology) or humble (special
 relativity) — and gets a generated curriculum. **v1 is fully static: no backend.**
 
+> *2026-10:* the topic layer is retired (Decision 26) — the concept graph, with any concept
+> as a goal, is the whole site, and a small Cloudflare backend takes community proposals
+> (Decision 25).
+
 ---
 
 ## Decision 1 — Stack
@@ -223,7 +227,7 @@ topic views are unchanged.
 
 | Option | Status | Notes |
 |---|---|---|
-| **Colour = node type, 12-colour palette (`src/graph/typeColors.ts`)** | ✅ Chosen | Derived from the seed's ColorBrewer *Paired* hues by moving each colour's lightness into the band that clears 3:1 on both `--page` surfaces (dark `#070b14` / light `#f3f5fa`) — the pale Paired members (`#ffff99`, `#a6cee3`, `#b2df8a`, `#fb9a99`, `#fdbf6f`, `#cab2d6`) measured 1.04–1.89 on light as-is. All twelve now sit at 3.08–5.79 (dark) / 3.12–5.86 (light); numbers per type in the file header. Paired's hue families are kept, so related types read as siblings; closest pair ΔE76 13.4 (conditions/formalism, same family by design). |
+| **Colour = node type, 12-colour palette (`src/graph/typeColors.ts`)** | ✅ Chosen | Derived from the seed's ColorBrewer *Paired* hues by moving each colour's lightness into the band that clears 3:1 on both `--page` surfaces (dark `#070b14` / light `#f3f5fa`) — the pale Paired members (`#ffff99`, `#a6cee3`, `#b2df8a`, `#fb9a99`, `#fdbf6f`, `#cab2d6`) measured 1.04–1.89 on light as-is. All twelve now sit at 3.08–5.79 (dark) / 3.12–5.86 (light); numbers per type in the file header. Paired's hue families are kept, so related types read as siblings; closest pair ΔE76 13.4 (conditions/formalism, same family by design). *2026-10: superseded by Decision 29 (one hue family per type group).* |
 | **Size = generality, one fallback rule (`nodeRadius()` / `effectiveGenerality()` in `src/graph/concepts.ts`)** | ✅ Chosen | Learning goals are always the smallest circle (r 7); an authored `generality` 1–5 maps to r 8…24; otherwise the degree fallback `min(24, 7 + 5.7·√degree)` reproduces the seed preview's radii. No node has authored generality yet, so sizes shift automatically as Sophie adds values. |
 | **Layout: dagre `BT` over all edges** | ✅ Chosen | Same `layoutFor` as the topic views (only `nodeSep` widened for circles). Every `strict prerequisite for` edge points upward — the ordering the curriculum (feature-17) depends on. Accepted cost: non-prerequisite edges ("is one property of") also read vertically. |
 | `cose` force layout | ↩ pathway | Built into Cytoscape (no dependency); a `layoutFor` change if Sophie finds the vertical reading of non-prerequisite edges misleading. |
@@ -523,6 +527,79 @@ native reviews can take over voting (Phase 4) without changing submission.
 
 **Open paths:** ORCID linking for the badge; a public mode where anyone signed in may
 propose; hiding open proposals from people who aren't invited, if that's ever wanted.
+
+## Decision 26 — The topic layer is retired; the concept map is the whole site (2026-10)
+
+The "Learning goal" tab and everything only it led to — the topic map, topic pages, the
+topic data (`src/data/topics.json`), the Markdown learning-goal maps (`content/goals/`),
+their compile and validate scripts, print sheets and dagre — are removed. The concept graph
+already covers the same ground: a learning goal is a concept of type `learning_goal`, and any
+concept can be a goal with a path of strict prerequisites (`conceptPathFor()`).
+
+| Piece | Now |
+|---|---|
+| Home search | Searches concepts and opens the concept map centred on the pick |
+| Home chips | "Start from a landmark": the importance-50 concepts, taken from the data |
+| Old addresses | `?mode=goal`, `topic`, `map` and `explore` land on the concept map |
+| Progress | Unchanged: the same storage key, concept ids prefixed `concept:` |
+
+The topic data stays in git history (last at commit `795a9bc`) if any of it should be
+carried into concepts. **Open path:** a curated list of featured goals for the home page,
+if landmarks turn out not to be good starting points.
+
+## Decision 27 — A relation's line takes the larger attributes of its two ends (2026-10)
+
+Zoomed out, lines were 1.5 model px wide — about 0.15 px on screen at the overview, so the
+landmarks looked unconnected. Now each line keeps an **on-screen** width, from the more
+general of its two concepts, and an opacity from the more important one (`edgeWeight()`):
+
+| Attribute | Line |
+|---|---|
+| Generality (larger end) | Narrowest on-screen width 1 px (two generality-1 ends) … 4 px (a generality-10 end), on the same log scale as the circles but damped — circles span 7–270 px |
+| Importance (larger end) | Opacity 0.30 … 0.65 dark, 0.42 … 0.75 light |
+| Zoomed in | The model width (1.5) takes over once it's wider on screen; highlighted lines (hover, path, proposals, drafts) use 2.5 and full opacity |
+
+A line still hides when either end is hidden by the zoom: a line into nothing reads as a
+broken map. **Open path:** fading a line toward a hidden end instead of hiding it.
+
+## Decision 28 — The layout packs tighter: spacing 0.84 (2026-10)
+
+Every ideal distance in the force layout (attraction, long-range repulsion, contact push) and
+the gaps between separate clusters are scaled by `SPACING` (`layoutOptimize.ts`).
+`removeOverlaps` keeps concept names apart, but nothing keeps relation names clear of the
+circles, so the factor trades compactness against relation names hidden under circles.
+Measured on the 64-concept graph (a relation name counts as covered when its label box
+touches a circle):
+
+| `SPACING` | Mean relation length | Overview zoom | Relation names covered |
+|---|---|---|---|
+| 1 (before) | 633 model px | 0.106 | 2 |
+| 0.7 (first try) | 441 (−30%) | 0.141 | 14 |
+| **0.84 (chosen: 0.7 + 20%)** | 540 (−15%) | 0.125 | 4 |
+
+The four left (e13, e15, e16 around Einstein Field Equations / Newtonian Gravity /
+the gravity goal, and e66) are short lines between big circles; two of them were covered
+even at spacing 1. Layout cache v8.
+
+**Open path:** room per relation for its own name — make an edge's ideal length at least
+its two radii plus its label's width — instead of spreading the whole map.
+
+## Decision 29 — One hue family per type group (2026-10)
+
+The legend's three groups (Learning, Research, Knowledge) now each have their own hue family,
+so a type's group reads from its colour: Knowledge cool (green → teal → blue), Research
+violet → pink, Learning warm (red → amber). Each colour is generated in OKLCH at its hue and
+a lightness of 0.51–0.63 (alternating, so neighbours in a family differ in lightness too),
+then checked:
+
+| Check | Result |
+|---|---|
+| Contrast on both surfaces (WCAG 1.4.11, ≥ 3:1) | All pass; tightest experiment 3.18 dark, phenomenon 3.19 light — `typeColors.test.ts` guards it |
+| Closest pair within a group (CIEDE2000) | theory / formalism 10.9 |
+| Closest pair across groups | finding / formalism 18.3 |
+| Colour-vision deficiency | Some cross-hue pairs come close (e.g. dataset / model regime 2.2 under deuteranopia) — unavoidable for 16 hues in one lightness band; the type is always also in words (label, legend, card) |
+
+Supersedes Decision 13's palette row; numbers per type in the file header.
 
 ## Multi-agent workflow (web-dev-agent-system)
 

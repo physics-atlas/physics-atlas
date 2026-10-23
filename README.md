@@ -1,16 +1,15 @@
 # Physics Atlas (sophie_scicom)
 
-An accessible database of physics learning content organized as a
-**prerequisite graph** (a DAG — topics share prerequisites). Pick a learning
-goal — ambitious like Cosmology or humbler like Special Relativity — and see
-everything it stands on, in an order you can actually follow, with books,
-video lectures and courses attached to every topic. Fully static, no backend.
+An accessible map of physics concepts organised as a **graph**: every concept
+is linked to what it stands on and what it leads to, by relations that read as
+sentences. Zoom out for the landmarks, zoom in to reveal the specific concepts
+around them, or pick any concept as a goal and get the path of prerequisites
+that leads to it. The **Community** tab is where others propose new concepts
+and edits, each one a pull request reviewed on GitHub.
 
-**Live:** https://subutayebru.github.io/physics-atlas/
+**Live:** https://physics-atlas.gnmdaudt.workers.dev
 
 ![Home — animated galaxy landing page](docs/screenshots/home.png)
-
-![Full map — hover shows prerequisites in silver, unlocks in gold](docs/screenshots/map-hover-silver-gold.png)
 
 More views in [docs/screenshots/](docs/screenshots/).
 
@@ -21,7 +20,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-- `?mode=explore` deep-links to the full-map explorer view.
+- `?mode=concepts` opens the concept map, `?mode=community` the community view.
 
 ## Commands
 
@@ -29,22 +28,26 @@ npm run dev        # http://localhost:5173
 |---|---|
 | `npm run dev` | dev server |
 | `npm run build` | typecheck + production build to `dist/` |
-| `npm run validate` | check `src/data/topics.json` (ids, prereq refs, cycles) |
+| `npm run validate` | check `content/concepts/**` (ids, references, types, cycles) |
+| `npm test` | unit tests |
 | `npm run lint` | oxlint |
 
 ## Editing content
 
-Everything lives in [`src/data/topics.json`](src/data/topics.json).
+Every concept and relation is its own file in [`content/concepts/`](content/concepts/).
 See **[docs/AUTHORING.md](docs/AUTHORING.md)** — then `npm run validate`.
 
 ## Structure
 
 ```
+content/concepts/  the concept graph: nodes/<id>.json + edges/<id>.json
 src/
-├── data/          topics.json (the entire database) + types.ts
-├── graph/         dag.ts (ancestors, curriculum ordering), levelColors.ts
-└── components/    GraphView (Cytoscape), GoalView, ExplorerView, ContentList, Legend
-scripts/           validate-topics.mjs
+├── data/          types.ts, conceptVocabulary.json (concepts.json is generated)
+├── graph/         concepts.ts (sizes, zoom depth, learning paths), layoutOptimize.ts, typeColors.ts
+├── community/     proposals, the proposal editor's drafts, the GitHub-backed store
+└── components/    GraphView (Cytoscape), ConceptMapView, ConceptCard, DraftEditor, Legend
+server/, worker/   the Cloudflare Worker: sign-in with GitHub, proposals ↔ pull requests
+scripts/           compile-concepts.mjs, validate-concepts.mjs, smoke-test.mjs
 docs/              DESIGN-DECISIONS.md (all chosen + alternative pathways), AUTHORING.md
 ```
 

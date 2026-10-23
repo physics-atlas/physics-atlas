@@ -154,5 +154,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 - **The ghost can't be moved by keyboard.** By design: its position is a sketch,
   not data, and the keyboard route gets the same help another way (the ghost follows
   what's connected, and suggestions come from those concepts' neighbours).
-- **Topic views (goal, topic page, hidden topic map)** got the global fixes (tokens,
-  focus ring, target sizes, motion, landmarks, titles) but no view-specific review.
+- **Type colours are not CVD-safe pairwise.** Sixteen types in one hue family per
+  group (Decision 29) leave some cross-family pairs close under deuteranopia or
+  protanopia. The type is always also in words — the label, the legend and the card —
+  and `typeColors.test.ts` keeps every fill at ≥ 3:1 on both surfaces.

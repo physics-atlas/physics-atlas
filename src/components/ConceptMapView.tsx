@@ -828,7 +828,6 @@ export default function ConceptMapView({
           directionalSelect={!goal}
           focus={focus}
           onSelect={selectOnMap}
-          large
           theme={theme}
           label={`Concept map, ${graph.nodes.length} concepts${
             overlay ? ` and ${overlay.nodes.length} proposed` : ''
@@ -870,7 +869,7 @@ export default function ConceptMapView({
             )
           }
         />
-        <Legend variant="type" statuses={Boolean(overlay) || drafting} draft={drafting} />
+        <Legend statuses={Boolean(overlay) || drafting} draft={drafting} />
       </div>
     </div>
   );

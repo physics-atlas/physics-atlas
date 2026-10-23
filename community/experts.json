@@ -1,3 +1,5 @@
 {
-  "experts": []
+  "experts": [{ "github": "gdaudt", "name": "Guilherme Daudt", "verified": true },
+              { "github": "sophelsa", "name": "Sophie Ashworth", "verified": true },
+            {"github": "subutayebru", "name": "Ebru Subutay", "verified": true}]
 }

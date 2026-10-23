@@ -1,6 +1,6 @@
 // Kahn's algorithm over an adjacency map: node -> prerequisite nodes.
 // Returns ids stuck in a cycle ([] when acyclic).
-// Shared by scripts/validate-topics.mjs and scripts/validate-concepts.mjs.
+// Used by scripts/validate-concepts.mjs.
 export function findCycle(prereqsByNode) {
   const indegree = new Map();
   const dependents = new Map();

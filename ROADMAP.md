@@ -6,6 +6,64 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-48: One hue family per type group
+
+**Status:** ✅ Implemented <!-- status-line: feature-48 -->
+**Planned:** 2026-10-22 — requested: each legend group (Learning, Research, Knowledge) in its own colour scheme, types still distinguishable
+**Implemented:** 2026-10-22
+
+### Implemented
+- `src/graph/typeColors.ts` — 16 new colours generated in OKLCH: Knowledge green → teal → blue, Research violet → pink, Learning red → amber; lightness alternates within a family
+- `src/graph/typeColors.test.ts` — every colour ≥ 3:1 on both surfaces, all distinct, every type in one group
+- Docs: Decision 29 (measurements), ACCESSIBILITY known gaps (CVD)
+
+### Review
+Not run — direct session. build / lint / test (153) clean; smoke passes with no failures; checked by screenshot in both themes.
+
+## feature-47: Tighter layout (spacing 0.84)
+
+**Status:** ✅ Implemented <!-- status-line: feature-47 -->
+**Planned:** 2026-10-22 — requested: distance between nodes reduced by around 30%; then +20%, as relation names were hidden under circles
+**Implemented:** 2026-10-22
+
+### Implemented
+- `src/graph/layoutOptimize.ts` — `SPACING = 0.84` (0.7, then +20%) on every ideal distance (attraction, repulsion, contact push); `removeOverlaps` still keeps names apart
+- `src/components/GraphView.tsx` — cluster gaps × `SPACING`; layout cache v8 (smoke and testing guide updated)
+- Measured: mean relation length 633 → 540 model px (−15%), overview zoom 0.106 → 0.125; relation names under a circle 2 → 4 (0.7 had 14) (Decision 28)
+
+### Review
+Not run — direct session.
+
+## feature-46: Lines stay visible zoomed out
+
+**Status:** ✅ Implemented <!-- status-line: feature-46 -->
+**Planned:** 2026-10-22 — requested: connections follow the nodes' attributes to some extent, e.g. the highest attribute of the two nodes
+**Implemented:** 2026-10-22
+
+### Implemented
+- `src/graph/concepts.ts` — `edgeWeight()`: the larger generality of the two ends sets the narrowest on-screen width (1–4 px), the larger importance the opacity
+- `src/components/GraphView.tsx` — widths recomputed with the zoom (`data(width)`, `data(widthEmph)`), opacity by `mapData(strength)`; highlighted lines full opacity
+- Unit test for `edgeWeight()`; smoke checks every overview line is ≥ 1 px on screen and lines are weighted (Decision 27)
+
+### Review
+Not run — direct session.
+
+## feature-45: Retire the topic layer
+
+**Status:** ✅ Implemented <!-- status-line: feature-45 -->
+**Planned:** 2026-10-22 — requested: remove the learning goals tab and all of its contents (scope confirmed: the whole topic layer)
+**Implemented:** 2026-10-22
+
+### Implemented
+- Removed: GoalView, MapView, TopicPage, SkillsPanel, SubgoalChecklist, PrintSheet, TopicPrintSheet, ContentList, `categoryColors.ts`, `loadGraph.ts`, `topics.json`, `generated-units.json`, `content/goals/`, `compile-content.mjs`, `validate-topics.mjs`, `cytoscape-dagre`; GraphView's topic variant (dagre, compound subtopics, hover zoom); ~1,000 lines of dead CSS
+- `src/graph/dag.ts` keeps only `dfsClosure` / `kahnOrder` (the concept learning path)
+- `src/App.tsx` — modes home / concepts / community; retired addresses land on the concept map. `Home.tsx` — concept search, "start from a landmark" chips (importance-50 concepts)
+- Smoke: the topic sections replaced by home search / landmark / old-address checks; the two feature-20 failures are gone with them
+- Docs: Decision 26, README, AUTHORING (concepts only), CLAUDE.md, ACCESSIBILITY, testing guide
+
+### Review
+Not run — direct session.
+
 ## feature-36: Community review, Phase 3 — sign in with GitHub, submit as a pull request
 
 **Status:** ✅ Implemented <!-- status-line: feature-36 -->

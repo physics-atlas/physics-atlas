@@ -28,6 +28,11 @@ const BOX_MARGIN = 10;
 const SLACK = 1;
 /** Free length an edge gets beyond its two nodes' footprints — room for the relation name. */
 const EDGE_ROOM = 90;
+/**
+ * Every ideal distance is scaled by this: below 1 the map packs tighter than
+ * the label boxes alone would ask for (removeOverlaps still keeps names apart).
+ */
+export const SPACING = 0.84;
 const FORCE_ITERATIONS = 400;
 
 const ccw = (a: Pos, b: Pos, c: Pos) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
@@ -163,13 +168,13 @@ export function forceLayout(
 ): Positions {
   const n = ids.length;
   const r = ids.map((id) => reach(boxes[id]));
-  const k = (i: number, j: number) => EDGE_ROOM + r[i] + r[j];
-  const meanK = EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1);
+  const k = (i: number, j: number) => SPACING * (EDGE_ROOM + r[i] + r[j]);
+  const meanK = SPACING * (EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1));
   // Long-range repulsion uses one typical spacing for every pair, so a few
   // very big concepts don't spread the whole graph out; their size only
   // counts once two nodes are actually close (the contact push below).
   const sorted = [...r].sort((a, b) => a - b);
-  const typicalK = EDGE_ROOM + 2 * (sorted[Math.floor(sorted.length / 2)] ?? 0);
+  const typicalK = SPACING * (EDGE_ROOM + 2 * (sorted[Math.floor(sorted.length / 2)] ?? 0));
   const side = meanK * Math.sqrt(n);
   const initial = ids.map((id) => fixed[id] ?? start[id] ?? { x: (rng() - 0.5) * side, y: (rng() - 0.5) * side });
   const x = initial.map((p) => p.x);

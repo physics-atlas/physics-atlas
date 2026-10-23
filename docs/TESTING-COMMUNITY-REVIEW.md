@@ -148,7 +148,7 @@ terminal. The page keeps showing the **last good** data until the file is fixed.
 - **A one-time fresh layout:** because of the overlap fix, the map computes a new
   arrangement on first load (about 1–4 seconds of glide). In Chrome DevTools → *Application*
   → *Local Storage* → `http://localhost:5173`, the saved layout key is now
-  `physics-atlas-concept-layout-v6`.
+  `physics-atlas-concept-layout-v8`.
 - **Everything else unchanged:** clicking a concept, its card, the goal path ("★ Show path
   to this"), the legend definitions and zooming all behave as before.
 
@@ -166,9 +166,8 @@ npm run smoke
 ```
 
 Look for `concept map: 64 nodes, 66 edges` and `concept card has "leads to Newtonian
-Gravity": true`. The run ends with exactly **two known failures** (feature-20, from before
-this work): `optional toggle did not reduce the curriculum` and `expected 13 diff-geo
-learning goals, got 14`. Any other failure is new.
+Gravity": true`. The run ends with `console errors: none` and no failures; any failure is
+new. (The two old feature-20 failures went with the topic views, Decision 26.)
 
 ### 8. After committing: history per concept
 

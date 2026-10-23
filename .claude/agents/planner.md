@@ -13,9 +13,9 @@ No code, no builds, no follow-up questions.
 ## When you run at all
 
 The orchestrator calls you only for:
-- **Graph/layout changes** — `GraphView.tsx`, dagre layout, highlight/expand model
+- **Graph/layout changes** — `GraphView.tsx`, the force layout (`layoutOptimize.ts`), highlight model
 - **Schema changes** — new/changed fields or resolution rules in `src/data/types.ts`,
-  mirrored in `scripts/validate-topics.mjs` and `docs/AUTHORING.md`
+  mirrored in `scripts/validate-concepts.mjs` and `docs/AUTHORING.md`
 - **A new view mode or routing rework**
 - **Content deletion** with consequences for existing curricula
 
@@ -27,8 +27,8 @@ well enough by its backlog entry.
 1. `CLAUDE.md` — patterns, stack commands, subsystems, "Deliberately not now".
 2. The existing plans in `.claude/plans/` — convention and level of detail.
 3. **Grep the code for things to reuse.** This is the core, not a side task:
-   `GraphView.tsx` (selection, `focus`, `cy.animate({fit})`), `dag.ts` (ancestors,
-   curriculum ordering), `levelColors.ts`, `App.css :root`, `types.ts` + `validate-topics.mjs`.
+   `GraphView.tsx` (selection, `focus`, `cy.animate({fit})`), `concepts.ts` (sizes,
+   zoom depth, learning path), `typeColors.ts`, `App.css :root`, `types.ts` + `validate-concepts.mjs`.
    Cite `file:line` via `grep -n`. A plan without line references is too thin.
 
 ## Plan format
@@ -53,8 +53,8 @@ Which problem, which learning flow gets better.
 
 ## Data Impact
 {Only if data-impact != none.}
-- Affected fields in `topics.json` / content Markdown
-- **Validator mirror:** which rule in `scripts/validate-topics.mjs` follows along
+- Affected fields in `content/concepts/` node / edge files
+- **Validator mirror:** which rule in `scripts/validate-concepts.mjs` follows along
 - **Docs mirror:** what gets updated in `docs/AUTHORING.md` — a schema field without
   authoring docs doesn't exist for Sophie
 - **Content regression:** which curricula get shorter, named and consciously accepted

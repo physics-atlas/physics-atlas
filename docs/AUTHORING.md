@@ -1,191 +1,23 @@
-# Authoring Guide — adding topics & content
+# Authoring Guide — adding concepts & relations
 
-Content lives in **two places**:
+All content is the **concept graph**: concept-level nodes with 16 types and typed,
+directional relations that read as sentences ("Einstein Field Equations leads to
+Newtonian Gravity"). It renders as the "Concept map" tab (`?mode=concepts`), and the
+"Community" tab (`?mode=community`) is where others propose additions and edits.
 
 | You want to add… | Edit | Format |
 |---|---|---|
-| A **learning goal** ("be able to derive X") with its subgoals + prerequisites | `content/goals/<name>.md` | Markdown outline — [see below](#learning-goals-markdown) |
-| A **topic / area** on the map, or resources (books, videos) | [`src/data/topics.json`](../src/data/topics.json) | JSON |
-| A **concept-graph node/edge** (pilot, "Concept map" tab) | [`content/concepts/`](../content/concepts/) — one file per node / edge | JSON — [see below](#where-concepts-live-one-file-each) |
+| A **concept** | `content/concepts/nodes/<id>.json` | JSON — [see below](#where-concepts-live-one-file-each) |
+| A **relation** between two concepts | `content/concepts/edges/<id>.json` | JSON — [see below](#writing-an-edge) |
 
-Either way: edit, run `npm run validate`, done. The site rebuilds the graph
-automatically.
+Edit, run `npm run validate`, done. The site rebuilds the map automatically.
 
-## Learning goals (Markdown)
+(The older topic layer — `topics.json`, the topic map, topic pages and the "Learning goal"
+view — was retired in Decision 26. A learning goal is now a concept of type
+`learning_goal`, and any concept can be a goal: see
+[How the concept curriculum is built](#how-the-concept-curriculum-is-built).)
 
-This is the everyday format — write the outline, the build turns it into the
-map. **Every learning goal is a real node**: it has its own subgoals, its own
-prerequisites, and *any* of them can be clicked to become the main goal.
-
-Create `content/goals/parallel-transport.md`:
-
-```markdown
-# Parallel transport   {id: general-relativity/parallel-transport}
-
-Be able to derive and use the parallel transport equation.
-
-## Subgoals
-
-- Explain all the elements of the parallel transport equation.
-- Distinguish between the geodesic equation and parallel transport.
-
-## Prerequisites
-
-### Linear Algebra   {ref: la-tensors}
-
-- Comfortably manipulate matrix equations.        {id: matrix-eqs}
-- Use and explain Einstein index notation.        {id: einstein}
-- Distinguish abstract vector spaces and 1-forms. {id: duals, needs: matrix-eqs, einstein}
-
-### Calculus   {ref: calculus-geometry}
-
-- Compute derivatives.   {id: compute-derivatives}
-- Compute Jacobians.     {needs: compute-derivatives}
-```
-
-What each part does:
-
-| Line | Meaning |
-|---|---|
-| `# Title {id: topicId/goalId}` | The learning goal itself. `topicId` must be a topic in topics.json (its home — e.g. `general-relativity`); `goalId` is a new kebab-case id you choose. |
-| Text under the title | The goal's one-line description. |
-| `## Subgoals` | Its checkbox breakdown — "what you can do". Each bullet becomes one checkbox. |
-| `## Prerequisites` | The areas this goal builds on. |
-| `### Area {ref: topicId}` | An **area** — must be an existing topic id. Its bullets become learning goals *of that area*. |
-| `- text {id: …, needs: …}` | One learning goal. `id` optional (auto-slugged from the text, but write it if others reference it). `needs` lists learning goals that come **first**. |
-
-`needs` rules:
-
-- Bare id (`matrix-eqs`) = a sibling in the **same** area.
-- Cross-area = `areaTopicId/goalId` (e.g. `la-tensors/duals`).
-- These become real prerequisite edges — they order the curriculum and draw
-  the arrows on the map. Keep them acyclic; the validator checks.
-
-Reuse is by id: writing the same `{id:}` under the same `{ref:}` area in
-another file refers to the *same* learning goal (first definition wins, and
-the validator warns if a later one disagrees). So a second goal that also
-needs `la-tensors/duals` just lists it — the learner ticks it once.
-
-If an area doesn't exist yet, add it to topics.json as a normal topic first
-(see below), then point `{ref:}` at it.
-
-## Adding a topic
-
-Append an object to the `topics` array:
-
-```json
-{
-  "id": "quantum-field-theory",
-  "title": "Quantum Field Theory",
-  "category": "method",
-  "description": "One or two sentences: what is this and why would someone learn it?",
-  "prerequisites": ["quantum-mechanics", "special-relativity"],
-  "featured": false,
-  "content": []
-}
-```
-
-Field rules:
-
-| Field | Rule |
-|---|---|
-| `id` | kebab-case (`lower-case-with-dashes`), unique. Never change an id later without updating everyone who lists it as a prerequisite. |
-| `title` | Human-readable name shown on the node. |
-| `category` | **Optional** — leave the field out as long as you're not sure; such topics appear neutral grey with the legend entry *Not yet categorized*, and the validator won't complain. Adding it later is a one-word diff. If set: `field` — a domain of physical phenomena you study (electromagnetism, cosmology, condensed matter). `method` — a formalism/tool applied across fields (Lagrangian mechanics, QFT, fluid dynamics, numerics). `math-concept` — mathematics (calculus, linear algebra, tensors, the metric). Drives node color and the legend. |
-| `prerequisites` | ids of topics to learn **directly before** this one. Only direct edges — don't list calculus on cosmology; the graph walks the chain for you. `[]` for entry-point topics. |
-| `featured` | `true` shows the topic in the goal picker on the landing view. Optional. |
-| `content` | list of learning resources, see below. `[]` is allowed (validator warns but passes). |
-| `subtopics` | **Optional** — a missing `subtopics` array is a valid, permanent state (a plain node), not a gap to fill; ~28 of the current topics have none yet, Sophie annotates incrementally. See [below](#subtopics-optional-per-topic) for the format. When present, the topic renders open on the map by default (its subtopics shown as child nodes), collapsible via the ⊕/⊖ toggle. |
-
-## Adding content to a topic
-
-```json
-{
-  "type": "video",
-  "title": "The Theoretical Minimum — Cosmology",
-  "author": "Leonard Susskind (Stanford)",
-  "url": "https://theoreticalminimum.com/courses",
-  "note": "Full lecture course pitched exactly at this level."
-}
-```
-
-- `type`: `book` · `video` · `course` · `notes` · `article`
-- `url`: optional (books often have none), must start with `http(s)://`
-- `note`: one sentence of guidance — *why this resource / which chapters / what order*. This is the most valuable field; always write it.
-
-## Subtopics (optional, per topic)
-
-A topic can carry a `subtopics` array — its chapter-level parts, each with its
-own prerequisites. This is what makes minimal curricula possible: someone
-learning *The Hydrogen Atom* gets only *Eigenvalues & Eigenvectors* from
-Linear Algebra, not the whole course. Annotate incrementally — topics without
-`subtopics` keep working as one block.
-
-```json
-{
-  "id": "linear-algebra",
-  "...": "...",
-  "subtopics": [
-    { "id": "vectors-and-spaces", "title": "Vectors & Vector Spaces", "prerequisites": ["hs-math"] },
-    {
-      "id": "eigenvalues-and-eigenvectors",
-      "title": "Eigenvalues & Eigenvectors",
-      "description": "Directions a transformation only stretches.",
-      "prerequisites": ["matrices-and-linear-maps", "determinants"],
-      "content": []
-    }
-  ]
-}
-```
-
-| Field | Rule |
-|---|---|
-| `id` | kebab-case, unique **within its topic**. |
-| `title` | Shown as a curriculum step. |
-| `description` | Optional, shown when the step is expanded. |
-| `prerequisites` | Refs in three forms — see below. |
-| `optionalPrerequisites` | Same ref forms; *enrichment*, not required. Curriculum shows these steps with an "optional" badge and a hide toggle; the map draws optional topic edges dashed. On overlap with `prerequisites`, mandatory wins. |
-| `outcomes` | Optional subgoals — the tickable "what you can do" breakdown, shown in the step detail, the map card, the topic page and the PDF. Each is `{ "id": "kebab-id", "text": "Can do …" }`; add `"needs": ["other-id"]` to order them. Usually easier to author in Markdown (above); this is the inline form. |
-| `content` | Optional own resources; when empty/absent the step shows the parent topic's resources. |
-
-Topics support `optionalPrerequisites` (topic ids) and `outcomes` too.
-Keep the union of mandatory + optional edges acyclic — the validator checks it,
-because the curriculum ordering runs on both together.
-
-Prerequisite refs, resolved in this order:
-
-1. `"linear-algebra/eigenvalues-and-eigenvectors"` — full `topic/subtopic` ref, works across topics.
-2. `"determinants"` — shorthand for a **sibling** subtopic of the same topic.
-3. `"hs-math"` — a whole topic, allowed **only** if that topic has no subtopics
-   of its own. Referencing an annotated topic bare is an error — pick the
-   specific subtopic you need.
-
-Consistency rule: a cross-topic ref should stay inside topics your topic
-already (transitively) builds on — the validator warns otherwise, because it
-usually means a topic-level edge is missing from the map.
-
-A topic's hand-authored `subtopics` (here in topics.json) and its
-Markdown-compiled ones (`content/*.md`, above) share one id space — pick ids
-that don't collide, or the validator reports a duplicate subtopic id.
-
-## Skills (optional, top-level)
-
-Next to `topics` the file can carry a `skills` array — study habits shown as a
-collapsible "Skills to practice along the way" panel under every curriculum
-(they are *not* graph nodes and have no prerequisites):
-
-```json
-{ "id": "dimensional-analysis", "title": "Dimensional analysis & estimation", "description": "…", "content": [] }
-```
-
-## Concept graph (pilot)
-
-The concept graph is a **second, independent dataset**: it doesn't replace `topics.json`,
-and it renders in its own view, the "Concept map" tab (`?mode=concepts`). It models Sophie's
-pilot CSVs: concept-level nodes with 16 types and typed, directional edges that read as
-sentences, rather than topics.json's course-level `Topic`/`Subtopic` shape.
-
-### Where concepts live: one file each
+## Where concepts live: one file each
 
 Every concept and every relation is its own small file in `content/concepts/`:
 
@@ -233,7 +65,7 @@ content/concepts/
 - The order of files doesn't matter. The map, the search and the lists sort concepts
   themselves.
 
-### Domains
+## Domains
 
 `attrs.domain` names the research area(s) a concept belongs to. It must come from the
 `domains` list in `src/data/conceptVocabulary.json`, so the same field is always spelled the
@@ -245,7 +77,7 @@ domain, add it to the list first, and `npm run validate` points out any typo.
 > `Special relativity` / `General relativity`. They were kept exactly as authored, so nothing
 > changed meaning, but you may want to settle on one.
 
-### Node types
+## Node types
 
 The 16 types (key → what it means), from `src/data/conceptVocabulary.json`:
 
@@ -287,7 +119,7 @@ that are easy to confuse with this one (use `[]` when there are none). A type
 with no entry shows "no agreed definition yet", and `npm run validate` warns about
 it. Every type currently has one.
 
-### Per-type `attrs`
+## Per-type `attrs`
 
 | Type | Fields |
 |---|---|
@@ -296,7 +128,7 @@ it. Every type currently has one.
 | `learning_goal` | `description` only — **no `domain`** |
 | `resource` | `link` (http/https), `mediaType`, `estimatedMinutes` (number), `rating` (0–5), `reviewCount` (integer) — **no `description`/`domain`** |
 
-### Writing an edge
+## Writing an edge
 
 `source` + `relationship` + `target` must read as a sentence: *"{source
 label} {relationship} {target label}."* The `relationship` string is looked
@@ -363,7 +195,7 @@ The full sentence appears in each concept's card under **Relations**.
 Adding a new relationship type means adding a row to `conceptVocabulary.json`
 first — the validator refuses any edge whose relationship isn't in the table.
 
-### Conditions and assumptions — on the edge, not a node
+## Conditions and assumptions — on the edge, not a node
 
 A condition is not a concept of its own: it qualifies a relation. Write it as
 an optional `conditions` list on the edge it applies to:
@@ -395,13 +227,13 @@ an empty list fails validation.
 An equation's own `attrs.conditions` (plain strings, see above) stays as it is.
 That list describes the equation itself, not one of its relations.
 
-### How the concept curriculum is built
+## How the concept curriculum is built
 
 Any concept can be picked as a goal ("★ Show path to this" on its card, or
 `?mode=concepts&goal=<id>`). Only `strict prerequisite for` edges build a
 path: the goal's steps are every concept reachable backwards over those edges,
-ordered by the same rule as topic curricula (a concept comes after everything
-it needs; ties go to the shallower concept, then alphabetically by id).
+in reading order (a concept comes after everything it needs; ties go to the
+shallower concept, then alphabetically by id).
 Resources join a step via `helps understand`; all other relations are shown as
 context on the card but never add a step. If another relation (e.g.
 `depends on`) should pull concepts into paths, that's a one-line change — ask
@@ -412,7 +244,7 @@ path (just the goal) with a "No prerequisites are linked to this goal yet"
 note — currently `lg_alpha_decay_nucleons` and
 `lg_alpha_radiation_properties`.
 
-### `generality` (1–10): the circle's size
+## `generality` (1–10): the circle's size
 
 An optional integer, 1 (most specific) to 10 (most general). It sets the size of
 the concept's circle on the map. Each step makes the circle 1.5× wider, so 10 is
@@ -432,7 +264,7 @@ other concepts got a **placeholder** generality from Claude's old importance
 value (also doubled). Change them freely. A missing value falls back to a
 connection-count estimate (learning goals 1).
 
-### `importance` (1–50): how close you have to zoom to see it
+## `importance` (1–50): how close you have to zoom to see it
 
 An optional integer, 1 (minor detail) to 50 (landmark). The map works like a
 street map: zoomed out you see only the landmarks, and zooming in reveals more
@@ -465,7 +297,7 @@ The two are independent on purpose. A very general idea can still be a minor
 stop on this map (a big circle that only appears up close), and a narrow one can
 be a landmark (a small circle that's always there).
 
-### What a concept's card shows
+## What a concept's card shows
 
 Clicking a concept highlights its direct connections in both directions (silver
 leads into it, gold leads out of it) and opens its card: the
@@ -477,7 +309,7 @@ it, plus its learning goals (still TBD). The sections are configured per type in
 either edge direction, so they fill in as you add edges. Every relation is
 also listed under **All relations**.
 
-### `epistemicStatus`
+## `epistemicStatus`
 
 An optional top-level string on any node saying how settled the concept is,
 e.g. `"epistemicStatus": "Candidate"` (Wave Dark Matter). It appears on the
@@ -486,7 +318,7 @@ concept's card; a missing value shows a **To-do** marker. Known values live in
 the validator warns until you add it there. Leave the field out rather than
 writing an empty string.
 
-### `review` — an open question for you
+## `review` — an open question for you
 
 A `review` field on a node or edge is an open question, not an error —
 delete it once you've decided. Current open items from the migration:
@@ -505,15 +337,15 @@ delete it once you've decided. Current open items from the migration:
 6. Four `resource` nodes link to `example.com` placeholder URLs — replace
    with real links when you have them.
 
-### Ids
+## Ids
 
 Ids stay **snake_case**, exactly as exported from Sophie's CSVs
-(`quark_gluon_plasma`, `lg_pt_3`) — they're a different id space from
-topics.json's kebab-case ids, kept for traceability back to her source files.
+(`quark_gluon_plasma`, `lg_pt_3`), kept for traceability back to her source
+files.
 Concepts added through the proposal editor get a slug of their name plus a short
 random suffix (`jeans_scale_k3f9`), so two proposals never pick the same id.
 
-### Taking in a proposal from the editor
+## Taking in a proposal from the editor
 
 The proposal editor (`?mode=community` → **Propose a concept**) exports
 exactly the files a merge adds:
@@ -546,19 +378,19 @@ take in the rest as usual.
 npm run validate
 ```
 
-This first compiles `content/**/*.md` into the map, then validates everything
-together. Catches: duplicate/malformed ids, prerequisites (and `needs`)
-pointing to things that don't exist, cycles (A needs B needs A — also through
-subtopic chains), bare refs to annotated topics, bad URLs, missing fields. If
-it prints `✓ topics.json valid`, the site will render.
+This compiles `content/concepts/**` into the map, then checks it. Catches:
+duplicate or malformed ids, relations pointing at concepts that don't exist,
+unknown types and relation names, cycles in `strict prerequisite for` (A needs
+B needs A), and missing fields. If it prints `✓ content/concepts valid`, the
+site will render.
 
-Lines starting with `⚠` are advisories, not failures — the most common is
-"topic-level prerequisite … is not referenced by any subtopic", which just
-means an area's learning goals don't yet cover everything it builds on.
+Lines starting with `⚠` are advisories, not failures — for example a learning
+goal with no incoming `strict prerequisite for` relation, or concepts without
+an `epistemicStatus` yet.
 
 ## Rules of thumb for good graph shape
 
-- A topic with more than ~5 direct prerequisites is probably too big — split it.
-- If two topics always appear together, consider merging them.
-- Prefer adding a *humbler* intermediate goal (e.g. Special Relativity) over
-  one giant leap — endings at different depths are a feature of this site.
+- A concept with more than ~5 strict prerequisites is probably too broad — split it.
+- If two concepts always appear together, consider merging them.
+- Prefer adding a *humbler* intermediate goal over one giant leap — paths that
+  end at different depths are a feature of this site.

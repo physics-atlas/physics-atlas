@@ -1,12 +1,8 @@
-import { useId, useMemo, useRef, useState } from 'react';
-import type { Topic, TopicCategory } from '../data/types';
-import { CATEGORY_COLORS, categoryOf } from '../graph/categoryColors';
+import { useId, useRef, useState } from 'react';
 
 interface SearchBoxProps {
-  /** The topic list to search — ignored when prebuilt `entries` are passed */
-  topics?: Topic[];
-  entries?: SearchEntry[];
-  /** Receives the picked entry's ref (a topic id or 'topic/subtopic' unit ref for topics) */
+  entries: SearchEntry[];
+  /** Receives the picked entry's ref */
   onPick: (ref: string) => void;
   hero?: boolean;
   placeholder?: string;
@@ -16,48 +12,19 @@ interface SearchBoxProps {
 export interface SearchEntry {
   ref: string;
   title: string;
-  /** Shown after the title — e.g. the parent topic title of a subtopic */
+  /** Shown after the title — e.g. the concept's type */
   context?: string;
-  category?: TopicCategory;
-  /** Dot colour; falls back to the category colour */
-  color?: string;
+  /** Dot colour */
+  color: string;
 }
 
 const MAX_RESULTS = 8;
 
-// Topics first so whole-topic hits always rank above subtopic hits
-function topicSearchEntries(topics: Topic[]): SearchEntry[] {
-  return [
-    ...topics.map((t) => ({ ref: t.id, title: t.title, category: t.category })),
-    ...topics.flatMap(
-      (t) =>
-        t.subtopics?.map((s) => ({
-          ref: `${t.id}/${s.id}`,
-          title: s.title,
-          context: t.title,
-          category: t.category,
-        })) ?? [],
-    ),
-  ];
-}
-
-export default function SearchBox({
-  topics,
-  entries: prebuilt,
-  onPick,
-  hero,
-  placeholder,
-  label,
-}: SearchBoxProps) {
+export default function SearchBox({ entries, onPick, hero, placeholder, label }: SearchBoxProps) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
-
-  const entries = useMemo(
-    () => prebuilt ?? topicSearchEntries(topics ?? []),
-    [prebuilt, topics],
-  );
 
   const q = query.trim().toLowerCase();
   const results = q
@@ -109,9 +76,9 @@ export default function SearchBox({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={open ? optionId(Math.min(active, results.length - 1)) : undefined}
-        placeholder={placeholder ?? 'Search topics…'}
+        placeholder={placeholder ?? 'Search concepts…'}
         value={query}
-        aria-label={label ?? 'Search topics'}
+        aria-label={label ?? 'Search concepts'}
         onChange={(e) => {
           setQuery(e.target.value);
           setActive(0);
@@ -133,14 +100,7 @@ export default function SearchBox({
               pick(r.ref);
             }}
           >
-            <span
-              className="cat-dot"
-              style={{
-                background: r.color ?? CATEGORY_COLORS[categoryOf(r)],
-                color: r.color ?? CATEGORY_COLORS[categoryOf(r)],
-              }}
-              aria-hidden
-            />
+            <span className="cat-dot" style={{ background: r.color, color: r.color }} aria-hidden />
             {r.title}
             {r.context && <span className="search-result-context"> — {r.context}</span>}
           </li>

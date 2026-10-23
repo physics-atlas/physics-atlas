@@ -1,68 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { graph as data } from './data/loadGraph';
 import Home from './components/Home';
-import GoalView from './components/GoalView';
-import MapView from './components/MapView';
 import ConceptMapView from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
-import TopicPage from './components/TopicPage';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
 import Starfield from './components/Starfield';
 import { NODE_TYPE_LABELS } from './data/types';
-import { expandedCurriculumFor, parseUnitId } from './graph/dag';
+import { IMPORTANCE_MAX } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
 import { useMotion } from './lib/motion';
 import './App.css';
 
-type Mode = 'home' | 'map' | 'goal' | 'topic' | 'concepts' | 'community';
+type Mode = 'home' | 'concepts' | 'community';
 
 const VIEW_TITLES: Record<Mode, string> = {
   home: 'Learn by prerequisites',
-  map: 'Topic map',
-  goal: 'Learning goal',
-  topic: 'Topic',
   concepts: 'Concept map',
   community: 'Community review',
 };
 
 // The community view (.claude/plans/epic-community-review.md) is the concept
-// map with the proposed layer and the proposal editor. Open to everyone for
-// now — sign-in comes with Phase 3.
+// map with the proposed layer and the proposal editor.
 const isConceptView = (m: Mode) => m === 'concepts' || m === 'community';
 
 function initialMode(): Mode {
   const params = new URLSearchParams(window.location.search);
   const m = params.get('mode');
-  if (m === 'map' || m === 'explore') return 'map';
-  if (m === 'goal') return 'goal';
-  if (m === 'topic') return 'topic';
   // `?mode=concepts&community=1` was the community preview's address before it had a tab.
   if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
-  if (m === 'concepts') return 'concepts';
+  // The retired topic views (map, explore, goal, topic) land on the concept map.
+  if (m) return 'concepts';
   return 'home';
-}
-
-function initialTopicId(): string {
-  const id = new URLSearchParams(window.location.search).get('id');
-  return id && data.topics.some((t) => t.id === id) ? id : data.topics[0].id;
-}
-
-function isValidRef(ref: string): boolean {
-  const { topicId, subId } = parseUnitId(ref);
-  const t = data.topics.find((t) => t.id === topicId);
-  if (!t) return false;
-  return !subId || (t.subtopics ?? []).some((s) => s.id === subId);
-}
-
-function initialGoal(): string {
-  const g = new URLSearchParams(window.location.search).get('goal');
-  if (!g) return 'cosmology';
-  if (isValidRef(g)) return g;
-  const { topicId } = parseUnitId(g);
-  return data.topics.some((t) => t.id === topicId) ? topicId : 'cosmology';
 }
 
 function initialConceptGoal(): string | null {
@@ -82,11 +52,14 @@ const conceptSearchEntries: SearchEntry[] = concepts.nodes
   }))
   .sort((a, b) => a.title.localeCompare(b.title));
 
+/** The concepts visible at every zoom — the home page's starting points. */
+const landmarkEntries = conceptSearchEntries.filter(
+  (e) => concepts.nodes.find((n) => n.id === e.ref)?.importance === IMPORTANCE_MAX,
+);
+
 export default function App() {
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [goalRef, setGoalRef] = useState(initialGoal);
   const [conceptGoal, setConceptGoal] = useState(initialConceptGoal);
-  const [topicPageId, setTopicPageId] = useState(initialTopicId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
   const progress = useProgress();
@@ -138,94 +111,46 @@ export default function App() {
   // no guard flag needed, no loop.
   const firstUrlSync = useRef(true);
   useEffect(() => {
-    const view =
+    const target =
       mode === 'home'
         ? ''
-        : mode === 'goal'
-          ? `?mode=goal&goal=${encodeURIComponent(goalRef)}`
-          : mode === 'topic'
-            ? `?mode=topic&id=${encodeURIComponent(topicPageId)}`
-            : isConceptView(mode) && conceptGoal
-              ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
-              : `?mode=${mode}`;
-    const target = view;
+        : conceptGoal
+          ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
+          : `?mode=${mode}`;
     if (window.location.search === target) {
       firstUrlSync.current = false;
       return;
     }
     const url = target || window.location.pathname;
-    // Initial normalization (e.g. legacy ?mode=explore) replaces instead of
+    // Initial normalization (e.g. a retired ?mode=goal) replaces instead of
     // stacking an extra entry under the very first view.
     if (firstUrlSync.current) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
     firstUrlSync.current = false;
-  }, [mode, goalRef, conceptGoal, topicPageId]);
+  }, [mode, conceptGoal]);
 
   useEffect(() => {
     const onPop = () => {
       setMode(initialMode());
-      setGoalRef(initialGoal());
       setConceptGoal(initialConceptGoal());
-      setTopicPageId(initialTopicId());
       setSelectedId(null);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  const pickGoal = useCallback((ref: string) => {
-    setGoalRef(ref);
-    setSelectedId(null);
-    setMode('goal');
+  const focusOn = useCallback((id: string) => {
+    setSelectedId(id);
+    setFocus((f) => ({ id, tick: f.tick + 1 }));
   }, []);
 
-  const openTopic = useCallback((id: string) => {
-    setTopicPageId(parseUnitId(id).topicId);
-    setMode('topic');
-  }, []);
-
-  // Subtopics have no map node — the graph centers on the parent topic
-  const focusOn = useCallback((ref: string) => {
-    setSelectedId(ref);
-    setFocus((f) => ({ id: parseUnitId(ref).topicId, tick: f.tick + 1 }));
-  }, []);
-
-  // Home search lands on the full map, centered on the hit;
-  // a subtopic hit becomes a learning goal directly.
-  const homeSearchPick = useCallback(
-    (ref: string) => {
-      if (parseUnitId(ref).subId) {
-        pickGoal(ref);
-        return;
-      }
-      setMode('map');
-      focusOn(ref);
+  // Home search and landmarks land on the concept map, centred on the pick.
+  const homePick = useCallback(
+    (id: string) => {
+      setMode('concepts');
+      focusOn(id);
     },
-    [focusOn, pickGoal],
-  );
-
-  // Header search: select + center. Subtopic hits become the goal; in goal
-  // mode a topic outside the current curriculum becomes the new goal
-  // (a humbler ending).
-  const headerSearchPick = useCallback(
-    (ref: string) => {
-      if (parseUnitId(ref).subId) {
-        pickGoal(ref);
-        return;
-      }
-      if (mode === 'topic') {
-        openTopic(ref);
-        return;
-      }
-      if (
-        mode === 'goal' &&
-        !expandedCurriculumFor(goalRef, data.topics).some((g) => g.topic.id === ref)
-      ) {
-        setGoalRef(ref);
-      }
-      focusOn(ref);
-    },
-    [mode, goalRef, focusOn, pickGoal, openTopic],
+    [focusOn],
   );
 
   return (
@@ -244,17 +169,7 @@ export default function App() {
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
-          {isConceptView(mode) ? (
-            <SearchBox
-              key="concepts"
-              entries={conceptSearchEntries}
-              onPick={focusOn}
-              placeholder="Search concepts…"
-              label="Search concepts"
-            />
-          ) : (
-            <SearchBox key="topics" topics={data.topics} onPick={headerSearchPick} />
-          )}
+          <SearchBox entries={conceptSearchEntries} onPick={focusOn} />
           <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
@@ -271,13 +186,6 @@ export default function App() {
             >
               Community
             </button>
-            <button
-              className={`mode-tab ${mode === 'goal' ? 'mode-tab-active' : ''}`}
-              aria-current={mode === 'goal' ? 'page' : undefined}
-              onClick={() => setMode('goal')}
-            >
-              Learning goal
-            </button>
           </nav>
           <div className="header-settings" role="group" aria-label="Display settings">
             {motionButton}
@@ -289,56 +197,13 @@ export default function App() {
         {mode !== 'home' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
         {mode === 'home' && (
           <Home
-            topics={data.topics}
-            onSearchPick={homeSearchPick}
+            entries={conceptSearchEntries}
+            landmarks={landmarkEntries}
+            onPick={homePick}
             onExplore={() => setMode('concepts')}
             onCommunity={() => setMode('community')}
-            onPickGoal={pickGoal}
             motionButton={motionButton}
             still={motion.reduced}
-          />
-        )}
-        {mode === 'map' && (
-          <MapView
-            topics={data.topics}
-            progress={progress}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onMakeGoal={pickGoal}
-            onOpenTopic={openTopic}
-            focus={focus}
-            theme={theme}
-          />
-        )}
-        {mode === 'goal' && (
-          <GoalView
-            topics={data.topics}
-            skills={data.skills ?? []}
-            progress={progress}
-            goalRef={goalRef}
-            onPickGoal={(ref) => {
-              setGoalRef(ref);
-              setSelectedId(null);
-            }}
-            onOpenTopic={openTopic}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            focus={focus}
-            theme={theme}
-          />
-        )}
-        {mode === 'topic' && (
-          <TopicPage
-            topics={data.topics}
-            progress={progress}
-            topicId={topicPageId}
-            onOpenTopic={openTopic}
-            onMakeGoal={pickGoal}
-            onShowOnMap={(id) => {
-              setMode('map');
-              focusOn(id);
-            }}
-            theme={theme}
           />
         )}
         {isConceptView(mode) && (

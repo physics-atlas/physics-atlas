@@ -4,6 +4,7 @@ import {
   buildConceptIndex,
   conditionClause,
   domainsOf,
+  edgeWeight,
   effectiveGenerality,
   effectiveImportance,
   joinList,
@@ -123,6 +124,16 @@ describe('generality (size) and importance (zoom visibility)', () => {
     expect(revealZoom(24)).toBe(4);
     expect(revealZoom(1)).toBeCloseTo(29.2, 0);
     for (let i = 1; i < 49; i++) expect(revealZoom(i)).toBeGreaterThan(revealZoom(i + 1));
+  });
+  it('weights a relation by the larger generality and importance of its two ends, damped to 1–4 px', () => {
+    expect(edgeWeight([7, 7], [1, 1])).toEqual({ px: 1, strength: 0 });
+    expect(edgeWeight([7, 270], [50, 1])).toEqual({ px: 4, strength: 1 });
+    // Either end carries it, and a mid-size end lands in between.
+    expect(edgeWeight([270, 7], [1, 50])).toEqual(edgeWeight([7, 270], [50, 1]));
+    const mid = edgeWeight([7, nodeRadius(concept('a', { generality: 5 }), 0)], [1, 25.5]);
+    expect(mid.px).toBeGreaterThan(2);
+    expect(mid.px).toBeLessThan(3);
+    expect(mid.strength).toBeCloseTo(0.5);
   });
 });
 

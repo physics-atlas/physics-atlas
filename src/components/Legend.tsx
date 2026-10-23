@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_ORDER } from '../graph/categoryColors';
 import { TYPE_GROUPS } from '../graph/typeColors';
 import { NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
 import type { NodeType } from '../data/types';
@@ -110,33 +109,13 @@ function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) 
 }
 
 export default function Legend({
-  variant = 'category',
   statuses = false,
   draft = false,
 }: {
-  variant?: 'category' | 'type';
   /** Also explain the proposal outlines (community preview) */
   statuses?: boolean;
   /** Also explain the draft's outline (while the proposal editor is open) */
   draft?: boolean;
 }) {
-  if (variant === 'type') return <TypeLegend statuses={statuses} draft={draft} />;
-  return (
-    <div className="legend" role="group" aria-label="Legend: topic categories">
-      {CATEGORY_ORDER.map((category) => (
-        <span key={category} className="legend-entry">
-          <span
-            className="cat-dot"
-            style={{ background: CATEGORY_COLORS[category], color: CATEGORY_COLORS[category] }}
-            aria-hidden
-          />
-          {CATEGORY_LABELS[category]}
-        </span>
-      ))}
-      <span className="legend-entry">
-        <span className="legend-dash" aria-hidden />
-        optional prerequisite
-      </span>
-    </div>
-  );
+  return <TypeLegend statuses={statuses} draft={draft} />;
 }
