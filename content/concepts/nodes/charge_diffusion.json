@@ -2,7 +2,7 @@
   "id": "charge_diffusion",
   "type": "property",
   "label": "Charge Diffusion",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "description": "The dissipative transport of conserved charge caused by spatial gradients and interactions.",

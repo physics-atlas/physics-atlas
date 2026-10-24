@@ -1,9 +1,9 @@
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { NodeType } from '../data/types';
 
-// Validated 16-type palette, one hue family per legend group (TYPE_GROUPS):
+// Validated palette, one hue family per legend group (TYPE_GROUPS):
 // Knowledge cool (green → teal → blue, OKLCH hue 132–258), Research violet →
-// pink (275–350), Learning warm (red → amber, 28–70). Each colour is the
+// pink (275–350), Learning warm (red → amber, 28–70), Fun mustard (110). Each colour is the
 // in-gamut OKLCH colour at its hue and lightness (0.51–0.63, alternating so
 // neighbours in a family differ in lightness too) with 92% of the maximum
 // chroma. All clear 3:1 on both surfaces (dark #070b14 / light #f3f5fa), the
@@ -31,15 +31,21 @@ export const TYPE_COLORS: Record<NodeType, string> = {
   learning_goal: '#e82724',
   resource: '#b97a20',
   misconception: '#a34d16',
+  // Fun, in the gap between Learning's amber and Knowledge's greens (hue 110,
+  // L 0.64): 5.94 dark / 3.04 light; nearest equation at ΔE2000 17.1, and
+  // still 11.6 / 14.4 from every colour under protanopia / deuteranopia.
+  fluff: '#919221',
 };
 
 export const TYPE_ORDER = Object.keys(NODE_TYPE_LABELS) as NodeType[];
 
 const LEARNING_TYPES: NodeType[] = ['learning_goal', 'resource', 'misconception'];
 const RESEARCH_TYPES: NodeType[] = ['claim', 'finding', 'experiment', 'dataset', 'method'];
+/** Only shown in fun mode — on the map, in the legend, in search and lists. */
+export const FUN_TYPES: NodeType[] = ['fluff'];
 
 /**
- * The legend's three families of types, each drawn in its own hue family
+ * The legend's families of types, each drawn in its own hue family
  * (TYPE_COLORS). Knowledge takes every other type, so a new vocabulary type
  * lands there — give it a green-to-blue colour.
  */
@@ -49,6 +55,7 @@ export const TYPE_GROUPS: { key: string; label: string; types: NodeType[] }[] = 
   {
     key: 'knowledge',
     label: 'Knowledge',
-    types: TYPE_ORDER.filter((t) => !LEARNING_TYPES.includes(t) && !RESEARCH_TYPES.includes(t)),
+    types: TYPE_ORDER.filter((t) => ![...LEARNING_TYPES, ...RESEARCH_TYPES, ...FUN_TYPES].includes(t)),
   },
+  { key: 'fun', label: 'Fun', types: FUN_TYPES },
 ];

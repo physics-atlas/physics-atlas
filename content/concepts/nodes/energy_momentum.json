@@ -2,7 +2,7 @@
   "id": "energy_momentum",
   "type": "property",
   "label": "Energy-Momentum",
-  "importance": 40,
+  "importance": 8,
   "generality": 8,
   "attrs": {
     "description": "The stress-energy tensor: a description of the density and flux of energy and momentum in spacetime, acting as the source of gravity.",

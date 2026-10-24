@@ -2,7 +2,7 @@
   "id": "lg_tv_3",
   "type": "learning_goal",
   "label": "Differentiate the manifold from its tangent spaces.",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "description": "Explain the difference between the (possibly curved) manifold itself and the flat vector space that approximates it at a single point."

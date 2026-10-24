@@ -4,7 +4,7 @@ import type { Proposal } from '../src/community/types';
 import { readConfig } from './config';
 import type { Config, Env } from './config';
 import { randomToken } from './crypto';
-import { GitHub, GitHubError } from './github';
+import { GitHub, GitHubError, SignInError } from './github';
 import type { Fetch } from './github';
 import { branchFor, decodeProposal, filesFor, parseExperts, pullRequestBody } from './proposalPr';
 import type { Expert } from './proposalPr';
@@ -17,7 +17,7 @@ import type { SessionUser } from './session';
 //
 //   GET  /api/me                 { configured, user, invited }
 //   GET  /api/auth/login         → GitHub, then back to ?return=
-//   GET  /api/auth/callback      GitHub sends the browser here
+//   GET  /api/auth/callback      GitHub sends the browser here → back, with ?signin=<reason> if it failed
 //   POST /api/auth/logout
 //   GET  /api/proposals          { proposals } — open pull requests labelled "proposal"
 //   POST /api/proposals          { proposal, description } → { number, url }
@@ -32,6 +32,19 @@ const json = (data: unknown, status = 200, headers: Record<string, string> = {})
 
 /** Only a path on this site — never an open redirect. */
 const safeReturn = (r: string | null) => (r && r.startsWith('/') && !r.startsWith('//') ? r : '/?mode=community');
+
+/** Why a sign-in didn't complete — the community panel says it in words (src/community/api.ts). */
+export type SignInProblem = 'denied' | 'expired' | 'github' | 'failed';
+
+/** The end of a sign-in: back to where the person was, with any extra query, the state cookie cleared. */
+function backTo(back: string | undefined, query: Record<string, string>, sessionCookie?: string) {
+  const to = new URL(safeReturn(back ?? null), 'https://site.invalid');
+  for (const [k, v] of Object.entries(query)) to.searchParams.set(k, v);
+  const headers = new Headers({ location: `${to.pathname}${to.search}` });
+  if (sessionCookie) headers.append('set-cookie', sessionCookie);
+  headers.append('set-cookie', cookie(STATE_COOKIE, '', 0));
+  return new Response(null, { status: 302, headers });
+}
 
 interface Cached<T> {
   value: T;
@@ -128,15 +141,29 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
 
       case 'GET /api/auth/callback': {
         const [st, back] = (readCookie(request, STATE_COOKIE) ?? '').split('|');
+        // Every way back from GitHub ends on the site: a problem becomes
+        // ?signin=<reason> for the community panel to explain, and a line in
+        // the Worker's logs.
+        const fail = (reason: SignInProblem, detail?: string) => {
+          const clean = detail?.replace(/[^\w]/g, '').slice(0, 40);
+          console.warn(`sign-in failed: ${reason}${clean ? ` (${clean})` : ''}`);
+          return backTo(back, { signin: reason, ...(clean ? { detail: clean } : {}) });
+        };
+        const refused = url.searchParams.get('error');
+        if (refused) return fail(refused === 'access_denied' ? 'denied' : 'github', refused);
         const code = url.searchParams.get('code');
-        if (!st || st !== url.searchParams.get('state') || !code)
-          return json({ error: 'Sign-in expired or was started elsewhere — please try again.' }, 400);
-        const u = await gh.userFromCode(code, `${url.origin}/api/auth/callback`);
+        if (!st || st !== url.searchParams.get('state') || !code) return fail('expired');
+        let u;
+        try {
+          u = await gh.userFromCode(code, `${url.origin}/api/auth/callback`);
+        } catch (e) {
+          if (e instanceof SignInError) return fail('failed', e.code);
+          if (e instanceof GitHubError) return fail('failed', `profile_${e.status}`);
+          throw e;
+        }
+        console.log(`sign-in: @${u.login}`);
         const session: SessionUser = { login: u.login, id: u.id, name: u.name ?? u.login, avatar: u.avatar_url };
-        const headers = new Headers({ location: safeReturn(back ?? null) });
-        headers.append('set-cookie', cookie(SESSION_COOKIE, await sealSession(session, config.sessionSecret, now), SESSION_SECONDS));
-        headers.append('set-cookie', cookie(STATE_COOKIE, '', 0));
-        return new Response(null, { status: 302, headers });
+        return backTo(back, {}, cookie(SESSION_COOKIE, await sealSession(session, config.sessionSecret, now), SESSION_SECONDS));
       }
 
       case 'POST /api/auth/logout':

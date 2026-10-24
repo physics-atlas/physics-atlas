@@ -2,11 +2,11 @@
   "id": "conservation_equations",
   "type": "equation",
   "label": "Conservation equations",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "Equations expressing local conservation of energy-momentum and particle or charge currents.",
-    "equation": "∇μTμν = 0,  ∇μJμ = 0",
+    "equation": "\\nabla_\\mu T^{\\mu\\nu} = 0, \\quad \\nabla_\\mu J^\\mu = 0",
     "variables": [],
     "conditions": [],
     "representations": []

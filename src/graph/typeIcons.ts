@@ -21,6 +21,12 @@ const ICON_MARKUP: Partial<Record<NodeType, string>> = {
     '<path d="M9.1 5.2C7.7 4.2 6.1 5 5.9 7.2L5.1 17.6C4.9 19.6 3.7 20.2 2.5 19.6M3.3 10.2h5.2' +
     'M11.7 6.5Q9.3 12 11.7 17.5M20.3 6.5Q22.7 12 20.3 17.5M13.5 9.5l5 5M18.5 9.5l-5 5"/>',
   equation: '<path d="M3.5 8h17M3.5 16h17" stroke-width="3"/>',
+  // A smiley: fluff is told apart by its glyph too, never by colour alone.
+  fluff:
+    '<circle cx="12" cy="12" r="9.5"/>' +
+    '<circle cx="8.8" cy="9.6" r="1.4" fill="currentColor" stroke="none"/>' +
+    '<circle cx="15.2" cy="9.6" r="1.4" fill="currentColor" stroke="none"/>' +
+    '<path d="M7.3 13.8q4.7 5 9.4 0"/>',
 };
 
 export const TYPE_ICON_VIEWBOX = '1.5 1.5 21 21';

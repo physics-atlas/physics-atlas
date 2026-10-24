@@ -6,9 +6,13 @@ import {
   countCrossings,
   countNodeOverlaps,
   createRng,
+  forceLayout,
+  labelCovers,
+  labelRoom,
   layoutKey,
   placeNew,
   removeOverlaps,
+  stretchForLabels,
 } from './layoutOptimize';
 import type { NodeBox, Positions, Segment } from './layoutOptimize';
 
@@ -18,6 +22,47 @@ const box = (r = 10, labelW = 60, labelH = 16): NodeBox => ({
   right: labelW / 2,
   top: -r,
   bottom: r + labelH,
+});
+
+describe('relation names', () => {
+  const name = { length: 120, thickness: 14 };
+  it('sit on the visible part of the line: free when it is long enough, covered by what sits on them', () => {
+    const boxes = { a: box(40, 0, 0), b: box(10, 0, 0), c: box(10, 0, 0) };
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 300, y: 0 }, c: { x: 0, y: 500 } };
+    expect(labelCovers([['a', 'b']], [name], pos, boxes).size).toBe(0);
+    // Centred between the circles (x 40…290), not between the centres.
+    pos.c = { x: 165, y: 12 };
+    expect(labelCovers([['a', 'b']], [name], pos, boxes).get(0)).toEqual(['c']);
+    pos.c = { x: 165, y: 40 };
+    expect(labelCovers([['a', 'b']], [name], pos, boxes).size).toBe(0);
+  });
+  it('a line too short for its name is covered by its own ends, and a concept name below a circle counts too', () => {
+    const boxes = { a: box(40, 0, 0), b: box(10, 0, 0), c: box(10, 80, 20) };
+    expect(labelCovers([['a', 'b']], [name], { a: { x: 0, y: 0 }, b: { x: 120, y: 0 } }, boxes).get(0)).toEqual(['a', 'b']);
+    // c's circle is clear of the name, but its own name (below it) runs into it.
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 300, y: 0 }, c: { x: 165, y: -30 } };
+    expect(labelCovers([['a', 'b']], [name], pos, boxes).get(0)).toEqual(['c']);
+  });
+  it('the stretch pass finishes the job, moving only what may move', () => {
+    const boxes = { a: box(30), b: box(30), c: box(30) };
+    const segments: Segment[] = [['a', 'b'], ['b', 'c']];
+    const labels = [{ length: 300, thickness: 20, arrow: 25 }, undefined];
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 100, y: 0 }, c: { x: 100, y: 200 } };
+    const out = stretchForLabels(pos, segments, labels, boxes);
+    expect(Math.hypot(out.a.x - out.b.x, out.a.y - out.b.y)).toBeGreaterThanOrEqual(labelRoom(30, 30, labels[0]) - 0.5);
+    const onlyA = stretchForLabels(pos, segments, labels, boxes, new Set(['a']));
+    expect(onlyA.b).toEqual(pos.b);
+    expect(labelCovers(segments, labels, onlyA, boxes).size).toBe(0);
+  });
+  it('the force layout gives a relation the room its name needs', () => {
+    const boxes = { a: box(30), b: box(30) };
+    const long = { length: 400, thickness: 20 };
+    const pos = forceLayout(['a', 'b'], [['a', 'b']], boxes, createRng(3), 400, { labels: [long] });
+    const d = Math.hypot(pos.a.x - pos.b.x, pos.a.y - pos.b.y);
+    expect(d).toBeGreaterThanOrEqual(labelRoom(30, 30, long) * 0.97);
+    const plain = forceLayout(['a', 'b'], [['a', 'b']], boxes, createRng(3));
+    expect(Math.hypot(plain.a.x - plain.b.x, plain.a.y - plain.b.y)).toBeLessThan(d);
+  });
 });
 
 describe('countCrossings', () => {

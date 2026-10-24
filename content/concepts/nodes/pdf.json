@@ -2,7 +2,7 @@
   "id": "pdf",
   "type": "formalism",
   "label": "PDF",
-  "importance": 20,
+  "importance": 4,
   "generality": 6,
   "attrs": {
     "description": "Probability density function: a function whose integral over a range gives the probability of a value falling in that range.",

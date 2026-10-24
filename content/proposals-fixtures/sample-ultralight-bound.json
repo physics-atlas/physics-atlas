@@ -19,7 +19,7 @@
       "id": "ultralight_bound_s3",
       "type": "claim",
       "label": "Ultralight mass > 10⁻²² eV",
-      "importance": 30,
+      "importance": 6,
       "generality": 6,
       "attrs": {
         "description": "Sample: a proposed lower bound on the particle mass.",

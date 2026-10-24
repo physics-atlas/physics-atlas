@@ -2,7 +2,7 @@
   "id": "lg_pt_5",
   "type": "learning_goal",
   "label": "Illustrate the relevance of parallel transport to different curvature types.",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "description": "Compare parallel transport around a closed loop in flat, positively-curved, and negatively-curved spaces, and relate the result to curvature."

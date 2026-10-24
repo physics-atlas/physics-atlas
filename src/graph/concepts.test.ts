@@ -9,11 +9,14 @@ import {
   effectiveImportance,
   joinList,
   labelSize,
+  LONELY_LINES,
+  lonelyLine,
   neighborsOf,
   nodeRadius,
   normalizeRelationship,
   revealZoom,
   sentenceParts,
+  splitFluff,
 } from './concepts';
 
 const concept = (id: string, extra: Partial<GraphNode> = {}, domain?: string): GraphNode =>
@@ -91,12 +94,12 @@ describe('domainsOf', () => {
 
 describe('generality (size) and importance (zoom visibility)', () => {
   it('each uses its authored value, else a degree estimate — never the other', () => {
-    const both = concept('a', { importance: 40, generality: 2 });
-    expect(effectiveImportance(both, 0)).toBe(40);
+    const both = concept('a', { importance: 8, generality: 2 });
+    expect(effectiveImportance(both, 0)).toBe(8);
     expect(effectiveGenerality(both, 0)).toBe(2);
     expect(effectiveImportance(concept('a', { generality: 9 }), 0)).toBe(1);
-    expect(effectiveGenerality(concept('a', { importance: 50 }), 0)).toBe(1);
-    expect(effectiveImportance(concept('a'), 100)).toBe(50);
+    expect(effectiveGenerality(concept('a', { importance: 10 }), 0)).toBe(1);
+    expect(effectiveImportance(concept('a'), 100)).toBe(10);
     expect(effectiveGenerality(concept('a'), 100)).toBe(10);
   });
   it('treats an unrated learning goal as minor and specific', () => {
@@ -105,7 +108,7 @@ describe('generality (size) and importance (zoom visibility)', () => {
     expect(effectiveGenerality(goal, 10)).toBe(1);
   });
   it('sizes the circle by generality: 1–10 → radius 7–270, the same factor per step', () => {
-    const r = (g: number) => nodeRadius(concept('a', { generality: g, importance: 50 }), 0);
+    const r = (g: number) => nodeRadius(concept('a', { generality: g, importance: 10 }), 0);
     expect(r(1)).toBeCloseTo(7);
     expect(r(10)).toBeCloseTo(270);
     expect(r(6) / r(5)).toBeCloseTo(r(2) / r(1));
@@ -113,27 +116,50 @@ describe('generality (size) and importance (zoom visibility)', () => {
   });
   it('sizes names by importance (12–18 px), and big circles get names to match', () => {
     expect(labelSize(1)).toBe(12);
-    expect(labelSize(50)).toBe(18);
+    expect(labelSize(10)).toBe(18);
     expect(labelSize(1, 270)).toBe(90);
-    expect(labelSize(50, 7)).toBe(18);
+    expect(labelSize(10, 7)).toBe(18);
   });
-  it('gives every importance its own depth: 50 always, 40 on the overview, each 8 below twice as close', () => {
-    expect(revealZoom(50)).toBe(0);
-    expect(revealZoom(40)).toBe(1);
-    expect(revealZoom(32)).toBe(2);
-    expect(revealZoom(24)).toBe(4);
-    expect(revealZoom(1)).toBeCloseTo(29.2, 0);
-    for (let i = 1; i < 49; i++) expect(revealZoom(i)).toBeGreaterThan(revealZoom(i + 1));
+  it('gives every importance its own depth: 10 always, 8 on the overview, each step below ~1.5× closer', () => {
+    expect(revealZoom(10)).toBe(0);
+    expect(revealZoom(8)).toBe(1);
+    expect(revealZoom(6)).toBeCloseTo(2.38, 2);
+    expect(revealZoom(1)).toBeCloseTo(20.7, 1);
+    for (let i = 1; i < 9; i++) expect(revealZoom(i)).toBeGreaterThan(revealZoom(i + 1));
+  });
+  it('keeps every concept at the depth it had on the old 1–50 scale (a fifth of it)', () => {
+    const old = (i: number) => 2 ** ((40 - i) / 8);
+    for (const i of [1, 2, 4, 6, 8]) expect(revealZoom(i)).toBeCloseTo(old(5 * i), 6);
   });
   it('weights a relation by the larger generality and importance of its two ends, damped to 1–4 px', () => {
     expect(edgeWeight([7, 7], [1, 1])).toEqual({ px: 1, strength: 0 });
-    expect(edgeWeight([7, 270], [50, 1])).toEqual({ px: 4, strength: 1 });
+    expect(edgeWeight([7, 270], [10, 1])).toEqual({ px: 4, strength: 1 });
     // Either end carries it, and a mid-size end lands in between.
-    expect(edgeWeight([270, 7], [1, 50])).toEqual(edgeWeight([7, 270], [50, 1]));
-    const mid = edgeWeight([7, nodeRadius(concept('a', { generality: 5 }), 0)], [1, 25.5]);
+    expect(edgeWeight([270, 7], [1, 10])).toEqual(edgeWeight([7, 270], [10, 1]));
+    const mid = edgeWeight([7, nodeRadius(concept('a', { generality: 5 }), 0)], [1, 5.5]);
     expect(mid.px).toBeGreaterThan(2);
     expect(mid.px).toBeLessThan(3);
     expect(mid.strength).toBeCloseTo(0.5);
+  });
+});
+
+describe('fun mode', () => {
+  it('splits fluff and every relation touching it off the map everyone sees', () => {
+    const graph = {
+      version: 1,
+      nodes: [concept('a'), concept('b'), concept('cat', { type: 'fluff' } as Partial<GraphNode>)],
+      edges: [rel('e1', 'a', 'b', 'relates'), rel('e2', 'cat', 'a', 'relates')],
+    };
+    const { base, fluff } = splitFluff(graph);
+    expect(base.nodes.map((n) => n.id)).toEqual(['a', 'b']);
+    expect(base.edges.map((e) => e.id)).toEqual(['e1']);
+    expect(fluff.nodes.map((n) => n.id)).toEqual(['cat']);
+    expect(fluff.edges.map((e) => e.id)).toEqual(['e2']);
+  });
+  it('gives each lonely concept one of its lines, always the same one', () => {
+    expect(LONELY_LINES).toContain(lonelyLine('bosons'));
+    expect(lonelyLine('bosons')).toBe(lonelyLine('bosons'));
+    expect(new Set(['bec', 'bosons', 'caustics', 'lg_a', 'lg_b', 'x', 'y'].map(lonelyLine)).size).toBeGreaterThan(1);
   });
 });
 

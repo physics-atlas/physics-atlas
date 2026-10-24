@@ -2,7 +2,7 @@
   "id": "dissipative_fields",
   "type": "property",
   "label": "Dissipative fields",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "Hydrodynamic fields describing departures from local equilibrium, including viscous stresses and diffusion currents.",

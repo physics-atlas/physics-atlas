@@ -844,9 +844,46 @@ body {
   }
 }
 
+/* Concept map: the guide's button at the top middle, the guide itself under it. */
+.map-hint-area {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(60ch, calc(100% - 32px));
+  pointer-events: none;
+}
+
+.map-hint-toggle {
+  pointer-events: auto;
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.map-hint-toggle:hover {
+  border-color: var(--accent-ink);
+}
+
 .concept-map-view .map-hint {
-  bottom: auto;
-  top: 16px;
+  position: static;
+  transform: none;
+}
+
+.concept-map-view .map-hint[hidden] {
+  display: none;
 }
 
 .concept-side {
@@ -995,10 +1032,36 @@ body {
   border: 1px solid var(--hairline);
   border-radius: 8px;
   background: rgba(var(--glass-rgb), 0.5);
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  font-size: 13px;
   color: var(--ink);
   overflow-x: auto;
+}
+
+/* Typeset by KaTeX; its own margins would double the box's padding. */
+.concept-equation-formula .rich-math-display {
+  margin: 0;
+}
+
+/* The LaTeX source, shown for a moment while KaTeX loads. */
+.concept-equation-source {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 13px;
+}
+
+.concept-representations {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concept-representation + .concept-representation {
+  margin-top: 10px;
+}
+
+.concept-representation-name {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .concept-variables {
@@ -1015,7 +1078,6 @@ body {
 .concept-variable dt {
   flex: none;
   min-width: 3.5em;
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   color: var(--ink);
 }
 
@@ -1533,6 +1595,64 @@ input[type='checkbox'] {
   z-index: 5;
 }
 
+/* Fun mode's speech bubbles: over the canvas (same layer, later in the page),
+   under every panel. Placed by GraphView at the circle's upper right; the tail
+   points back down-left at the concept. */
+.concept-map-view .graph-pane > .graph-bubbles {
+  z-index: 0;
+}
+
+.graph-bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.graph-bubble {
+  position: absolute;
+  max-width: 220px;
+  transform: translate(6px, calc(-100% - 10px));
+  padding: 6px 10px;
+  border: 1.5px solid var(--ink-2);
+  border-radius: 14px;
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: inherit;
+  font-style: italic;
+  line-height: 1.3;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.graph-bubble[hidden] {
+  display: none;
+}
+
+.graph-bubble:hover {
+  border-color: var(--accent-ink);
+}
+
+/* The tail: a bordered square turned 45°, half tucked under the bubble. */
+.graph-bubble::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface-solid);
+  border-right: 1.5px solid var(--ink-2);
+  border-bottom: 1.5px solid var(--ink-2);
+  transform: rotate(45deg);
+}
+
+.graph-bubble:hover::after {
+  border-color: var(--accent-ink);
+}
+
 /* WCAG 1.4.10 — at 320px wide (or 400% zoom) the header wraps instead of
    scrolling sideways. */
 @media (max-width: 720px) {
@@ -1850,6 +1970,137 @@ textarea.draft-input {
   padding: 8px 12px;
   border: 1px dashed var(--muted);
   border-radius: 8px;
+}
+
+/* The relation picker (RelationPicker.tsx): each choice is its sentence — the
+   relation bold in full ink, the two concepts quieter around it. "Quieter" is
+   --muted, still ≥ 8.7:1, so nothing turns into grey text. */
+.relation-picker {
+  position: relative;
+}
+
+.relation-picker-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.relation-picker-caret {
+  margin-left: auto;
+  flex: none;
+}
+
+.relation-sentence .relation-end {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.relation-sentence .relation-name {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.relation-sentence > * + * {
+  margin-left: 0.3em;
+}
+
+.relation-picker-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.relation-picker-list[hidden] {
+  display: none;
+}
+
+.relation-picker-option {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.relation-picker-option-active {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-ink);
+}
+
+.relation-picker-option[aria-selected='true']::before {
+  content: '✓ ';
+  font-weight: 700;
+}
+
+/* An equation's variables: symbol (with its typeset preview) · what it stands for · remove. */
+.draft-variables,
+.draft-representations {
+  margin: 10px 0 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.draft-variable-list {
+  margin: 4px 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.draft-variable {
+  display: grid;
+  grid-template-columns: minmax(6em, 1fr) 3.5em minmax(8em, 2fr) auto;
+  align-items: end;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.draft-variable-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.draft-variable-label {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.draft-variable-preview {
+  align-self: center;
+  overflow: hidden;
+  text-align: center;
+}
+
+.draft-variable-remove {
+  align-self: center;
+}
+
+.draft-representation {
+  margin-top: 10px;
+}
+
+@media (max-width: 520px) {
+  .draft-variable {
+    grid-template-columns: 1fr auto;
+  }
+  .draft-variable-meaning {
+    grid-column: 1 / -1;
+  }
 }
 
 .draft-definition {

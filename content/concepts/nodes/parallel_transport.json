@@ -2,7 +2,7 @@
   "id": "parallel_transport",
   "type": "method",
   "label": "Parallel Transport",
-  "importance": 40,
+  "importance": 8,
   "generality": 8,
   "attrs": {
     "description": "A rule for moving a vector along a curve on a manifold while keeping it 'as parallel as possible' to itself at each step.",

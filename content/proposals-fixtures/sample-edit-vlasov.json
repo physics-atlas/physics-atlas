@@ -14,11 +14,11 @@
       "id": "vlasov_equation",
       "type": "equation",
       "label": "Vlasov eq.",
-      "importance": 30,
+      "importance": 6,
       "generality": 6,
       "attrs": {
         "description": "Describes the phase-space evolution of a particle gas.",
-        "equation": "∂f/∂t + v·∇ₓf − ∇Φ·∇ᵥf = 0",
+        "equation": "\\frac{\\partial f}{\\partial t} + v \\cdot \\nabla_x f - \\nabla \\Phi \\cdot \\nabla_v f = 0",
         "variables": [
           {
             "symbol": "f",
@@ -29,7 +29,7 @@
             "meaning": "Velocity"
           },
           {
-            "symbol": "Φ",
+            "symbol": "\\Phi",
             "meaning": "Gravitational potential"
           }
         ],

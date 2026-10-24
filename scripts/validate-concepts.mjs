@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
+import katex from 'katex';
 import { findCycle } from './lib/find-cycle.mjs';
 import { readConceptSources, unformattedFiles } from './lib/concept-files.mjs';
 
@@ -138,10 +139,38 @@ function checkNodeAttrs(where, node) {
   if (node.type === 'equation') {
     if (typeof attrs.equation !== 'string' || !attrs.equation.trim())
       errors.push(`${where}: attrs.equation is required`);
-    if (!Array.isArray(attrs.variables) || attrs.variables.some((v) => !v || typeof v.symbol !== 'string' || typeof v.meaning !== 'string'))
-      errors.push(`${where}: attrs.variables must be an array of {symbol, meaning}`);
+    else checkLatex(where, 'attrs.equation', attrs.equation);
+    checkVariables(where, 'attrs.variables', attrs.variables);
     checkStringArray(where, 'conditions', attrs.conditions);
-    checkStringArray(where, 'representations', attrs.representations);
+    if (!Array.isArray(attrs.representations)) errors.push(`${where}: attrs.representations must be an array`);
+    else
+      attrs.representations.forEach((r, i) => {
+        const at = `attrs.representations[${i}]`;
+        if (!r || typeof r !== 'object' || typeof r.name !== 'string' || !r.name.trim())
+          return errors.push(`${where}: ${at} needs a "name" (what this form of the equation is called)`);
+        for (const key of Object.keys(r))
+          if (!['name', 'equation', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+        if (r.equation !== undefined) {
+          if (typeof r.equation !== 'string' || !r.equation.trim()) errors.push(`${where}: ${at}.equation must be LaTeX text`);
+          else checkLatex(where, `${at}.equation`, r.equation);
+        }
+        if (r.variables !== undefined) checkVariables(where, `${at}.variables`, r.variables);
+      });
+  }
+}
+
+function checkVariables(where, at, variables) {
+  if (!Array.isArray(variables) || variables.some((v) => !v || typeof v.symbol !== 'string' || typeof v.meaning !== 'string'))
+    return errors.push(`${where}: ${at} must be an array of {symbol, meaning}`);
+  variables.forEach((v, i) => checkLatex(where, `${at}[${i}].symbol`, v.symbol));
+}
+
+/** Equations and symbols are LaTeX, typeset by KaTeX on the card — say so when one won't typeset. */
+function checkLatex(where, at, tex) {
+  try {
+    katex.renderToString(tex, { throwOnError: true });
+  } catch (e) {
+    warn.push(`${where}: ${at} isn't valid LaTeX for KaTeX (${String(e.message).replace(/^KaTeX parse error: /, '')}) — the card shows it in red`);
   }
 }
 
@@ -163,8 +192,8 @@ for (const n of data.nodes) {
   else checkNodeAttrs(where, n);
 
   // Mirrors IMPORTANCE_MAX / GENERALITY_MAX in src/graph/concepts.ts — keep in sync.
-  if (n.importance !== undefined && (!Number.isInteger(n.importance) || n.importance < 1 || n.importance > 50))
-    errors.push(`${where}: importance must be an integer 1–50`);
+  if (n.importance !== undefined && (!Number.isInteger(n.importance) || n.importance < 1 || n.importance > 10))
+    errors.push(`${where}: importance must be an integer 1–10`);
   if (n.generality !== undefined && (!Number.isInteger(n.generality) || n.generality < 1 || n.generality > 10))
     errors.push(`${where}: generality must be an integer 1–10`);
   if (n.epistemicStatus !== undefined) {
@@ -214,6 +243,9 @@ for (const e of data.edges) {
         else tripleSeen.add(triple);
 
         if (type === STRICT_PREREQ) strictPrereqsByNode.get(e.target)?.push(e.source);
+        // Fluff is fun mode only: it must never pull a joke into a learning path.
+        if (type === STRICT_PREREQ && [e.source, e.target].some((id) => byId.get(id)?.type === 'fluff'))
+          errors.push(`${where}: a fluff node can't be part of a "${STRICT_PREREQ}" relation — use "relates" or another relation`);
       }
     }
   }
@@ -258,8 +290,10 @@ if (noImportance)
 const noGenerality = data.nodes.filter((n) => n.generality === undefined).length;
 if (noGenerality)
   warn.push(`${noGenerality} of ${data.nodes.length} nodes have no generality yet — their circle size falls back to connection count`);
-const noStatus = data.nodes.filter((n) => n.epistemicStatus === undefined).length;
-warn.push(`${noStatus} of ${data.nodes.length} nodes have no epistemicStatus yet — the card shows "To-do"`);
+// Fluff makes no claim, so it needs no epistemic status (the card leaves it out).
+const claims = data.nodes.filter((n) => n.type !== 'fluff');
+const noStatus = claims.filter((n) => n.epistemicStatus === undefined).length;
+warn.push(`${noStatus} of ${claims.length} nodes have no epistemicStatus yet — the card shows "To-do"`);
 
 for (const w of warn) console.log(`⚠ ${w}`);
 if (errors.length) {

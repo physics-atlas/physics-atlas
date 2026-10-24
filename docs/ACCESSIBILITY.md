@@ -158,3 +158,16 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   group (Decision 29) leave some cross-family pairs close under deuteranopia or
   protanopia. The type is always also in words — the label, the legend and the card —
   and `typeColors.test.ts` keeps every fill at ≥ 3:1 on both surfaces.
+- **The map guide hides itself after 3 seconds** (WCAG 2.2.1). It's never lost: the
+  "How to read this map" button at the top middle (`aria-expanded`) brings it back, and
+  opened that way it stays until closed.
+- **The relation picker is a custom combobox** (the WAI-ARIA APG select-only pattern),
+  because a native select can't bold part of an option. It keeps the native keyboard
+  (arrows, Home/End, Page keys, type-ahead, Enter/Space/Tab, Escape). The concept names in
+  it are dimmed with `--muted` (≥ 8.7:1), not grey. Not yet checked with a screen reader.
+- **Fun mode's speech bubbles hide with their concept.** They're real buttons (in the
+  tab order after the canvas, named "‹concept›: ‹line›"), but a bubble whose concept the
+  zoom hides, or that would overlap a more important one, is hidden too — so not every
+  lonely concept is reachable at every zoom. "Show all concepts" brings every concept
+  back; the concept list reaches them all. Turning fun mode on is announced in a status
+  message.

@@ -2,7 +2,7 @@
   "id": "res_pt_concepttest",
   "type": "resource",
   "label": "Concept test: parallel transport",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "link": "https://example.com/quizzes/parallel-transport-concept-test",

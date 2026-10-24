@@ -104,6 +104,39 @@ describe('what a draft becomes', () => {
     const node = draftNode({ ...jeans(), type: 'equation', equation: ' a = b ' }, concepts);
     expect(node.attrs).toMatchObject({ equation: 'a = b', variables: [], conditions: [], representations: [] });
   });
+  it('an equation carries its variables and other representations, each with their own', () => {
+    const d: Draft = {
+      ...jeans(),
+      type: 'equation',
+      equation: 'F = ma',
+      variables: [{ symbol: ' F ', meaning: ' Force ' }, { symbol: '', meaning: '' }],
+      representations: [
+        { name: 'As momentum', equation: 'F = \\dot p', variables: [{ symbol: 'p', meaning: 'Momentum' }] },
+        { name: 'Name only, formula to come', equation: '', variables: [] },
+        { name: '', equation: '', variables: [] },
+      ],
+    };
+    expect(draftNode(d, concepts).attrs).toMatchObject({
+      variables: [{ symbol: 'F', meaning: 'Force' }],
+      representations: [
+        { name: 'As momentum', equation: 'F = \\dot p', variables: [{ symbol: 'p', meaning: 'Momentum' }] },
+        { name: 'Name only, formula to come' },
+      ],
+    });
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const half = { ...d, variables: [{ symbol: 'F', meaning: '' }], representations: [{ name: '', equation: 'x', variables: [] }] };
+    expect(draftProblems(half, alone(half)).map((p) => [p.field, p.index])).toEqual([
+      ['variables', undefined],
+      ['representations', 0],
+    ]);
+  });
+  it('an edit of an equation starts from its variables and representations', () => {
+    const e = newEditDraft(concepts.nodes.find((n) => n.id === 'einstein_eq')!, fixed, at);
+    expect(e.variables[0]).toEqual({ symbol: 'G_{\\mu\\nu}', meaning: 'Einstein tensor (spacetime curvature)' });
+    expect(e.representations[0]).toEqual({ name: 'Tensor (index) notation', equation: '', variables: [] });
+    // Unchanged, it changes nothing.
+    expect(draftNode(e, concepts)).toEqual(concepts.nodes.find((n) => n.id === 'einstein_eq'));
+  });
   it('the map shape is a ghost under the draft ref, with a visible name', () => {
     const d = { ...jeans(), label: '' };
     const shape = draftShape(d, alone(d));
@@ -179,15 +212,17 @@ describe('pullRequestText', () => {
 
 describe('generality and importance', () => {
   it('are exported when set, and left out (for the curator) when not', () => {
-    expect(draftNode({ ...jeans(), generality: 7, importance: 25 }, concepts)).toMatchObject({ generality: 7, importance: 25 });
+    expect(draftNode({ ...jeans(), generality: 7, importance: 5 }, concepts)).toMatchObject({ generality: 7, importance: 5 });
     const unset = draftNode(jeans(), concepts);
     expect('generality' in unset || 'importance' in unset).toBe(false);
   });
   it('must be whole numbers in range', () => {
     const bad = { ...jeans(), generality: 11, importance: 2.5 };
     expect(draftProblems(bad, alone(bad)).map((p) => p.field)).toEqual(['generality', 'importance']);
-    const edge = { ...jeans(), generality: 10, importance: 50 };
+    const edge = { ...jeans(), generality: 10, importance: 10 };
     expect(draftProblems(edge, alone(edge))).toEqual([]);
+    const old = { ...jeans(), importance: 30 };
+    expect(draftProblems(old, alone(old)).map((p) => p.field)).toEqual(['importance']);
   });
   it('the ghost shows the chosen size, a mid size until then, and never an out-of-range one', () => {
     const size = (d: Draft) => draftShape(d, alone(d)).ghost?.generality;
@@ -352,14 +387,23 @@ describe('storage', () => {
     const e = { ...newEditDraft(vlasov(), fixed, at), removals: ['e62'] };
     expect(parseDraft(JSON.parse(JSON.stringify(e)))).toEqual(e);
   });
-  it('reads a Phase 2 (version 1) draft as version 2', () => {
-    const { removals: _r, ...old } = jeans();
+  it('reads a Phase 2 (version 1) draft as today’s', () => {
+    const { removals: _r, variables: _v, representations: _p, ...old } = jeans();
     void _r;
-    expect(parseDraft({ ...old, version: 1 })).toEqual({ ...jeans(), version: 2, removals: [] });
+    void _v;
+    void _p;
+    expect(parseDraft({ ...old, version: 1 })).toEqual(jeans());
+  });
+  it('moves an older draft’s importance from the 1–50 scale to the same depth on 1–10', () => {
+    expect(parseDraft({ ...jeans(), version: 2, importance: 30 })?.importance).toBe(6);
+    expect(parseDraft({ ...jeans(), version: 2, importance: 2 })?.importance).toBe(1);
+    expect(parseDraft({ ...jeans(), importance: 6 })?.importance).toBe(6);
   });
   it('rejects anything that is not a draft', () => {
     expect(parseDraft(null)).toBeNull();
-    expect(parseDraft({ ...jeans(), version: 3 })).toBeNull();
+    expect(parseDraft({ ...jeans(), version: 4 })).toBeNull();
+    expect(parseDraft({ ...jeans(), variables: [{ symbol: 'x' }] })).toBeNull();
+    expect(parseDraft({ ...jeans(), representations: [{ name: 'x' }] })).toBeNull();
     expect(parseDraft({ ...jeans(), type: 'resource' })).toBeNull();
     expect(parseDraft({ ...jeans(), relations: [{ key: 'r1' }] })).toBeNull();
     expect(parseDraft({ ...jeans(), evidence: [{ kind: 'tweet', ref: 'x' }] })).toBeNull();

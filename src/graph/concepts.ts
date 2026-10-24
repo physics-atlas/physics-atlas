@@ -81,8 +81,8 @@ export function buildConceptIndex(graph: ConceptGraph): ConceptIndex {
 
 /** Generality: 1 (very specific) – 10 (very general). Sets the circle size. */
 export const GENERALITY_MAX = 10;
-/** Importance: 1 (minor detail) – 50 (landmark). Sets how far out a concept stays visible. */
-export const IMPORTANCE_MAX = 50;
+/** Importance: 1 (minor detail) – 10 (landmark), like generality. Sets how far out a concept stays visible. */
+export const IMPORTANCE_MAX = 10;
 
 /** 1–10: authored generality, else a degree estimate (learning goals 1). Drives circle size. */
 export function effectiveGenerality(node: GraphNode, degree: number): number {
@@ -92,13 +92,13 @@ export function effectiveGenerality(node: GraphNode, degree: number): number {
 }
 
 /**
- * 1–50: authored importance, else a degree estimate (learning goals 1).
+ * 1–10: authored importance, else a degree estimate (learning goals 1).
  * Drives the zoom level a concept appears at and the size of its name.
  */
 export function effectiveImportance(node: GraphNode, degree: number): number {
   if (node.importance !== undefined) return node.importance;
   if (node.type === 'learning_goal') return 1;
-  return Math.min(IMPORTANCE_MAX, 1 + Math.round(10 * Math.sqrt(degree)));
+  return Math.min(IMPORTANCE_MAX, 1 + Math.round(2 * Math.sqrt(degree)));
 }
 
 const MIN_RADIUS = 7;
@@ -130,6 +130,21 @@ export function edgeWeight(radii: [number, number], importances: [number, number
   return { px: EDGE_MIN_PX + (EDGE_MAX_PX - EDGE_MIN_PX) * generality, strength: importance };
 }
 
+/** A relation name's size (model px) between two specific concepts. */
+export const EDGE_LABEL_FONT = 11;
+
+/**
+ * A relation name grows with its line, but less: up to 2.5× for a landmark's
+ * relations (the line's generality, 0–1), nudged ±10% by importance. Bigger
+ * than that and the names alone force very long lines between big concepts.
+ * The layout sizes each relation's room from this (GraphView).
+ */
+export function edgeLabelSize(px: number, strength: number): number {
+  const generality = (px - EDGE_MIN_PX) / (EDGE_MAX_PX - EDGE_MIN_PX);
+  const size = EDGE_LABEL_FONT * (1 + 1.5 * generality) * (0.9 + 0.2 * strength);
+  return Math.round(10 * Math.max(EDGE_LABEL_FONT, size)) / 10;
+}
+
 /**
  * From this radius (generality 6 and up) the name is written inside the
  * circle, like a region's name on a map: the concept then claims only the
@@ -138,7 +153,7 @@ export function edgeWeight(radii: [number, number], importances: [number, number
 export const INSIDE_LABEL_RADIUS = 50;
 
 /**
- * Label size: importance 1–50 → 12…18 px, like a map's city names — and for a
+ * Label size: importance 1–10 → 12…18 px, like a map's city names — and for a
  * big circle, in proportion to it (radius ÷ 3, written inside), so the
  * largest concepts can be read far out.
  */
@@ -148,15 +163,19 @@ export const labelSize = (importance: number, radius = 0): number => {
 };
 
 /** At and above this importance a concept shows on the whole-map overview. */
-const OVERVIEW_IMPORTANCE = 40;
-/** Every this-many importance points below it doubles how close you have to zoom. */
-const POINTS_PER_DOUBLING = 8;
+const OVERVIEW_IMPORTANCE = 8;
+/**
+ * Every this-many importance points below it doubles how close you have to
+ * zoom — so each step down is about 1.5× closer. (The 1–50 scale this replaced
+ * had 40 and 8: dividing every value by 5 kept each concept at its depth.)
+ */
+const POINTS_PER_DOUBLING = 1.6;
 
 /**
  * Map-style level of detail: the zoom, relative to the whole-map overview, at
  * which a concept of this importance appears. Every importance value is its
- * own depth: 40 shows on the overview, 32 at 2× closer, 24 at 4×, 16 at 8×,
- * 1 at about 30×; 50 always shows.
+ * own depth: 8 shows on the overview, 6 at about 2.4× closer, 4 at 5.7×, 2 at
+ * 13×, 1 at about 21×; 10 always shows.
  */
 export function revealZoom(importance: number): number {
   const i = Math.min(IMPORTANCE_MAX, Math.max(1, importance));
@@ -171,6 +190,33 @@ export function revealZoom(importance: number): number {
 export function domainsOf(node: GraphNode): string[] {
   const domain = 'domain' in node.attrs ? node.attrs.domain : undefined;
   return domain ? domain.split(' / ').map((d) => d.trim()) : [];
+}
+
+/**
+ * Splits off the fun layer: fluff concepts and every relation touching one.
+ * `base` is the map everyone sees; fun mode draws `fluff` on top of it, placed
+ * around what it connects to, so turning fun mode on never moves the map.
+ */
+export function splitFluff(graph: ConceptGraph): { base: ConceptGraph; fluff: ConceptGraph } {
+  const fluffIds = new Set(graph.nodes.filter((n) => n.type === 'fluff').map((n) => n.id));
+  const touches = (e: GraphEdge) => fluffIds.has(e.source) || fluffIds.has(e.target);
+  return {
+    base: { ...graph, nodes: graph.nodes.filter((n) => !fluffIds.has(n.id)), edges: graph.edges.filter((e) => !touches(e)) },
+    fluff: { ...graph, nodes: graph.nodes.filter((n) => fluffIds.has(n.id)), edges: graph.edges.filter(touches) },
+  };
+}
+
+/** What a concept with no relations says in fun mode — the first is the classic; each concept keeps its own. */
+export const LONELY_LINES = [
+  "I'm lonely, please connect me with someone!",
+  'No relations yet… want to be my first?',
+  "Psst — I'd love a connection.",
+];
+
+export function lonelyLine(id: string): string {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return LONELY_LINES[h % LONELY_LINES.length];
 }
 
 /**

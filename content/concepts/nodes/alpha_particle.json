@@ -2,7 +2,7 @@
   "id": "alpha_particle",
   "type": "property",
   "label": "alpha particle",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "A helium-4 nucleus consisting of two protons and two neutrons.",

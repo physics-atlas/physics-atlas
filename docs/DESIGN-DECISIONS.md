@@ -437,6 +437,8 @@ real edge drawing if experts ask for it.
 
 ## Decision 22 — Generality sizes the circle, importance sets zoom visibility (2026-10)
 
+> *2026-10:* importance now runs 1–10 (Decision 31); the numbers below are the old 1–50 scale.
+
 Supersedes the size half of Decision 17. Size and zoom visibility were both driven by
 `importance`; they're now two independent attributes:
 
@@ -482,6 +484,8 @@ showing a dependency chain on the map; edits to relations themselves (today a ch
 relation is a removal plus a new one).
 
 ## Decision 24 — Depth by zoom: much bigger general concepts, importance as depth (2026-10)
+
+> *2026-10:* importance now runs 1–10 (Decision 31) — every value ÷ 5, the same depths.
 
 Refines Decision 22's numbers; the graph stays a graph (nesting general concepts around
 specific ones was considered and set aside). The goal is a depth effect: zooming in around
@@ -564,6 +568,8 @@ broken map. **Open path:** fading a line toward a hidden end instead of hiding i
 
 ## Decision 28 — The layout packs tighter: spacing 0.84 (2026-10)
 
+> *2026-10:* relation names now get their own room in the layout (Decision 32); `SPACING` still scales the rest.
+
 Every ideal distance in the force layout (attraction, long-range repulsion, contact push) and
 the gaps between separate clusters are scaled by `SPACING` (`layoutOptimize.ts`).
 `removeOverlaps` keeps concept names apart, but nothing keeps relation names clear of the
@@ -601,11 +607,64 @@ then checked:
 
 Supersedes Decision 13's palette row; numbers per type in the file header.
 
+## Decision 30 — Fun mode: lonely concepts speak up, fluff is a type of its own (2026-10)
+
+A playful view of the same map, behind a **Fun mode** button in the map controls. It's off
+on every visit and stays on while switching between Concept map and Community.
+
+| Piece | Rule |
+|---|---|
+| Lonely concepts | Every shown concept with no shown relation gets a speech bubble ("I'm lonely, please connect me with someone!", or one of two variants, always the same per concept). The bubble follows the concept's importance: it shows and hides with it at every zoom, and its text is the size of the concept's name. Clicking it opens the concept, like clicking the circle. |
+| Bubbles are HTML | Real buttons over the canvas, not canvas drawings: crisp text, keyboard-reachable, a visible name that starts with the concept's (WCAG 2.5.3). They sit under every panel, hide while their concept is under the card, and when two would overlap the more important concept keeps its bubble (like map labels). |
+| Fluff | A node type, `fluff`, in its own **Fun** legend group: mustard (hue 110, the gap between Learning's amber and Knowledge's greens) and a smiley glyph, so it never relies on colour. Considered: a `fluff: true` flag on any type — set aside so a joke never looks like physics. |
+| Fluff stays out of the way | With fun mode off it's in no search, list, legend or editor type list, and the proposed layer hides fluff proposals. It never joins a learning path: the validator refuses fluff in `strict prerequisite for`. It has no epistemic status. |
+| Nothing moves | Fluff is drawn as a layer, like proposals: placed around what it connects to with every confirmed concept fixed, never in the layout cache. Turning fun mode on or off leaves the map exactly where it was. |
+
+`sample_schrodingers_cat` (with relation `e71`) is a labelled sample to rename or delete.
+**Open paths:** more fun-mode additions; a "connect me" shortcut from a bubble into the
+proposal editor in the Community view.
+
+## Decision 31 — Map and editor adjustments: the view stays, importance 1–10, LaTeX equations (2026-10)
+
+| Change | Rule |
+|---|---|
+| The view stays | Clicking off a concept, or closing the proposal editor, no longer glides back to the whole map — the view stays where the user is. Opening a concept still fits its connections; **⤢** is the way back to the whole map. |
+| Importance 1–10 | Same range as generality. Every value was divided by 5 (all were multiples of 10), and the depth curve rescaled to match: the overview shows from 8 (was 40), and each step below is ~1.5× closer (1.6 points per doubling, was 8) — so every concept appears at exactly the zoom it did. Drafts saved in a browser carry a version; older ones are read at a fifth of their importance. Open pull requests made before this hold the old numbers and no longer fit (importance > 10) until edited. |
+| Relation picker | The relation type is picked from its sentences with the relation **bold** and the two concepts quieter (`--muted`, still ≥ 8.7:1 — dimmed, never grey text). A native `<select>` can't style part of an option, so it's the WAI-ARIA APG select-only combobox (`RelationPicker.tsx`): a button and a listbox with the keyboard of a native select (arrows, Home/End, Page keys, type-ahead on the relation's words, Enter/Space/Tab to choose, Escape to close). Considered: CSS `appearance: base-select` — Chromium only so far. |
+| Relation names grow with their line | A relation's name is sized like its line: 11 px × the line's generality factor (1–4), nudged by importance (×0.8–1.2) — 11 to ~53 model px. *Capped at 2.5× (±10%) in Decision 32.* Highlighted names and the wrap width scale with it. So a landmark's relations read at the zoom where its line is bold, and short-range detail stays small. |
+| The map guide steps aside | The "Colour = kind of concept…" guide shows for 3 seconds, then folds into a **How to read this map** button at the top middle; opened again, it stays until closed. (WCAG 2.2.1: the content moves out of the way, but stays one click away with no time limit.) |
+| Equations are LaTeX | The equation and every variable symbol are LaTeX, typeset on the card by KaTeX exactly like the editor's preview (loaded on demand: the card shows the source for a moment). The six equations were transcribed from Unicode text into LaTeX — same formulas. The validator warns when KaTeX can't typeset one. |
+| Several representations | `representations` holds other ways of writing the same equation: `{name, equation?, variables?}`, each with its own variable names. The editor edits the main form's variables and each representation's. Einstein's three representation names became objects with only a name. |
+
+## Decision 32 — The layout makes room for every relation name (2026-10)
+
+Until now the layout didn't know relation names existed: every relation got the same fixed
+90 px (× `SPACING`) between its two concepts' footprints. Once names grew with their line
+(Decision 31), 30 of the 66 sat under a circle. Now the names are part of the layout:
+
+| Piece | Rule |
+|---|---|
+| Each relation's own length | A relation's ideal length is the usual spacing, or — when its name needs more — both circles plus the name's measured length, the target's arrowhead and 14 px either side (`labelRoom`). While a line is shorter than that, the force layout pushes its ends apart instead of pulling. |
+| Measured, not guessed | Names are measured in the font they're drawn in (`edgeLabelSize`, italic), wrapped where Cytoscape wraps them, with their plate. Cytoscape centres a name on the *visible* part of its line (between the circles, short of the arrowhead), so the layout does too. The arrowhead is taken at its largest — at the zoom where the name first shows, where lines are widest. |
+| Scored | A name under a circle (or under a concept's own name) counts twice a crossing in the layout search, so of the 24 arrangements the one with clear names wins. |
+| Stretched | After the search, any relation still too short for its name has its ends moved apart along its line, then overlapping concepts are pushed apart again — a few rounds (`stretchForLabels`). Proposals, fluff and drafts are placed the same way, moving only themselves. |
+| Safety net | A name a shown circle still covers is hidden until its relation is highlighted (hover, selection, goal path). |
+| Names grow less | A relation name grows with its line up to 2.5× (±10% by importance) instead of 4.8×: 11 to ~30 px. Bigger, and the names alone forced very long lines between the big concepts. |
+
+Measured on the 64-concept map (checked exactly: each name as Cytoscape draws it, rotated,
+against every circle): relation names under a circle **30 → 0**, none hidden by the safety
+net; mean relation length 538 → 700 model px, whole-map zoom 0.125 → 0.111. In the
+Community view no shown name is covered; 3 proposal relations, placed among fixed concepts,
+have their names hidden until hovered. Layout cache v9.
+
+**Open paths:** names overlapping each other (where lines cross) aren't scored yet; a
+proposal could be allowed to nudge the confirmed concepts next to it.
+
 ## Multi-agent workflow (web-dev-agent-system)
 
 **Installed 2026-07-02** (Setup B from `../web-dev-agent-system-main`):
 `.claude/` agents, `.mcp.json` (Chrome DevTools MCP), `scripts/preflight.sh` +
-`init-template.sh`, `start-dev-session.command`, `BACKLOG.md`, `ROADMAP.md`.
+init-template.sh`, `start-dev-session.command`, `BACKLOG.md`, `ROADMAP.md`.
 `CLAUDE.md` carries the real stack commands (npm, port 5173) and architecture.
 Preflight: ✅ (gh CLI missing → `github: disabled` until the repo split).
 

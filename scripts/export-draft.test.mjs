@@ -20,7 +20,7 @@ const draft = {
   description: 'Sample: the length scale above which gravity overcomes pressure support.',
   domains: ['Cosmology'],
   generality: 7,
-  importance: 25,
+  importance: 5,
   relations: [
     { key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of', conditions: [] },
     { key: 'r2', source: 'zeldovich_approximation', target: NEW_CONCEPT, relationship: 'relates', conditions: [{ label: 'linear growth' }] },
@@ -72,5 +72,21 @@ describe('exported proposal files', () => {
     const vlasov = run.graph.graph.nodes.find((n) => n.id === 'vlasov_equation');
     expect(vlasov.generality).toBe(6);
     expect(run.graph.graph.edges.some((e) => e.id === 'e62')).toBe(false);
+  });
+});
+
+describe('fluff', () => {
+  it('can never be part of a strict prerequisite — no joke joins a learning path', () => {
+    const joke = {
+      path: 'content/concepts/edges/e_fluff_test.json',
+      content: formatEntity({ id: 'e_fluff_test', source: 'sample_schrodingers_cat', target: 'bec', relationship: 'strict prerequisite for' }),
+    };
+    let failure = '';
+    try {
+      validateWith([joke]).cleanup();
+    } catch (e) {
+      failure = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+    }
+    expect(failure).toContain(`a fluff node can't be part of a "strict prerequisite for" relation`);
   });
 });
