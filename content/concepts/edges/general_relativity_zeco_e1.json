@@ -1,0 +1,6 @@
+{
+  "id": "general_relativity_zeco_e1",
+  "source": "general_relativity_zeco",
+  "target": "einstein_eq",
+  "relationship": "described by"
+}
