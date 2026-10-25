@@ -1,0 +1,10 @@
+{
+  "id": "electron_xyfm",
+  "label": "Electron",
+  "type": "physical_system",
+  "importance": 10,
+  "generality": 6,
+  "attrs": {
+    "description": "Fundamental particle with negative charge. Part of every atom, known for carrying electricity and creating X-rays."
+  }
+}
