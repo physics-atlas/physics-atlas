@@ -1,0 +1,10 @@
+{
+  "id": "spin_yacm",
+  "label": "Spin",
+  "type": "property",
+  "importance": 7,
+  "generality": 4,
+  "attrs": {
+    "description": "The \"internal\" angular momentum of a \"quantum object\""
+  }
+}
