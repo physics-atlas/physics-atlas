@@ -1,0 +1,10 @@
+{
+  "id": "orbital_angular_momentum_qwip",
+  "label": "Orbital Angular Momentum",
+  "type": "property",
+  "importance": 4,
+  "generality": 5,
+  "attrs": {
+    "description": "The angular momentum of the electron \"orbiting the nucleus\""
+  }
+}
