@@ -1,0 +1,10 @@
+{
+  "id": "symmetry_aawq",
+  "label": "Symmetry",
+  "type": "property",
+  "importance": 10,
+  "generality": 10,
+  "attrs": {
+    "description": "Something which stays the same, when other things change"
+  }
+}
