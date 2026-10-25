@@ -1,0 +1,10 @@
+{
+  "id": "quantum_number_76rx",
+  "label": "Quantum number",
+  "type": "property",
+  "importance": 6,
+  "generality": 5,
+  "attrs": {
+    "description": "The fundamental properties of \"quantum objects\" that exist due to symmetries of the systems"
+  }
+}
