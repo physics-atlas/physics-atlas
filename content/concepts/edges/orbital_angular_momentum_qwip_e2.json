@@ -1,0 +1,6 @@
+{
+  "id": "orbital_angular_momentum_qwip_e2",
+  "source": "orbital_angular_momentum_qwip",
+  "target": "atom_gd2j",
+  "relationship": "is one property of"
+}
