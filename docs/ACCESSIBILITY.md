@@ -30,7 +30,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 | Everything works from the keyboard | Skip link, search (combobox), list panel, card, legend, map controls, the whole proposal editor; Escape closes the card and the type definition |
 | No action needs a precise gesture | Zoom-in / zoom-out / whole-map buttons alongside wheel, pinch and drag. In the proposal editor, dragging the ghost is only a thinking aid: connecting is a click (on the map or a "＋ Connect to …" button) or a search, and suggestions also come from what's already connected |
 | Writing is supported, not policed | The proposal editor names each kind of concept with its definition, reads every relation back as a sentence, previews LaTeX, and turns problems into a list of links to the field; conflicts are hints ("Did you mean …?"), never blocks |
-| More than one way to find a concept | Search, the list by type, goal paths, clicking a neighbour in the card |
+| More than one way to find a concept | Search, the list by type, goal paths, clicking a neighbour in the card, and the **atlas pages**: every concept as a page, read in order (Previous / Up / Next) or through the contents — by chapter, by what a page is connected to, or by kind |
 | Learners can plan and track their work | Goal paths with an ordered list of steps; "Learned" checkboxes and progress count |
 
 ### Multiple means of engagement (the "why")
@@ -140,6 +140,38 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 - Landmarks: `header`, `nav` ("Views"), `main`, `aside` (the card, named by its
   heading), named groups for the legend, map controls and display settings.
 
+## Atlas pages
+
+The pages are the atlas without the canvas, so they're held to the same rules plus what
+long reading needs:
+
+- **Structure:** one `h1` per page (the concept), `h2` per section, `h3` inside; the
+  contents are a `nav` named "Atlas contents", the page an `article` named by its heading,
+  Previous / Up / Next a `nav` at the top and bottom, the trail of chapters a named `nav`
+  with an ordered list. The view's hidden `h1` is left out there — the page's is the one.
+- **Real links:** every page link is an `<a href>` (`?mode=page&concept=…`) — it opens in a
+  new tab, copies, and works with the browser's history; a plain click navigates in place.
+- **Moving between pages** acts like a page load: the title changes ("Curvature — Atlas
+  pages — Physics Atlas") and focus goes to the new page's heading. A first visit leaves
+  focus alone.
+- **Bypass blocks:** besides "Skip to main content", "Skip to the page" goes past the
+  contents (they list every concept).
+- **The contents:** nested lists of links; sections fold behind a disclosure button
+  (`aria-expanded`, named "Show the sections in …"); the current page has
+  `aria-current="page"` and is marked bold with a bar, not by colour. The sidebar is
+  scrolled to it without moving the Tab starting point.
+- **Views and filters:** the view is a radio group (Contents / Neighbours / By kind); the
+  filters are a name box and checkboxes in fieldsets; how many concepts match is announced
+  in a polite status. While filtering, a section shown only for what's under it is italic and
+  says so to screen readers.
+- **Reading:** a 72-character column, 16px text, line height 1.6, links underlined, opaque
+  surfaces; relation details fold out with `details`. Reflows to 320px with no sideways
+  scrolling; on a phone the contents are a drawer behind a "Contents" button
+  (`aria-expanded`), and Escape folds it back to the button.
+- **Print:** the header, contents and page navigation are left out.
+- **Checked:** axe-core (WCAG 2.0–2.2 A/AA + best practice) reports nothing on the front
+  page, a concept page in each sidebar view, both themes, and a phone with the contents open.
+
 ## Known gaps
 
 - **The graph canvas itself is not keyboard-operable.** Nodes on a Cytoscape canvas
@@ -149,8 +181,9 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 - **Relations open a card by click or by keyboard.** Lines on the canvas aren't
   focusable, so every relation also has a **Details** button in its concepts' cards
   (All relations) that opens the same card; focus moves into it and Escape returns.
-  What a selected concept assumes is marked with a dotted outline (a pattern, not a
-  colour) and named on the card.
+  What a selected concept assumes is listed on its card in words; an assumption that
+  points to a concept also marks that concept with a dotted outline (a pattern, not a
+  colour).
 - **Not yet tested with assistive technology.** A pass with NVDA + Firefox and
   VoiceOver + Safari, and an automated axe check in `npm run smoke`, are still to do.
   The proposal editor is the most form-heavy part, so it should come first.

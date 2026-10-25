@@ -2,10 +2,5 @@
   "id": "electron_xyfm_e1",
   "source": "electron_xyfm",
   "target": "schrodinger_equation_833a",
-  "relationship": "described by",
-  "conditions": [
-    {
-      "label": "At non-relativistic energies"
-    }
-  ]
+  "relationship": "described by"
 }

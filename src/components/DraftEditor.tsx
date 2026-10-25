@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
-import type { EdgeType, EquationVariable, GraphEdge, NodeType } from '../data/types';
+import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
 import {
   EVIDENCE_LABELS,
   PROPOSABLE_TYPES,
@@ -17,7 +17,15 @@ import {
   pullRequestText,
   removedFiles,
 } from '../community/draft';
-import type { Draft, DraftContext, DraftField, DraftRelation, DraftRepresentation, ExportFile } from '../community/draft';
+import type {
+  Draft,
+  DraftAssumption,
+  DraftContext,
+  DraftField,
+  DraftRelation,
+  DraftRepresentation,
+  ExportFile,
+} from '../community/draft';
 import type { Evidence, EvidenceKind } from '../community/types';
 import type { SignedInUser, SubmitResult } from '../community/api';
 import { edgeConflicts } from '../graph/conflicts';
@@ -151,10 +159,11 @@ export default function DraftEditor({
   const own = mapId(draft);
   const byId = byMapId;
   const problems = useMemo(() => draftProblems(draft, ctx), [draft, ctx]);
-  // What it can assume: confirmed concepts, not itself, not ones already listed.
+  // What an assumption can point to: confirmed concepts, not itself, not ones already pointed to.
   const assumableEntries = useMemo(() => {
     const confirmed = new Set(ctx.confirmed.nodes.map((n) => n.id));
-    return searchEntries.filter((e) => confirmed.has(e.ref) && e.ref !== draft.editOf && !draft.assumes.includes(e.ref));
+    const linked = new Set(draft.assumes.flatMap((a) => (a.concept ? [a.concept] : [])));
+    return searchEntries.filter((e) => confirmed.has(e.ref) && e.ref !== draft.editOf && !linked.has(e.ref));
   }, [searchEntries, ctx.confirmed, draft.editOf, draft.assumes]);
   const deps = useMemo(() => draftDependencies(draft, ctx), [draft, ctx]);
   // What this draft's relations are checked against: other proposals, and your other drafts.
@@ -596,43 +605,13 @@ export default function DraftEditor({
         {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
         {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
 
-        <fieldset className="draft-assumes">
-          <legend className="draft-label">
-            Assumes <span className="draft-optional">optional</span>
-          </legend>
-          <p className="draft-hint" id={fieldId('assumes-hint')}>
-            Concepts this one takes for granted — a limit, an approximation, a property. No line is drawn; they're
-            listed on its card, and highlighted when it's selected.
-          </p>
-          {draft.assumes.length > 0 && (
-            <ul className="draft-assumes-list">
-              {draft.assumes.map((id) => {
-                const n = ctx.confirmed.nodes.find((x) => x.id === id);
-                return (
-                  <li key={id}>
-                    {n && <TypeBadge type={n.type} />}
-                    <span>{n?.label ?? id}</span>
-                    <button
-                      type="button"
-                      className="draft-link"
-                      onClick={() => update((d) => ({ ...d, assumes: d.assumes.filter((x) => x !== id) }))}
-                    >
-                      Remove<span className="visually-hidden"> {n?.label ?? id}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <div id={fieldId('assumes')} tabIndex={-1}>
-            <SearchBox
-              entries={assumableEntries}
-              onPick={(id) => update((d) => ({ ...d, assumes: d.assumes.includes(id) ? d.assumes : [...d.assumes, id] }))}
-              placeholder="Add a concept it assumes…"
-              label="Add a concept it assumes"
-            />
-          </div>
-        </fieldset>
+        <AssumptionFields
+          draft={draft}
+          update={update}
+          fieldId={fieldId}
+          concepts={ctx.confirmed.nodes}
+          entries={assumableEntries}
+        />
 
         <fieldset className="draft-domains">
           <legend className="draft-label">
@@ -1089,6 +1068,97 @@ function VariableRows({
 }
 
 /** A mathematical formalism's formulas: how it works, each typeset, named and with its variables. */
+/**
+ * What the concept takes for granted, one row each: a name, more detail if it
+ * helps, and — optionally — the concept on the map it is.
+ */
+function AssumptionFields({
+  draft,
+  update,
+  fieldId,
+  concepts,
+  entries,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+  concepts: GraphNode[];
+  entries: SearchEntry[];
+}) {
+  const setRow = (i: number, change: Partial<DraftAssumption>) =>
+    update((d) => ({ ...d, assumes: d.assumes.map((x, j) => (j === i ? { ...x, ...change } : x)) }));
+  const add = (row: DraftAssumption) => update((d) => ({ ...d, assumes: [...d.assumes, row] }));
+  return (
+    <fieldset className="draft-assumes">
+      <legend className="draft-label">
+        Assumes <span className="draft-optional">optional</span>
+      </legend>
+      <p className="draft-hint" id={fieldId('assumes-hint')}>
+        What this concept takes for granted — a limit, an approximation, a condition. Name each in a few words, with more
+        detail if it helps. No line is drawn; they're listed on its card. One can also point to a concept on the map,
+        which is then highlighted when this concept is selected.
+      </p>
+      {draft.assumes.map((row, i) => {
+        const linked = row.concept ? concepts.find((n) => n.id === row.concept) : undefined;
+        return (
+          <div key={i} className="draft-relation draft-assumption">
+            <Field id={fieldId(`assumes-${i}`)} label={`Assumption ${i + 1}`} optional={Boolean(row.concept)}>
+              <input
+                id={fieldId(`assumes-${i}`)}
+                className="draft-input"
+                value={row.label}
+                placeholder={linked?.label ?? 'Weak gravitational field'}
+                onChange={(e) => setRow(i, { label: e.target.value })}
+              />
+            </Field>
+            <Field id={fieldId(`assumes-detail-${i}`)} label="In more detail" optional>
+              <textarea
+                id={fieldId(`assumes-detail-${i}`)}
+                className="draft-input draft-textarea"
+                rows={2}
+                value={row.description}
+                onChange={(e) => setRow(i, { description: e.target.value })}
+              />
+            </Field>
+            {row.concept && (
+              <p className="draft-assumption-link">
+                Points to {linked && <TypeBadge type={linked.type} />}
+                <strong>{linked?.label ?? row.concept}</strong>{' '}
+                <button type="button" className="draft-link" onClick={() => setRow(i, { concept: undefined })}>
+                  Unlink<span className="visually-hidden"> {linked?.label ?? row.concept}</span>
+                </button>
+              </p>
+            )}
+            <div className="draft-row-actions">
+              <button
+                type="button"
+                className="draft-button"
+                onClick={() => update((d) => ({ ...d, assumes: d.assumes.filter((_, j) => j !== i) }))}
+              >
+                Remove assumption {i + 1}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="draft-button"
+        id={draft.assumes.length ? undefined : fieldId('assumes')}
+        onClick={() => add({ label: '', description: '' })}
+      >
+        Add an assumption
+      </button>
+      <SearchBox
+        entries={entries}
+        onPick={(id) => add({ label: '', description: '', concept: id })}
+        placeholder="Or add a concept on the map it assumes…"
+        label="Add a concept on the map it assumes"
+      />
+    </fieldset>
+  );
+}
+
 function FormulaFields({
   draft,
   update,

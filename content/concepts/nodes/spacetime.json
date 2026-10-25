@@ -4,8 +4,14 @@
   "label": "Spacetime",
   "importance": 10,
   "generality": 10,
+  "assumes": [
+    {
+      "label": "On large scales"
+    }
+  ],
   "attrs": {
     "description": "The four-dimensional continuum combining the three dimensions of space with one dimension of time, whose geometry is dynamical in general relativity.",
     "domain": "General relativity"
-  }
+  },
+  "review": "The assumption \"On large scales\" came from relation general_relativity_zeco_e2 (Spacetime exhibits General relativity) — check it belongs on Spacetime."
 }

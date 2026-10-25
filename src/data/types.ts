@@ -107,11 +107,24 @@ interface GraphNodeBase {
   /** An open question for Sophie — cleared by deleting the field */
   review?: string;
   /**
-   * Ids of the concepts this one assumes ("Zel'dovich approximation assumes
-   * Linear potential"). Not a relation: no line is drawn; the card lists it,
-   * and selecting the concept highlights what it assumes.
+   * What this concept takes for granted ("Zel'dovich approximation assumes a
+   * linear potential"). Not a relation: no line is drawn; the card lists them.
    */
-  assumes?: string[];
+  assumes?: Assumption[];
+}
+
+/**
+ * One thing a concept assumes — a limit, a regime, a condition — written out
+ * on the concept itself. It may also point to a concept on the map; only
+ * then is it highlighted there and listed on that concept as "Assumed by".
+ */
+export interface Assumption {
+  /** In a few words, e.g. "Linear potential"; may be left out when `concept` names it */
+  label?: string;
+  /** What exactly is assumed, in more detail */
+  description?: string;
+  /** The concept this assumption is, when the map has one */
+  concept?: string;
 }
 
 export type GraphNode =

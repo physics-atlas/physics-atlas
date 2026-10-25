@@ -4,8 +4,14 @@
   "label": "Special Relativity",
   "importance": 10,
   "generality": 10,
+  "assumes": [
+    {
+      "label": "Locally"
+    }
+  ],
   "attrs": {
     "description": "The theory of spacetime and motion in inertial frames when gravity is neglected.",
     "domain": "Relativity"
-  }
+  },
+  "review": "The assumption \"Locally\" came from relation general_relativity_zeco_e3 (Special Relativity approximates General relativity) — check it belongs on Special Relativity."
 }

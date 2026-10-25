@@ -5,7 +5,10 @@
   "importance": 6,
   "generality": 4,
   "assumes": [
-    "linear_potential"
+    {
+      "label": "Linear potential",
+      "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow."
+    }
   ],
   "attrs": {
     "description": "A first-order Lagrangian model of structure formation in which particles move on straight lines from their initial positions, displaced along the gradient of the initial gravitational potential.",

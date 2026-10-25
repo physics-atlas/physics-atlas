@@ -1,6 +1,6 @@
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
-import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
+import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
 import type { Evidence, Proposal, ProposalState, VoteTally } from './types';
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
@@ -55,9 +55,9 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   }
   for (const id of p.removals ?? [])
     if (!confirmedEdges.has(id)) problems.push(`${where}: removes relation "${id}", which isn't on the map`);
-  // What a proposed concept assumes must be on the map (assumptions draw no line, so no dependency).
+  // An assumption that points to a concept needs it on the map (no line is drawn, so no dependency).
   for (const n of [...p.nodes, ...(p.edits ?? [])])
-    for (const a of n.assumes ?? [])
+    for (const a of assumedConceptIds(n))
       if (a === n.id) problems.push(`${where}: concept "${n.id}" assumes itself`);
       else if (!confirmedNodes.has(a) && !ownNodes.has(a))
         problems.push(`${where}: concept "${n.id}" assumes "${a}", which isn't a confirmed concept`);

@@ -145,10 +145,9 @@ terminal. The page keeps showing the **last good** data until the file is fixed.
 
 - **Alphabetical lists:** open **All concepts as a list**. Within each type, concepts are
   A→Z. In the header search, type "e": results are alphabetical too.
-- **A one-time fresh layout:** because of the overlap fix, the map computes a new
-  arrangement on first load (about 1–4 seconds of glide). In Chrome DevTools → *Application*
-  → *Local Storage* → `http://localhost:5173`, the saved layout key is now
-  `physics-atlas-concept-layout-v9`.
+- **The layout is ready at once:** it's computed when you run `npm run dev` (or any
+  `build:content`) and shipped with the page, so nothing glides after load. After a content
+  change, `npm run build:content` lays the map out again (about half a minute).
 - **Everything else unchanged:** clicking a concept, its card, the goal path ("★ Show path
   to this"), the legend definitions and zooming all behave as before.
 

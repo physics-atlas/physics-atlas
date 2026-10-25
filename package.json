@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build:content && vite",
-    "build:content": "node scripts/compile-concepts.mjs",
+    "build:content": "node scripts/compile-concepts.mjs && node scripts/build-layout.mjs",
     "build": "npm run build:content && tsc -b && vite build",
     "lint": "oxlint",
     "validate": "npm run build:content && node scripts/validate-concepts.mjs",

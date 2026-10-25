@@ -247,7 +247,7 @@ for (const e of data.edges) {
     if (!type) {
       errors.push(
         /^assumes/i.test(e.relationship.trim())
-          ? `${where}: "assumes" isn't a relation any more — list the assumed concept in the source concept's "assumes" instead`
+          ? `${where}: "assumes" isn't a relation any more — write the assumption into the source concept's "assumes" instead (docs/AUTHORING.md)`
           : `${where}: unknown edge type "${e.relationship}" — add it to conceptVocabulary.json first`,
       );
     } else {
@@ -273,7 +273,7 @@ for (const e of data.edges) {
 
   if (e.conditions !== undefined)
     errors.push(
-      `${where}: relations no longer carry "conditions" — make each assumption a concept and list it in the assuming concept's "assumes" (docs/AUTHORING.md)`,
+      `${where}: relations no longer carry "conditions" — move each into the "assumes" of the concept that assumes it, as { "label", "description" } (docs/AUTHORING.md)`,
     );
   for (const key of ['description', 'derivation'])
     if (e[key] !== undefined && (typeof e[key] !== 'string' || !e[key].trim()))
@@ -288,25 +288,43 @@ for (const [type, variants] of casingByType) {
   }
 }
 
-// `assumes`: other concepts, by id — not a relation, so it draws no line.
+// `assumes`: what a concept takes for granted, in words — { label, description?,
+// concept? }. Not a relation, so it draws no line; one may point to a concept.
+const ASSUMPTION_KEYS = new Set(['label', 'description', 'concept']);
 const assumedIds = new Set();
+const linksOut = new Set();
 for (const n of data.nodes) {
   if (n.assumes === undefined) continue;
   const where = `node "${n.id}"`;
-  if (!Array.isArray(n.assumes) || n.assumes.some((a) => typeof a !== 'string')) {
-    errors.push(`${where}: "assumes" must be a list of concept ids`);
+  if (!Array.isArray(n.assumes) || n.assumes.some((a) => !a || typeof a !== 'object' || Array.isArray(a))) {
+    errors.push(
+      `${where}: "assumes" must be a list of assumptions, each { "label", "description" } (and "concept" when one is on the map)`,
+    );
     continue;
   }
   if (n.assumes.length === 0) errors.push(`${where}: "assumes" is empty — delete the field if it assumes nothing`);
-  if (new Set(n.assumes).size !== n.assumes.length) errors.push(`${where}: "assumes" lists a concept twice`);
-  for (const a of n.assumes) {
-    if (a === n.id) errors.push(`${where}: a concept can't assume itself`);
-    else if (!ids.has(a)) errors.push(`${where}: assumes "${a}", which isn't a concept`);
-    assumedIds.add(a);
-  }
+  const seen = new Set();
+  n.assumes.forEach((a, i) => {
+    const at = `${where}: assumption ${i + 1}`;
+    for (const key of Object.keys(a)) if (!ASSUMPTION_KEYS.has(key)) errors.push(`${at}: unknown field "${key}"`);
+    for (const key of ['label', 'description', 'concept'])
+      if (a[key] !== undefined && (typeof a[key] !== 'string' || !a[key].trim()))
+        errors.push(`${at}: "${key}" must be text, or left out`);
+    if (a.label === undefined && a.concept === undefined) errors.push(`${at}: needs a "label" (or a "concept" it points to)`);
+    if (typeof a.concept === 'string') {
+      if (a.concept === n.id) errors.push(`${at}: a concept can't assume itself`);
+      else if (!ids.has(a.concept)) errors.push(`${at}: points to "${a.concept}", which isn't a concept`);
+      assumedIds.add(a.concept);
+      linksOut.add(n.id);
+    }
+    const key = typeof a.concept === 'string' ? `concept:${a.concept}` : `text:${String(a.label ?? '').trim().toLowerCase()}`;
+    if (seen.has(key)) errors.push(`${at}: listed twice`);
+    seen.add(key);
+  });
 }
 for (const id of ids) {
-  const inAssumption = assumedIds.has(id) || byId.get(id)?.assumes?.length;
+  // An assumption in words joins nothing on the map; one pointing to a concept does.
+  const inAssumption = assumedIds.has(id) || linksOut.has(id);
   if (degree.get(id) === 0 && !inAssumption) warn.push(`node "${id}" has no edges`);
 }
 for (const n of data.nodes) {

@@ -1,5 +1,5 @@
 import { EDGE_SENTENCE_TEMPLATES } from '../data/types';
-import type { ConceptGraph, EdgeType, GraphEdge, GraphNode } from '../data/types';
+import type { Assumption, ConceptGraph, EdgeType, GraphEdge, GraphNode } from '../data/types';
 import { dfsClosure, kahnOrder } from './dag';
 
 export type ConceptMap = Map<string, GraphNode>;
@@ -43,7 +43,7 @@ export interface ConceptIndex {
   incoming: Map<string, GraphEdge[]>;
   outgoing: Map<string, GraphEdge[]>;
   degree: Map<string, number>;
-  /** id → the concepts that list it in their `assumes` */
+  /** id → the concepts whose `assumes` point to it */
   assumedBy: Map<string, string[]>;
 }
 
@@ -66,14 +66,35 @@ export function buildConceptIndex(graph: ConceptGraph): ConceptIndex {
   }
   const assumedBy = new Map<string, string[]>();
   for (const n of graph.nodes)
-    for (const a of n.assumes ?? []) assumedBy.set(a, [...(assumedBy.get(a) ?? []), n.id]);
+    for (const a of assumedConceptIds(n)) assumedBy.set(a, [...(assumedBy.get(a) ?? []), n.id]);
   return { byId, incoming, outgoing, degree, assumedBy };
 }
 
-/** What a concept assumes, and what assumes it — concepts that exist only. */
-export function assumptionsOf(id: string, index: ConceptIndex): { assumes: GraphNode[]; assumedBy: GraphNode[] } {
-  const known = (ids: string[]) => ids.map((x) => index.byId.get(x)).filter((n): n is GraphNode => Boolean(n));
-  return { assumes: known(index.byId.get(id)?.assumes ?? []), assumedBy: known(index.assumedBy.get(id) ?? []) };
+/** The concepts a concept's assumptions point to (most are text only and point nowhere). */
+export const assumedConceptIds = (node: GraphNode): string[] =>
+  (node.assumes ?? []).flatMap((a) => (a.concept ? [a.concept] : []));
+
+/** One assumption as the card shows it: its words, and the concept it points to if that exists. */
+export interface AssumptionItem {
+  label: string;
+  description?: string;
+  node?: GraphNode;
+}
+
+export function assumptionItem(a: Assumption, byId: ConceptMap): AssumptionItem {
+  const node = a.concept ? byId.get(a.concept) : undefined;
+  return {
+    label: a.label?.trim() || node?.label || a.concept || '',
+    ...(a.description?.trim() ? { description: a.description.trim() } : {}),
+    ...(node ? { node } : {}),
+  };
+}
+
+/** What a concept assumes, and the concepts whose assumptions point to it. */
+export function assumptionsOf(id: string, index: ConceptIndex): { assumes: AssumptionItem[]; assumedBy: GraphNode[] } {
+  const assumes = (index.byId.get(id)?.assumes ?? []).map((a) => assumptionItem(a, index.byId));
+  const assumedBy = (index.assumedBy.get(id) ?? []).map((x) => index.byId.get(x)).filter((n): n is GraphNode => Boolean(n));
+  return { assumes, assumedBy };
 }
 
 /** Generality: 1 (very specific) – 10 (very general). Sets the circle size. */
@@ -140,6 +161,18 @@ export function edgeLabelSize(px: number, strength: number): number {
   const generality = (px - EDGE_MIN_PX) / (EDGE_MAX_PX - EDGE_MIN_PX);
   const size = EDGE_LABEL_FONT * (1 + 1.5 * generality) * (0.9 + 0.2 * strength);
   return Math.round(10 * Math.max(EDGE_LABEL_FONT, size)) / 10;
+}
+
+/**
+ * A relation name's size, from the *smaller* of its two concepts (the line
+ * itself takes the larger, edgeWeight): a specific concept only shows once
+ * you zoom in to it, so its relation's name needn't be overview-sized — and a
+ * smaller name lets it sit close to the big concept it hangs off.
+ */
+export function relationFontSize(radii: [number, number], importances: [number, number]): number {
+  const r = Math.min(...radii), i = Math.min(...importances);
+  const { px, strength } = edgeWeight([r, r], [i, i]);
+  return edgeLabelSize(px, strength);
 }
 
 /**
@@ -224,9 +257,10 @@ export function neighborsOf(id: string, index: ConceptIndex): string[] {
   const ids = new Set([id]);
   for (const e of index.incoming.get(id) ?? []) ids.add(e.source);
   for (const e of index.outgoing.get(id) ?? []) ids.add(e.target);
-  // What it assumes, and what assumes it, belong to its sub-view too.
+  // The concepts its assumptions point to, and those pointing to it, belong to its sub-view too.
   const { assumes, assumedBy } = assumptionsOf(id, index);
-  for (const n of [...assumes, ...assumedBy]) ids.add(n.id);
+  for (const a of assumes) if (a.node) ids.add(a.node.id);
+  for (const n of assumedBy) ids.add(n.id);
   return [...ids];
 }
 

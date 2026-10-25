@@ -37,7 +37,7 @@ backlog/roadmap entries and commit messages.
 | Test | `npm test` | Vitest unit tests (`src/**/*.test.ts`, `server/**/*.test.ts`, `scripts/**/*.test.mjs`) — pure logic: layout geometry, sentences, the concept file format, palette contrast, the API |
 | Smoke | `CHROME_BIN=/usr/bin/google-chrome npm run smoke` | Browser smoke via puppeteer; needs a running dev server |
 | Dev server | `npm run dev` | Vite |
-| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=concepts` for the concept map; `?mode=community` for the community view (the **Community** tab) |
+| Dev URL | `http://localhost:5173` | Chrome DevTools navigation target; `?mode=concepts` for the concept map; `?mode=community` for the community view (the **Community** tab); `?mode=page&concept=<id>` for a concept's atlas page (the **Atlas pages** tab) |
 | DB migrate | *(empty — no backend)* | |
 
 ## Architecture Overview
@@ -49,12 +49,13 @@ sophie_scicom/
 ├── src/
 │   ├── data/         # types.ts (schema) + conceptVocabulary.json; concepts.json is GENERATED (gitignored)
 │   ├── graph/        # concepts.ts (sizes, zoom depth, edge weight, learning path), dag.ts,
-│   │                 # layoutOptimize.ts (force layout), typeColors.ts, conflicts.ts
+│   │                 # layoutOptimize.ts (force layout), conceptLayout.ts (build-time layout), typeColors.ts, conflicts.ts,
+│   │                 # contents.ts (the atlas pages' chapters, reading order, sidebar views)
 │   ├── community/    # community review: proposal types, validation, overlay, store, claim text,
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,
-│   │                 # DraftEditor, ProposalCard, Legend, Home
-│   ├── App.tsx       # mode switch (home | concepts | community), reads ?mode= from the URL
+│   │                 # DraftEditor, ProposalCard, Legend, Home, PageView (the atlas pages, lazy)
+│   ├── App.tsx       # mode switch (home | concepts | community | page), reads ?mode= (and ?concept=) from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
 ├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
@@ -80,7 +81,10 @@ sophie_scicom/
   highlight via classes (`chosen`, `dimmed`, `onpath`) without re-layout.
 - **Layout convention:** the concept map is direction-free: a force layout scored for
   legibility (`src/graph/layoutOptimize.ts`, Decision 15), every ideal distance scaled by
-  `SPACING` (Decision 28), and each relation long enough for its own name (Decision 32). Bump the layout cache key in GraphView when the layout changes.
+  `SPACING` (Decision 28), each relation long enough for its own name (Decision 32), big concepts kept apart and small ones
+  pulled to their most general neighbour (Decision 34). The layout is computed at build time
+  (`src/graph/conceptLayout.ts`, run by `scripts/build-layout.mjs` in `npm run build:content`) and shipped as
+  `src/data/conceptLayout.json` (generated, not committed); a change to the layout code re-runs it — no cache key to bump.
 
 ## Subsystems (scope selection for the live-qa agent)
 

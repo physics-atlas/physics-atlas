@@ -2,10 +2,5 @@
   "id": "general_relativity_zeco_e2",
   "source": "spacetime",
   "target": "general_relativity_zeco",
-  "relationship": "exhibits",
-  "conditions": [
-    {
-      "label": "On large scales"
-    }
-  ]
+  "relationship": "exhibits"
 }

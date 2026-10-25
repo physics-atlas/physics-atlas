@@ -43,9 +43,9 @@ See **[docs/AUTHORING.md](docs/AUTHORING.md)** — then `npm run validate`.
 content/concepts/  the concept graph: nodes/<id>.json + edges/<id>.json
 src/
 ├── data/          types.ts, conceptVocabulary.json (concepts.json is generated)
-├── graph/         concepts.ts (sizes, zoom depth, learning paths), layoutOptimize.ts, typeColors.ts
+├── graph/         concepts.ts (sizes, zoom depth, learning paths), layoutOptimize.ts, conceptLayout.ts (built once, shipped), contents.ts (the atlas pages' chapters), typeColors.ts
 ├── community/     proposals, the proposal editor's drafts, the GitHub-backed store
-└── components/    GraphView (Cytoscape), ConceptMapView, ConceptCard, DraftEditor, Legend
+└── components/    GraphView (Cytoscape), ConceptMapView, ConceptCard, DraftEditor, Legend, PageView (atlas pages)
 server/, worker/   the Cloudflare Worker: sign-in with GitHub, proposals ↔ pull requests
 scripts/           compile-concepts.mjs, validate-concepts.mjs, smoke-test.mjs
 docs/              DESIGN-DECISIONS.md (all chosen + alternative pathways), AUTHORING.md

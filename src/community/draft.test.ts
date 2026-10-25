@@ -103,16 +103,38 @@ describe('what a draft becomes', () => {
       domain: 'Cosmology / Astrophysics',
     });
   });
-  it('what it assumes is exported, and an edit starts from it', () => {
-    const d = { ...jeans(), assumes: ['linear_potential', 'linear_potential'] };
-    expect(draftNode(d, concepts).assumes).toEqual(['linear_potential']);
+  it('what it assumes is exported in words, pointing to a concept where one is linked', () => {
+    const d: Draft = {
+      ...jeans(),
+      assumes: [
+        { label: ' Sample: a weak field ', description: ' Sample detail. ' },
+        // The same words again, the same concept twice, and an empty row.
+        { label: 'sample: A WEAK FIELD', description: '' },
+        { label: '', description: '', concept: 'structure_formation' },
+        { label: '', description: '', concept: 'structure_formation' },
+        { label: '  ', description: '' },
+      ],
+    };
+    expect(draftNode(d, concepts).assumes).toEqual([
+      { label: 'Sample: a weak field', description: 'Sample detail.' },
+      { concept: 'structure_formation' },
+    ]);
     expect('assumes' in draftNode(jeans(), concepts)).toBe(false);
     expect(draftProblems(d, alone(d))).toEqual([]);
-    const gone = { ...jeans(), assumes: ['nowhere'] };
-    expect(draftProblems(gone, alone(gone)).map((p) => p.field)).toEqual(['assumes']);
-    const z = newEditDraft(concepts.nodes.find((n) => n.id === 'zeldovich_approximation')!, fixed, at);
-    expect(z.assumes).toEqual(['linear_potential']);
-    expect(draftNode(z, concepts)).toEqual(concepts.nodes.find((n) => n.id === 'zeldovich_approximation'));
+    const gone: Draft = { ...jeans(), assumes: [{ label: '', description: '', concept: 'nowhere' }] };
+    expect(draftProblems(gone, alone(gone)).map((p) => [p.field, p.index])).toEqual([['assumes', 0]]);
+    const unnamed: Draft = { ...jeans(), assumes: [{ label: '', description: 'Sample detail.' }] };
+    expect(draftProblems(unnamed, alone(unnamed)).map((p) => p.field)).toEqual(['assumes']);
+  });
+  it('an edit starts from what the concept assumes, and gives it back unchanged', () => {
+    const zeldovich = concepts.nodes.find((n) => n.id === 'zeldovich_approximation')!;
+    const z = newEditDraft(zeldovich, fixed, at);
+    expect(z.assumes.length).toBe(zeldovich.assumes?.length ?? 0);
+    expect(draftNode(z, concepts)).toEqual(zeldovich);
+  });
+  it("reads an older draft's assumptions (concept ids) as ones pointing to those concepts", () => {
+    const old = parseDraft({ ...jeans(), assumes: ['structure_formation'] });
+    expect(old?.assumes).toEqual([{ label: '', description: '', concept: 'structure_formation' }]);
   });
   it('a formalism carries its formulas: the LaTeX, a name and variables when given', () => {
     const d: Draft = {

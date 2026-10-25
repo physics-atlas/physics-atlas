@@ -1,6 +1,6 @@
 import type { GraphEdge, GraphNode, NodeType } from '../data/types';
 import { assumptionsOf } from './concepts';
-import type { ConceptIndex } from './concepts';
+import type { AssumptionItem, ConceptIndex } from './concepts';
 
 export interface CardSection {
   heading: string;
@@ -127,8 +127,8 @@ export interface SectionItem {
 }
 
 export interface ConditionItem {
-  /** The assumed concept */
-  node: GraphNode;
+  /** What's assumed */
+  assumption: AssumptionItem;
   /** The neighbour that assumes it, for `via` sections */
   via?: GraphNode;
 }
@@ -164,14 +164,16 @@ export function sectionItems(id: string, section: CardSection, index: ConceptInd
 
 /** What the concept assumes, then what its `via` neighbours assume. */
 export function conditionItems(id: string, section: ConditionSection, index: ConceptIndex): ConditionItem[] {
-  const items: ConditionItem[] = assumptionsOf(id, index).assumes.map((node) => ({ node }));
+  const items: ConditionItem[] = assumptionsOf(id, index).assumes.map((assumption) => ({ assumption }));
   if (!section.via) return items;
-  const seen = new Set([id, ...items.map((i) => i.node.id)]);
+  // The same assumption reached twice (one concept, or the same words) is listed once.
+  const key = (a: AssumptionItem) => (a.node ? `concept:${a.node.id}` : `text:${a.label.toLowerCase()}`);
+  const seen = new Set(items.map((i) => key(i.assumption)));
   for (const hop of neighbours(id, index).filter((n) => section.via!.includes(n.type)))
-    for (const node of assumptionsOf(hop.id, index).assumes) {
-      if (seen.has(node.id)) continue;
-      seen.add(node.id);
-      items.push({ node, via: hop });
+    for (const assumption of assumptionsOf(hop.id, index).assumes) {
+      if (seen.has(key(assumption)) || assumption.node?.id === id) continue;
+      seen.add(key(assumption));
+      items.push({ assumption, via: hop });
     }
   return items;
 }

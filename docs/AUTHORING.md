@@ -268,16 +268,22 @@ step, how one follows from the other. Leave either out until it's written — th
 
 ## Assumptions — `assumes` on the concept
 
-An assumption is a concept of its own — a limit, an approximation, a property — and
-a concept lists what it assumes by id, in an optional top-level `assumes`:
+What a concept takes for granted — a limit, an approximation, a condition — is written
+on the concept itself, in an optional top-level `assumes`: a list, each entry a short
+`label` and, if it helps, a longer `description`. An assumption doesn't need a concept
+of its own. When the map does have one, `concept` points to it (the label can then be
+left out — the concept's name is used):
 
 ```json
 {
-  "id": "zeldovich_approximation",
+  "id": "sample_model",
   "type": "model_regime",
-  "label": "Zel'dovich approximation",
-  "assumes": ["linear_potential"],
-  "attrs": { "description": "…" }
+  "label": "Sample model",
+  "assumes": [
+    { "label": "Sample limit", "description": "Sample: what exactly is taken for granted." },
+    { "concept": "sample_property" }
+  ],
+  "attrs": { "description": "Sample: …" }
 }
 ```
 
@@ -285,17 +291,17 @@ It isn't a relation, so no line is drawn — assumptions will be common, and a l
 each would clutter the map. Instead the concept's card lists them under a type-specific
 heading (**Valid under** for a model or theory, **Applies under** for a phenomenon —
 also through the system or model it's linked to — **Conditions** for a physical system,
-**Assumes** otherwise), the assumed concept's card lists **Assumed by**, and selecting
-either one marks the other on the map with a dotted outline. The layout keeps them
-near each other. Rules: every id must be a concept, a concept can't assume itself, no id
-twice; leave the field out when there are none. The proposal editor has an **Assumes**
-field (confirmed concepts).
+**Assumes** otherwise), each in its words with its description under it. One that points
+to a concept is a link to it; that concept's card lists **Assumed by**, selecting either
+marks the other on the map with a dotted outline, and the layout keeps them near each
+other. Rules: each entry needs a `label` or a `concept`; `concept` must be a concept,
+not this one; nothing listed twice (the same concept, or the same words); leave the field
+out when there are none. The proposal editor has an **Assumes** field: a row per
+assumption, and a search to add one that points to a confirmed concept.
 
-Until 2026-10 assumptions were text on a relation (`"conditions": [{ "label": … }]`).
-The four there became concepts — Weak-field low-velocity limit, Large number, Linear
-potential, Ultralight mass — each assumed by its relation's source and marked with a
-`review` to check. The validator now refuses `conditions` on a relation, and `assumes`
-as a relationship.
+Until 2026-10 assumptions were text on a relation (`"conditions": [{ "label": … }]`);
+each moved into the `assumes` of the relation's source, in the same words. The validator
+refuses `conditions` on a relation, and `assumes` as a relationship.
 
 An equation's own `attrs.conditions` (plain strings, see above) stays as it is.
 That list describes the equation itself.

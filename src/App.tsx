@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Home from './components/Home';
 import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
@@ -6,20 +6,28 @@ import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
 import Starfield from './components/Starfield';
 import { NODE_TYPE_LABELS } from './data/types';
-import { IMPORTANCE_MAX } from './graph/concepts';
+import { IMPORTANCE_MAX, splitFluff } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
 import { useMotion } from './lib/motion';
+import { isPlainClick, pageHref } from './lib/pageLinks';
 import './App.css';
 
-type Mode = 'home' | 'concepts' | 'community';
+// The atlas pages typeset maths and carry their own sidebar: loaded on first visit.
+const PageView = lazy(() => import('./components/PageView'));
+
+type Mode = 'home' | 'concepts' | 'community' | 'page';
 
 const VIEW_TITLES: Record<Mode, string> = {
   home: 'Learn by prerequisites',
   concepts: 'Concept map',
   community: 'Community review',
+  page: 'Atlas pages',
 };
+
+/** The pages cover the confirmed, serious atlas — fluff is fun mode only. */
+const pageGraph = splitFluff(concepts).base;
 
 // The community view (.claude/plans/epic-community-review.md) is the concept
 // map with the proposed layer and the proposal editor.
@@ -33,6 +41,7 @@ function initialMode(): Mode {
   const m = params.get('mode');
   // `?mode=concepts&community=1` was the community preview's address before it had a tab.
   if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
+  if (m === 'page') return 'page';
   // The retired topic views (map, explore, goal, topic) land on the concept map.
   if (m) return 'concepts';
   return 'home';
@@ -43,6 +52,12 @@ function initialConceptGoal(): string | null {
   const g = params.get('goal');
   if ((params.get('mode') !== 'concepts' && params.get('mode') !== 'community') || !g) return null;
   return concepts.nodes.some((n) => n.id === g) ? g : null;
+}
+
+/** The page in the address (`?mode=page&concept=…`); null is the front page. */
+function initialPage(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('mode') === 'page' ? params.get('concept') : null;
 }
 
 // Alphabetical: the source files are ordered by id, which means nothing to a reader.
@@ -70,6 +85,9 @@ export default function App() {
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
   // Fun mode: off on every visit; kept while switching between the map's two tabs.
   const [fun, setFun] = useState(false);
+  // The atlas page shown, and a tick that moves focus to its heading on each navigation.
+  const [pageId, setPageId] = useState(initialPage);
+  const [pageFocus, setPageFocus] = useState(0);
   // The map guide greets a visitor on the map, steps aside after a few seconds,
   // and stays one click away ("How to read this map"). Opened again, it stays.
   const [hintOpen, setHintOpen] = useState(false);
@@ -99,12 +117,13 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null);
   const firstView = useRef(true);
   useEffect(() => {
-    document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
+    // An atlas page sets its own title and focuses its own heading.
+    if (mode !== 'page') document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
     if (firstView.current) {
       firstView.current = false;
       return;
     }
-    mainRef.current?.focus({ preventScroll: true });
+    if (mode !== 'page') mainRef.current?.focus({ preventScroll: true });
   }, [mode]);
 
   const themeButton = (
@@ -137,7 +156,9 @@ export default function App() {
     const target =
       mode === 'home'
         ? ''
-        : conceptGoal
+        : mode === 'page'
+          ? pageHref(pageId)
+          : conceptGoal
           ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
           : `?mode=${mode}`;
     if (window.location.search === target) {
@@ -150,13 +171,15 @@ export default function App() {
     if (firstUrlSync.current) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
     firstUrlSync.current = false;
-  }, [mode, conceptGoal]);
+  }, [mode, conceptGoal, pageId]);
 
   useEffect(() => {
     const onPop = () => {
       setMode(initialMode());
       setConceptGoal(initialConceptGoal());
       setSelectedId(null);
+      setPageId(initialPage());
+      setPageFocus((t) => t + 1);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -166,6 +189,21 @@ export default function App() {
     setSelectedId(id);
     setFocus((f) => ({ id, tick: f.tick + 1 }));
   }, []);
+
+  /** Open an atlas page (null: the chapters) — from the card, the tab, search or another page. */
+  const openPage = useCallback((id: string | null) => {
+    setMode('page');
+    setPageId(id);
+    setPageFocus((t) => t + 1);
+  }, []);
+  // From a page back to the map, centred on its concept.
+  const showOnMap = useCallback(
+    (id: string) => {
+      setMode('concepts');
+      focusOn(id);
+    },
+    [focusOn],
+  );
 
   // Home search and landmarks land on the concept map, centred on the pick.
   const homePick = useCallback(
@@ -192,16 +230,22 @@ export default function App() {
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
-          <SearchBox entries={fun ? conceptSearchEntries : seriousSearchEntries} onPick={focusOn} />
-          <button
-            type="button"
-            className="map-hint-toggle"
-            aria-expanded={hintOpen}
-            aria-controls={MAP_HINT_ID}
-            onClick={() => setHintOpen((o) => !o)}
-          >
-            {hintOpen ? 'Hide the map guide' : 'How to read this map'}
-          </button>
+          {/* On the pages, a search opens the concept's page; on the map, it centres the map on it. */}
+          <SearchBox
+            entries={mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
+            onPick={mode === 'page' ? openPage : focusOn}
+          />
+          {mode !== 'page' && (
+            <button
+              type="button"
+              className="map-hint-toggle"
+              aria-expanded={hintOpen}
+              aria-controls={MAP_HINT_ID}
+              onClick={() => setHintOpen((o) => !o)}
+            >
+              {hintOpen ? 'Hide the map guide' : 'How to read this map'}
+            </button>
+          )}
           <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
@@ -210,6 +254,18 @@ export default function App() {
             >
               Concept map
             </button>
+            <a
+              href={pageHref(pageId)}
+              className={`mode-tab ${mode === 'page' ? 'mode-tab-active' : ''}`}
+              aria-current={mode === 'page' ? 'page' : undefined}
+              onClick={(e) => {
+                if (!isPlainClick(e)) return;
+                e.preventDefault();
+                openPage(pageId);
+              }}
+            >
+              Atlas pages
+            </a>
             <button
               className={`mode-tab ${mode === 'community' ? 'mode-tab-active' : ''}`}
               aria-current={mode === 'community' ? 'page' : undefined}
@@ -226,7 +282,8 @@ export default function App() {
         </header>
       )}
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
-        {mode !== 'home' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
+        {/* An atlas page's own heading is the view's h1. */}
+        {mode !== 'home' && mode !== 'page' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
         {mode === 'home' && (
           <Home
             entries={seriousSearchEntries}
@@ -234,6 +291,7 @@ export default function App() {
             onPick={homePick}
             onExplore={() => setMode('concepts')}
             onCommunity={() => setMode('community')}
+            onPages={() => openPage(null)}
             motionButton={motionButton}
             still={motion.reduced}
           />
@@ -253,7 +311,19 @@ export default function App() {
             fun={fun}
             onFunChange={setFun}
             hintOpen={hintOpen}
+            onOpenPage={openPage}
           />
+        )}
+        {mode === 'page' && (
+          <Suspense fallback={<p className="atlas-loading">Loading the atlas pages…</p>}>
+            <PageView
+              graph={pageGraph}
+              pageId={pageId}
+              onOpenPage={openPage}
+              onShowOnMap={showOnMap}
+              focusTick={pageFocus}
+            />
+          </Suspense>
         )}
       </main>
     </div>

@@ -2,8 +2,13 @@
   "id": "euler_equation_n5nu",
   "label": "Euler equation",
   "type": "equation",
-  "importance": 25,
+  "importance": 5,
   "generality": 5,
+  "assumes": [
+    {
+      "label": "A single valued velocity field"
+    }
+  ],
   "attrs": {
     "variables": [],
     "conditions": [],

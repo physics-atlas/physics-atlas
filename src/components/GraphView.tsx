@@ -4,49 +4,34 @@ import cytoscape from 'cytoscape';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import type { ConceptOverlay } from '../community/proposals';
 import type { DraftShape } from '../community/draft';
-import {
-  buildConceptIndex,
-  INSIDE_LABEL_RADIUS,
-  EDGE_LABEL_FONT,
-  edgeLabelSize,
-  edgeWeight,
-  effectiveImportance,
-  labelSize,
-  lonelyLine,
-  nodeRadius,
-  normalizeRelationship,
-  revealZoom,
-} from '../graph/concepts';
+import { assumedConceptIds, buildConceptIndex, EDGE_LABEL_FONT, edgeWeight, labelSize, lonelyLine, relationFontSize, revealZoom } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import { TYPE_COLORS } from '../graph/typeColors';
 import { typeIconUri } from '../graph/typeIcons';
+import { better, createRng, labelCovers, placeNew, removeOverlaps } from '../graph/layoutOptimize';
+import type { NodeBox, Pos, Positions, Segment, SegmentLabel, SegmentLabels } from '../graph/layoutOptimize';
 import {
-  arrangeComponent,
-  better,
-  createRng,
-  layoutKey,
-  packComponents,
-  labelCovers,
-  placeNew,
-  removeOverlaps,
-  SPACING,
-} from '../graph/layoutOptimize';
+  ARROW_SCALE,
+  arrangeConceptComponent,
+  conceptLayoutInput,
+  EDGE_WIDTH,
+  EDGE_LABEL_MAX,
+  MIN_LABEL_PX,
+  nodeLabelLayout,
+  packConceptLayout,
+  relationLabelBox,
+  relationText,
+  searchSeeds,
+} from '../graph/conceptLayout';
+import shippedLayout from '../data/conceptLayout.json';
 import { reducedMotion } from '../lib/motion';
-import type { LayoutScore, NodeBox, Pos, Positions, Segment, SegmentLabel, SegmentLabels } from '../graph/layoutOptimize';
 
 const ICON_BOOST_PX = 14;
-/** A line's width in model px when zoomed in — and highlighted (hover, path, proposal). */
-const EDGE_WIDTH = 1.5;
+/** A highlighted line's width in model px (hover, path, proposal); EDGE_WIDTH otherwise. */
 const EDGE_WIDTH_EMPH = 2.5;
 /** Highlighted (hover, path, selection) and hovered-line names, as multiples of it. */
 const EDGE_FONT_EMPH = 1.15;
 const EDGE_FONT_HOVER = 1.35;
-/** Where a relation name wraps, at EDGE_LABEL_FONT — it widens in step with the font. */
-const EDGE_LABEL_MAX = 220;
-/** Cytoscape hides a name smaller than this on screen ('min-zoomed-font-size'). */
-const MIN_LABEL_PX = 9;
-/** The arrowheads' 'arrow-scale'. */
-const ARROW_SCALE = 0.8;
 /** A circle wider than this share of the view has been zoomed past: it fades to an outline. */
 const PAST_VIEW = 0.9;
 /** Classes that keep a concept on screen at any zoom — what the user is looking at. */
@@ -763,51 +748,16 @@ const styleFor = (light: boolean) => {
 ] as unknown as cytoscape.StylesheetJson;
 };
 
-// Concept layout: each connected component is arranged on its own (so
-// unrelated sub-graphs never interleave) by a direction-free force layout,
-// then the components are packed side by side. A first, quick pass shows
-// immediately; a background search over seeds then keeps whichever
-// arrangement has the fewest crossings, edges through nodes and overlapping
-// names, glides to it, and caches it per graph.
-const SEARCH_SEEDS = 24;
-const COMPONENT_GAP = 120 * SPACING;
-const LONE_NODE_GAP = 40 * SPACING;
-const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v9';
-const layoutCache = new Map<string, Positions>();
-
-interface ConceptComponent {
-  ids: string[];
-  segments: Segment[];
-  /** Each segment's relation name — its line gets the room the name needs */
-  labels: SegmentLabels;
-  /** Concept → what it assumes: pulled close, never drawn */
-  ties: Segment[];
-}
-
-interface ComponentLayout {
-  pos: Positions;
-  score: LayoutScore;
-}
-
-function readStoredLayout(key: string): Positions | null {
-  try {
-    const stored = JSON.parse(localStorage.getItem(LAYOUT_STORE_KEY) ?? 'null') as {
-      key: string;
-      positions: Positions;
-    } | null;
-    return stored?.key === key ? stored.positions : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeLayout(key: string, positions: Positions) {
-  try {
-    localStorage.setItem(LAYOUT_STORE_KEY, JSON.stringify({ key, positions }));
-  } catch {
-    // storage blocked — the in-memory cache still covers this session
-  }
-}
+// Concept layout: worked out once at build time (scripts/build-layout.mjs
+// runs src/graph/conceptLayout.ts) and shipped in src/data/conceptLayout.json;
+// here its groups are only packed side by side for this viewport. Should the
+// shipped layout not match the graph (content edited without a rebuild), the
+// same search runs here instead: a quick first arrangement shows at once, then
+// one seeded arrangement per tick in the background, and the map glides to
+// the best one.
+// (Typed by hand: the generated JSON's inferred type changes with every graph.)
+const SHIPPED = shippedLayout as unknown as { key: string; components: Positions[] };
+const layoutCache = new Map<string, Positions[]>();
 
 function setPositions(cy: cytoscape.Core, positions: Positions) {
   cy.batch(() => {
@@ -820,111 +770,39 @@ function setPositions(cy: cytoscape.Core, positions: Positions) {
 
 /**
  * Lays the concept graph out and returns a cancel function for the
- * background search (no-op when the layout came from the cache).
+ * background search (no-op when the layout was shipped or cached).
  */
 function layoutConcepts(
   cy: cytoscape.Core,
+  graph: ConceptGraph,
   onImproved: (positions: Positions) => void,
 ): () => void {
-  // Components join through relations and through assumptions (ties): an
-  // assumed concept is laid out next to what assumes it, though no line is drawn.
-  const ties: Segment[] = [];
-  cy.nodes().forEach((n) => {
-    for (const a of (n.data('assumes') as string[] | undefined) ?? []) if (cy.$id(a).nonempty()) ties.push([n.id(), a]);
-  });
-  const parent = new Map(cy.nodes().map((n) => [n.id(), n.id()]));
-  const find = (x: string): string => {
-    while (parent.get(x) !== x) {
-      parent.set(x, parent.get(parent.get(x)!)!);
-      x = parent.get(x)!;
-    }
-    return x;
-  };
-  const join = (a: string, b: string) => {
-    parent.set(find(a), find(b));
-  };
-  cy.edges().forEach((e) => join(e.source().id(), e.target().id()));
-  for (const [a, b] of ties) join(a, b);
-  const groups = new Map<string, string[]>();
-  cy.nodes().forEach((n) => {
-    const root = find(n.id());
-    groups.set(root, [...(groups.get(root) ?? []), n.id()]);
-  });
-  const all = [...groups.values()].sort((a, b) => b.length - a.length);
-  const comps: ConceptComponent[] = all
-    .filter((ids) => ids.length > 1)
-    .map((ids) => {
-      const inside = new Set(ids);
-      const edges = cy
-        .edges()
-        .toArray()
-        .filter((e) => inside.has((e as cytoscape.EdgeSingular).source().id())) as cytoscape.EdgeSingular[];
-      return {
-        ids,
-        segments: edges.map((e) => [e.source().id(), e.target().id()] as Segment),
-        labels: edges.map((e) => relationLabel(e)),
-        ties: ties.filter(([a]) => inside.has(a)),
-      };
-    });
-  // Unlinked concepts share one compact row instead of each taking a full slot.
-  const loneIds = all.filter((ids) => ids.length === 1).map((ids) => ids[0]);
-  const key = layoutKey(
-    cy.nodes().map((n) => n.id()),
-    comps.flatMap((c) => [...c.segments, ...c.ties.map(([a, b]) => [a, `assumes:${b}`] as Segment)]),
-    // The names' lengths are part of the layout: a renamed relation re-lays it out.
-    `concepts|${comps.flatMap((c) => c.labels.map((l) => Math.round(l?.length ?? 0))).join('.')}`,
-  );
-  const cached = layoutCache.get(key) ?? readStoredLayout(key);
-  if (cached) {
-    layoutCache.set(key, cached);
-    setPositions(cy, cached);
+  const input = conceptLayoutInput(graph);
+  const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
+  const pack = (components: Positions[]) => packConceptLayout(input, components, aspect);
+  const ready = SHIPPED.key === input.key ? SHIPPED.components : layoutCache.get(input.key);
+  if (ready) {
+    setPositions(cy, pack(ready));
     return () => {};
   }
 
-  const boxes = nodeBoxes(cy.nodes());
-  const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
-  const loneRow: Positions = {};
-  let x = 0;
-  for (const id of loneIds) {
-    loneRow[id] = { x: x - boxes[id].left, y: 0 };
-    x += boxes[id].right - boxes[id].left + LONE_NODE_GAP;
-  }
-  const pack = (best: ComponentLayout[]) =>
-    packComponents(
-      [...best.map((b) => b.pos), ...(loneIds.length ? [loneRow] : [])],
-      boxes,
-      aspect,
-      COMPONENT_GAP,
-    );
-
-  const best = comps.map((c, i) => arrangeComponent(c.ids, c.segments, boxes, createRng(1 + i), c.labels, c.ties));
-  const shown = pack(best);
-  setPositions(cy, shown);
-
-  // Background search: one seeded arrangement per tick, so the page stays
-  // responsive while it runs.
-  const jobs: { comp: number; seed: number }[] = [];
-  for (let k = 1; k <= SEARCH_SEEDS; k++)
-    comps.forEach((c, i) => {
-      if (c.ids.length >= 3) jobs.push({ comp: i, seed: 1 + i + 7919 * k });
-    });
+  const best = input.components.map((c, i) => arrangeConceptComponent(input, i, searchSeeds(i, c.ids)[0]));
+  setPositions(cy, pack(best.map((b) => b.pos)));
+  const jobs = input.components.flatMap((c, i) => searchSeeds(i, c.ids).slice(1).map((seed) => ({ comp: i, seed })));
   let improved = false;
   let timer = 0;
   const step = () => {
     if (cy.destroyed()) return;
     const job = jobs.shift();
     if (job === undefined) {
-      const final = improved ? pack(best) : shown;
-      layoutCache.set(key, final);
-      storeLayout(key, final);
-      if (improved) onImproved(final);
+      const final = best.map((b) => b.pos);
+      layoutCache.set(input.key, final);
+      if (improved) onImproved(pack(final));
       return;
     }
-    const i = job.comp;
-    const comp = comps[i];
-    const candidate = arrangeComponent(comp.ids, comp.segments, boxes, createRng(job.seed), comp.labels, comp.ties);
-    if (better(candidate.score, best[i].score)) {
-      best[i] = candidate;
+    const candidate = arrangeConceptComponent(input, job.comp, job.seed);
+    if (better(candidate.score, best[job.comp].score)) {
+      best[job.comp] = candidate;
       improved = true;
     }
     timer = window.setTimeout(step, 0);
@@ -939,9 +817,7 @@ function nodeLabel(title: string, { goal = false, done = false, badge }: { goal?
 }
 
 function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, classes = '', badge?: string) {
-  const importance = effectiveImportance(n, degree);
-  const radius = nodeRadius(n, degree);
-  const inside = radius >= INSIDE_LABEL_RADIUS;
+  const { radius, importance, inside, fontSize, labelWidth, labelWidthWide, labelShift } = nodeLabelLayout(n, degree);
   return {
     data: {
       id: n.id,
@@ -952,17 +828,16 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
       size: 2 * radius,
       radius,
       importance,
-      fontSize: labelSize(importance, radius),
+      fontSize,
       // Hover emphasis grows a small name but never shrinks a big one.
-      fontSizeEmph: Math.max(labelSize(importance, radius), 15),
-      // A big concept's name sits inside its circle, in its lower half.
-      labelWidth: inside ? 1.5 * radius : 140,
-      // Room for the badge line: inside, the circle's full width.
-      labelWidthWide: inside ? 2 * radius : 220,
-      labelShift: inside ? 0.4 * radius : 4,
+      fontSizeEmph: Math.max(fontSize, 15),
+      labelWidth,
+      labelWidthWide,
+      labelShift,
       type: n.type,
       icon: typeIconUri(n.type, iconColor) ?? undefined,
-      assumes: n.assumes ?? [],
+      // The concepts its assumptions point to (for the highlight and layout ties).
+      assumes: assumedConceptIds(n),
     },
     classes: `concept-node${inside ? ' label-inside' : ''} ${classes}`.trim(),
     // Only the draft can be dragged; everything else is placed by the layout.
@@ -971,16 +846,13 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
 }
 
 function conceptEdgeElement(e: GraphEdge, classes = '', status?: string) {
-  const relation = normalizeRelationship(e.relationship) ?? e.relationship.trim();
-  // The status, when there is one, on its own line under the relation name.
-  const lines = [relation, status ? `(${status})` : ''];
   return {
     // width and strength are recomputed with the zoom (applyFade); these hold until then.
     data: {
       id: e.id,
       source: e.source,
       target: e.target,
-      relation: lines.filter(Boolean).join('\n'),
+      relation: relationText(e, status),
       width: EDGE_WIDTH,
       widthEmph: EDGE_WIDTH_EMPH,
       strength: 0,
@@ -1023,38 +895,27 @@ function overlayElements(overlay: ConceptOverlay, iconColor: string): cytoscape.
 
 let measureCtx: CanvasRenderingContext2D | null = null;
 
+/** A line's width in the map's font, measured by the browser. */
+const canvasMeasure = (line: string, font: number, italic: boolean): number => {
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return 0;
+  measureCtx.font = `${italic ? 'italic ' : ''}${font}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  return measureCtx.measureText(line).width;
+};
+
 /**
- * A relation's name as the layout needs it: measured in the font it's drawn
- * in (edgeLabelSize, italic), wrapped where Cytoscape wraps it, plus its plate.
+ * A relation's name as it's drawn here (relationLabelBox, measured in this
+ * browser's font) — for placing proposals and the covered-name safety net.
  */
 function relationLabel(e: cytoscape.EdgeSingular): SegmentLabel | undefined {
-  const text = String(e.data('relation') ?? '').trim();
-  if (!text || e.empty()) return undefined;
+  if (e.empty()) return undefined;
   const [s, t] = [e.source(), e.target()];
-  const { px, strength } = edgeWeight(
+  return relationLabelBox(
+    String(e.data('relation') ?? ''),
     [s.data('radius') as number, t.data('radius') as number],
     [s.data('importance') as number, t.data('importance') as number],
+    canvasMeasure,
   );
-  const font = edgeLabelSize(px, strength);
-  measureCtx ??= document.createElement('canvas').getContext('2d');
-  if (!measureCtx) return undefined;
-  measureCtx.font = `italic ${font}px system-ui, -apple-system, "Segoe UI", sans-serif`;
-  const max = (EDGE_LABEL_MAX * font) / EDGE_LABEL_FONT;
-  let length = 0;
-  let lines = 0;
-  for (const line of text.split('\n')) {
-    const w = measureCtx.measureText(line).width;
-    length = Math.max(length, Math.min(w, max));
-    lines += Math.max(1, Math.ceil(w / max));
-  }
-  // The arrowhead, as Cytoscape sizes it (max((width·13.37)^0.9, 29) × arrow-scale),
-  // at the zoom where the name first shows — the farthest out, where lines
-  // and so arrows are widest in model px; closer in it only gets smaller.
-  const legibleZoom = MIN_LABEL_PX / font;
-  const width = Math.max(EDGE_WIDTH, px / legibleZoom);
-  const arrow = ARROW_SCALE * Math.max((width * 13.37) ** 0.9, 29);
-  // The plate (text-background-padding 2) on every side.
-  return { length: length + 4, thickness: lines * font * 1.2 + 4, arrow };
 }
 
 const relationLabels = (cy: cytoscape.Core, edgeIds: string[]): SegmentLabels =>
@@ -1203,7 +1064,7 @@ export default function GraphView({
     cy.on('scrollzoom dragpan pinchzoom', () => {
       viewportTouchedRef.current = true;
     });
-    const cancelLayoutSearch = layoutConcepts(cy, (improved) => {
+    const cancelLayoutSearch = layoutConcepts(cy, concepts, (improved) => {
       // Fluff and proposals follow the confirmed graph into its better arrangement.
       const withFluff = { ...improved, ...(placeFluffRef.current?.(improved) ?? {}) };
       const positions = { ...withFluff, ...(placeOverlayRef.current?.(withFluff) ?? {}) };
@@ -1271,9 +1132,12 @@ export default function GraphView({
           const emph = Math.round(100 * Math.max(EDGE_WIDTH_EMPH, (px + 1.5) / z)) / 100;
           if (e.data('width') !== width) e.data({ width, widthEmph: emph });
           if (e.data('strength') !== strength) e.data('strength', strength);
-          // A relation's name grows with its line (edgeLabelSize) — the same
-          // size the layout made room for.
-          const font = edgeLabelSize(px, strength);
+          // A relation's name follows the smaller of its two concepts
+          // (relationFontSize) — the same size the layout made room for.
+          const font = relationFontSize(
+            [s.data('radius') as number, t.data('radius') as number],
+            [s.data('importance') as number, t.data('importance') as number],
+          );
           if (e.data('fontSize') !== font)
             e.data({
               fontSize: font,

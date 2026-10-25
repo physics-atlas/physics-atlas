@@ -2,7 +2,7 @@
   "id": "general_relativity_zeco",
   "label": "General relativity",
   "type": "theory",
-  "importance": 50,
+  "importance": 10,
   "generality": 10,
   "attrs": {
     "description": "Theory that describes the force we experience as gravity to be an effect of the curvature of the spacetime we live in. And describes a relation between the curvature and the things that exist within the spacetime",

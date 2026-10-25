@@ -10,6 +10,7 @@ import {
 } from '../graph/cardSections';
 import { assumptionsOf } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
+import type { ConditionItem } from '../graph/cardSections';
 import TypeBadge from './TypeBadge';
 
 interface ConceptCardProps {
@@ -73,9 +74,9 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
             {assumed.length > 0 && <span className="rel-count">{assumed.length}</span>}
           </h3>
           {assumed.length === 0 ? (
-            <p className="concept-empty">None linked yet.</p>
+            <p className="concept-empty">None listed yet.</p>
           ) : (
-            <ConceptList items={assumed} onPick={onPick} />
+            <AssumptionList items={assumed} onPick={onPick} />
           )}
         </section>
       )}
@@ -121,6 +122,33 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
 
 function Todo({ label }: { label: string }) {
   return <span className="concept-todo">{label}</span>;
+}
+
+/**
+ * What a concept assumes: each in its own words, with its detail under it;
+ * one that points to a concept on the map is a button to it.
+ */
+function AssumptionList({ items, onPick }: { items: ConditionItem[]; onPick: (id: string) => void }) {
+  return (
+    <ul className="concept-section-list concept-assumptions">
+      {items.map(({ assumption: { label, description, node }, via }, i) => (
+        <li key={node ? node.id : `${label}-${i}`}>
+          {node ? (
+            <>
+              <TypeBadge type={node.type} />
+              <button className="concept-relation-link" onClick={() => onPick(node.id)}>
+                {label}
+              </button>
+            </>
+          ) : (
+            <span className="concept-assumption-label">{label}</span>
+          )}
+          {via && <span className="concept-via">via {via.label}</span>}
+          {description && <p className="concept-assumption-detail">{description}</p>}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** Linked concepts, each a button that shows it on the map, with how it was reached. */

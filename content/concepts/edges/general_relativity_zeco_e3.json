@@ -2,10 +2,5 @@
   "id": "general_relativity_zeco_e3",
   "source": "special_relativity",
   "target": "general_relativity_zeco",
-  "relationship": "approximates",
-  "conditions": [
-    {
-      "label": "Locally"
-    }
-  ]
+  "relationship": "approximates"
 }

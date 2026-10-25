@@ -32,6 +32,7 @@ import Legend from './Legend';
 import RelationSentence from './RelationSentence';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
+import { isPlainClick, pageHref } from '../lib/pageLinks';
 
 // The proposal card brings KaTeX — load both only when a proposal is opened.
 const ProposalCard = lazy(() => import('./ProposalCard'));
@@ -83,6 +84,8 @@ interface ConceptMapViewProps {
   /** The map guide is shown (its button is in the header) */
   hintOpen?: boolean;
   onFunChange?: (on: boolean) => void;
+  /** Open a concept's atlas page */
+  onOpenPage?: (id: string) => void;
 }
 
 export default function ConceptMapView({
@@ -99,6 +102,7 @@ export default function ConceptMapView({
   fun = false,
   onFunChange,
   hintOpen = false,
+  onOpenPage,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -835,8 +839,23 @@ export default function ConceptMapView({
               </section>
             )}
 
-            {((selected.id !== goalId && selected.type !== 'fluff') || (community && selected.type !== 'resource')) && (
+            {(selected.type !== 'fluff' || community) && (
               <div className="map-card-cta">
+                {/* Every confirmed concept has a page (fluff is fun mode only). */}
+                {selected.type !== 'fluff' && onOpenPage && (
+                  <a
+                    className="map-card-page"
+                    href={pageHref(selected.id)}
+                    onClick={(e) => {
+                      if (!isPlainClick(e)) return;
+                      e.preventDefault();
+                      onOpenPage(selected.id);
+                    }}
+                  >
+                    Open its page<span className="visually-hidden">: {selected.label}</span>
+                    <span aria-hidden> →</span>
+                  </a>
+                )}
                 {/* Fluff never joins a learning path (the validator keeps it out). */}
                 {selected.id !== goalId && selected.type !== 'fluff' && (
                   <button className="map-card-goal" onClick={() => onGoalChange(selected.id)}>

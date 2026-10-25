@@ -1,5 +1,6 @@
 import { NODE_TYPE_LABELS } from '../data/types';
 import type {
+  Assumption,
   ConceptGraph,
   EquationRepresentation,
   EquationVariable,
@@ -55,6 +56,14 @@ export interface DraftRepresentation {
   variables: EquationVariable[];
 }
 
+/** One assumption in the editor: its words, more detail, and (optionally) the concept it is. */
+export interface DraftAssumption {
+  label: string;
+  description: string;
+  /** A confirmed concept this assumption is */
+  concept?: string;
+}
+
 export interface Draft {
   /** 3: importance on the 1–10 scale, equations with variables and representations */
   version: 3;
@@ -72,8 +81,8 @@ export interface Draft {
   representations: DraftRepresentation[];
   /** Mathematical formalisms: formulas that show how it works (name optional) */
   formulas: DraftRepresentation[];
-  /** Confirmed concepts this one assumes — no line on the map */
-  assumes: string[];
+  /** What it takes for granted, in words — each may point to a confirmed concept; no line on the map */
+  assumes: DraftAssumption[];
   /** 1–10, the size of its circle; left out = the curator decides */
   generality?: number;
   /** 1–10, how far out it stays visible; left out = the curator decides */
@@ -143,7 +152,11 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
     formulas: Array.isArray(attrs.formulas)
       ? (attrs.formulas as Formula[]).map((f) => toDraftRepresentation({ ...f, name: f.name ?? '' }))
       : [],
-    assumes: [...(node.assumes ?? [])],
+    assumes: (node.assumes ?? []).map((a) => ({
+      label: a.label ?? '',
+      description: a.description ?? '',
+      ...(a.concept ? { concept: a.concept } : {}),
+    })),
     ...(node.generality !== undefined ? { generality: node.generality } : {}),
     ...(node.importance !== undefined ? { importance: node.importance } : {}),
   };
@@ -186,6 +199,24 @@ const toDraftRepresentation = (r: EquationRepresentation | string): DraftReprese
     : { name: r.name, equation: r.equation ?? '', variables: (r.variables ?? []).map((v) => ({ ...v })) };
 
 /** Variables with both a symbol and a meaning; rows left completely empty are dropped. */
+/**
+ * The assumptions as they're exported: trimmed, empty ones dropped, each
+ * listed once (the same concept, or the same words).
+ */
+export function cleanAssumptions(list: DraftAssumption[]): Assumption[] {
+  const seen = new Set<string>();
+  const out: Assumption[] = [];
+  for (const a of list) {
+    const label = a.label.trim(), description = a.description.trim(), concept = a.concept?.trim();
+    if (!label && !concept) continue;
+    const key = concept ? `concept:${concept}` : `text:${label.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...(label ? { label } : {}), ...(description ? { description } : {}), ...(concept ? { concept } : {}) });
+  }
+  return out;
+}
+
 const cleanVariables = (vs: EquationVariable[]): EquationVariable[] =>
   vs.map((v) => ({ symbol: v.symbol.trim(), meaning: v.meaning.trim() })).filter((v) => v.symbol || v.meaning);
 
@@ -250,7 +281,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
     ...(d.importance !== undefined ? { importance: d.importance } : {}),
     ...(d.generality !== undefined ? { generality: d.generality } : {}),
   };
-  const assumes = [...new Set(d.assumes)];
+  const assumes = cleanAssumptions(d.assumes);
   const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}) };
   const attrs =
     type === 'equation'
@@ -475,11 +506,19 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
         });
     });
   const confirmedIds = new Set(ctx.confirmed.nodes.map((n) => n.id));
-  for (const a of d.assumes) {
-    if (a === d.editOf) out.push({ field: 'assumes', message: "A concept can't assume itself." });
-    else if (!confirmedIds.has(a))
-      out.push({ field: 'assumes', message: `It assumes “${a}”, which isn't on the map any more — remove it.` });
-  }
+  d.assumes.forEach((a, index) => {
+    const label = a.label.trim();
+    if (!label && !a.concept && a.description.trim())
+      out.push({ field: 'assumes', index, message: `Give assumption ${index + 1} a name — a few words for what's assumed.` });
+    if (!a.concept) return;
+    if (a.concept === d.editOf) out.push({ field: 'assumes', index, message: "A concept can't assume itself." });
+    else if (!confirmedIds.has(a.concept))
+      out.push({
+        field: 'assumes',
+        index,
+        message: `Assumption ${index + 1} points to “${a.concept}”, which isn't on the map any more — unlink it.`,
+      });
+  });
   if (d.generality !== undefined && !inRange(d.generality, GENERALITY_MAX))
     out.push({ field: 'generality', message: `Generality is a whole number from 1 to ${GENERALITY_MAX}.` });
   if (d.importance !== undefined && !inRange(d.importance, IMPORTANCE_MAX))
@@ -728,8 +767,17 @@ export function parseDraft(raw: unknown): Draft | null {
   if (!Array.isArray(representations) || !representations.every(representationOk)) return null;
   const formulas = d.formulas ?? [];
   if (!Array.isArray(formulas) || !formulas.every(representationOk)) return null;
-  const assumes = d.assumes ?? [];
-  if (!Array.isArray(assumes) || !assumes.every(isString)) return null;
+  // Until 2026-10 an assumption was a concept id; now it's words that may point to one.
+  const rawAssumes = d.assumes ?? [];
+  const assumptionOk = (a: unknown) => {
+    if (isString(a)) return true;
+    const x = a as Record<string, unknown>;
+    return Boolean(x) && isString(x.label) && isString(x.description) && (x.concept === undefined || isString(x.concept));
+  };
+  if (!Array.isArray(rawAssumes) || !rawAssumes.every(assumptionOk)) return null;
+  const assumes = (rawAssumes as (string | DraftAssumption)[]).map((a) =>
+    isString(a) ? { label: '', description: '', concept: a } : a,
+  );
   // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
   const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
     void _c;
@@ -745,7 +793,7 @@ export function parseDraft(raw: unknown): Draft | null {
     variables: variables as EquationVariable[],
     representations: representations as DraftRepresentation[],
     formulas: formulas as DraftRepresentation[],
-    assumes: assumes as string[],
+    assumes,
     relations,
     ...(importance !== undefined ? { importance } : {}),
   };

@@ -2,10 +2,19 @@
 // Browser smoke test: drives the running dev server (npm run dev) with
 // puppeteer-core + installed Chrome. Walks the home page, the concept map and
 // the community view, and collects console errors. Screenshots go to SMOKE_OUT (default /tmp).
+import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 
 const OUT = process.env.SMOKE_OUT ?? '/tmp';
 const URL = process.env.DEV_URL ?? 'http://localhost:5173';
+// The map everyone sees: the compiled graph without fun mode's fluff (and a
+// relation only when both its concepts exist).
+const compiled = JSON.parse(readFileSync(new globalThis.URL('../src/data/concepts.json', import.meta.url), 'utf8'));
+const serious = new Set(compiled.nodes.filter((n) => n.type !== 'fluff').map((n) => n.id));
+const expected = {
+  nodes: serious.size,
+  edges: compiled.edges.filter((e) => serious.has(e.source) && serious.has(e.target)).length,
+};
 const CHROME =
   process.env.CHROME_BIN ??
   (process.platform === 'darwin'
@@ -68,8 +77,8 @@ console.log('home-explore search:', exploreSearch);
 if (!exploreSearch.startsWith('?mode=concepts'))
   errors.push(`expected home-explore to land on ?mode=concepts, got ${exploreSearch}`);
 const exploreNodeCount = await page.evaluate(() => window.__cy?.nodes().length ?? 0);
-if (exploreNodeCount !== 68)
-  errors.push(`expected 68 concept nodes after home-explore, got ${exploreNodeCount}`);
+if (exploreNodeCount !== expected.nodes)
+  errors.push(`expected ${expected.nodes} concept nodes after home-explore, got ${exploreNodeCount}`);
 const tabTexts = await page.$$eval('.mode-tab', (els) => els.map((e) => e.textContent?.trim()));
 console.log('mode tabs:', tabTexts);
 if (tabTexts.some((t) => t === 'Full map')) errors.push('a "Full map" tab is still in the header nav');
@@ -110,8 +119,8 @@ const conceptCounts = await page.evaluate(() => ({
   edges: window.__cy?.edges().length ?? 0,
 }));
 console.log(`concept map: ${conceptCounts.nodes} nodes, ${conceptCounts.edges} edges`);
-if (conceptCounts.nodes !== 68 || conceptCounts.edges !== 66)
-  errors.push(`expected 68 concept nodes / 66 edges, got ${conceptCounts.nodes}/${conceptCounts.edges}`);
+if (conceptCounts.nodes !== expected.nodes || conceptCounts.edges !== expected.edges)
+  errors.push(`expected ${expected.nodes} concept nodes / ${expected.edges} edges, got ${conceptCounts.nodes}/${conceptCounts.edges}`);
 // Zoomed out to the overview, every visible line keeps ≥ 1 px on screen, and
 // lines touching a landmark are drawn wider than lines between two details.
 const lines = await page.evaluate(() => {
@@ -250,12 +259,17 @@ const clickControl = (text) =>
     return find()?.getAttribute('aria-pressed');
   }, text);
 
-// The confirmed layout first settles and is cached; then the same map with proposals.
+// The confirmed layout ships with the build: it's in place at once and no
+// search runs in the browser. Then the same map with proposals.
 await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
-await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v9')), { timeout: 60000 });
-await page.reload({ waitUntil: 'networkidle0' });
-await wait(500);
+const layoutAtLoad = await confirmedPositions();
+await wait(1500);
 const layoutBefore = await confirmedPositions();
+const searched = Object.keys(layoutAtLoad).filter(
+  (id) => Math.hypot(layoutAtLoad[id].x - layoutBefore[id].x, layoutAtLoad[id].y - layoutBefore[id].y) > 0.5,
+);
+if (searched.length)
+  errors.push(`the shipped layout wasn't used — ${searched.length} concepts moved after load (npm run build:content?)`);
 await page.goto(`${URL}/?mode=concepts&community=1`, { waitUntil: 'networkidle0' });
 await page.waitForFunction(() => window.__cy?.nodes('.overlay').length > 0, { timeout: 10000 });
 await wait(500);
@@ -560,6 +574,42 @@ if (sim.submitted?.proposal.title !== 'Add Smoke submitted concept') errors.push
 if (submitted.editorOpen || !submitted.proposals.some((l) => l.startsWith('Smoke submitted concept')) || !submitted.account.includes('#12'))
   errors.push(`after submitting: ${JSON.stringify(submitted)}`);
 await p3.close();
+
+// --- Atlas pages: a page per concept, reached from the card, read in order ---
+const p4 = await browser.newPage();
+p4.on('pageerror', (e) => errors.push(`atlas pages: ${e.message}`));
+await p4.setViewport({ width: 1440, height: 900 });
+await p4.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+await p4.evaluate(() => window.__cy.$id('einstein_eq').emit('tap'));
+await wait(800);
+await p4.click('.map-card-page');
+await p4.waitForSelector('.atlas-page h1');
+await wait(300);
+const pageState = () =>
+  p4.evaluate(() => ({
+    url: location.search,
+    title: document.title,
+    h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()),
+    focused: document.activeElement?.id,
+    current: document.querySelector('.atlas-sidebar [aria-current="page"]')?.textContent.trim(),
+  }));
+const fromCard = await pageState();
+await p4.click('.atlas-pagenav a[rel="next"]');
+await wait(300);
+const afterNext = await pageState();
+await p4.click('input[name="atlas-view"][value="neighbours"]');
+await wait(150);
+const neighbourLinks = await p4.$$eval('.atlas-neighbours a', (as) => as.length);
+console.log('atlas pages:', { fromCard, afterNext: afterNext.url, neighbourLinks });
+if (fromCard.url !== '?mode=page&concept=einstein_eq' || fromCard.h1.length !== 1 || fromCard.h1[0] !== 'Einstein Field Equations')
+  errors.push(`the card's page link: ${JSON.stringify(fromCard)}`);
+if (!fromCard.title.startsWith('Einstein Field Equations —') || !fromCard.current?.endsWith('Einstein Field Equations'))
+  errors.push(`the page's title or contents marker: ${JSON.stringify(fromCard)}`);
+if (afterNext.url === fromCard.url || afterNext.focused !== 'atlas-page-title')
+  errors.push(`Next didn't move to a new page with focus on its heading: ${JSON.stringify(afterNext)}`);
+if (neighbourLinks === 0) errors.push("the Neighbours view lists nothing for a page that's connected");
+await p4.screenshot({ path: `${OUT}/atlas-page.png` });
+await p4.close();
 
 console.log('console errors:', errors.length ? errors : 'none');
 await browser.close();

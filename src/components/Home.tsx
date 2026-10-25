@@ -12,12 +12,23 @@ interface HomeProps {
   onExplore: () => void;
   /** Opens the community view: proposals and the proposal editor */
   onCommunity: () => void;
+  /** Open the atlas pages (the chapters) */
+  onPages: () => void;
   /** The reduce-motion switch — the galaxy animates indefinitely, so it must be stoppable here too */
   motionButton: React.ReactNode;
   still: boolean;
 }
 
-export default function Home({ entries, landmarks, onPick, onExplore, onCommunity, motionButton, still }: HomeProps) {
+export default function Home({
+  entries,
+  landmarks,
+  onPick,
+  onExplore,
+  onCommunity,
+  onPages,
+  motionButton,
+  still,
+}: HomeProps) {
   return (
     <div className="home">
       <Galaxy still={still} />
@@ -52,6 +63,10 @@ export default function Home({ entries, landmarks, onPick, onExplore, onCommunit
         <div className="home-actions">
           <button className="home-explore" onClick={onExplore}>
             Explore the concept map
+            <span aria-hidden> →</span>
+          </button>
+          <button className="home-explore" onClick={onPages}>
+            Read the atlas as pages
             <span aria-hidden> →</span>
           </button>
           <button className="home-explore home-community" onClick={onCommunity}>

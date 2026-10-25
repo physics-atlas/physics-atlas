@@ -249,6 +249,8 @@ by a rank-swap clean-up, and keeps the arrangement with the fewest crossings +
 edges-through-circles (tie-break: total edge length): 44 → 9 crossings on the
 current data. The map shows the quick layout first, glides to the better one
 (~4 s on first load) and caches it per graph (memory + localStorage).
+
+> *2026-10:* the search now runs once at build time and the layout ships with the site (Decision 34).
 Geometry lives in `src/graph/layoutOptimize.ts`; Cytoscape glue in GraphView.
 
 **Cost:** separated components need more room, so the whole-map overview
@@ -555,6 +557,8 @@ if landmarks turn out not to be good starting points.
 
 ## Decision 27 — A relation's line takes the larger attributes of its two ends (2026-10)
 
+> *2026-10:* its *name* now takes the smaller end's size (Decision 34); the line is unchanged.
+
 Zoomed out, lines were 1.5 model px wide — about 0.15 px on screen at the overview, so the
 landmarks looked unconnected. Now each line keeps an **on-screen** width, from the more
 general of its two concepts, and an opacity from the more important one (`edgeWeight()`):
@@ -640,6 +644,8 @@ proposal editor in the Community view.
 
 ## Decision 32 — The layout makes room for every relation name (2026-10)
 
+> *2026-10:* names are now sized from a glyph table at build time, and by the smaller end (Decision 34).
+
 Until now the layout didn't know relation names existed: every relation got the same fixed
 90 px (× `SPACING`) between its two concepts' footprints. Once names grew with their line
 (Decision 31), 30 of the 66 sat under a circle. Now the names are part of the layout:
@@ -664,6 +670,8 @@ proposal could be allowed to nudge the confirmed concepts next to it.
 
 ## Decision 33 — Assumptions are concepts a concept `assumes`; relations get cards (2026-10)
 
+> *2026-10:* an assumption is now words on the concept, pointing to a concept only when the map has one; the concepts created for assumptions were removed (Decision 35).
+
 Supersedes Decision 16's "conditions are edge attributes". Assumptions will be common, so
 each is a concept of its own and a concept lists what it assumes — no line on the map.
 
@@ -679,6 +687,91 @@ each is a concept of its own and a concept lists what it assumes — no line on 
 
 **Open paths:** an "edit relation" proposal (description, derivation, type) for confirmed
 relations; assumptions of a proposal on another proposal's concept (only confirmed ones now).
+
+## Decision 34 — Big concepts spread out, small ones gather round; the layout is built once (2026-10)
+
+The map read the wrong way round: the big concepts sat in a clump in the middle, touching
+(Einstein Field Equations and Spacetime 15 px apart), and the specific ones drifted to the
+edge on long lines (big ↔ small: median 909 model px, the longest of any pair). The cause
+was the force layout itself: every concept pushed equally, big ones are pulled to the middle
+by their many relations, and a small concept, held by one line, was pushed outwards by all
+the others. Now:
+
+| Piece | Rule |
+|---|---|
+| Clearance | Two circles keep at least 1.5 × the smaller radius between their rims (`clearance`): a circle-and-a-half between two landmarks, the usual margin between two details. The force layout's contact push and `removeOverlaps` both enforce it, the score counts a breach like a tangle, and the gaps between separate groups and in the row of unconnected concepts respect it too. |
+| Push by size | A concept pushes in proportion to √(its radius ÷ the median radius), within 0.3–3: big ones keep each other at a distance, small ones barely push, so they can gather. |
+| Short lines to details | A relation's ideal length is its two radii plus a short gap (90 × `SPACING`), or the room its name needs if that's more — no longer padded by both concepts' name boxes. |
+| Pulled to its parent | A concept is pulled 3× harder by its most general neighbour, so it settles beside that one rather than between several. |
+| Names by the smaller end | A relation's name takes its size from the *smaller* of its two concepts (`relationFontSize`); the line keeps the larger (Decision 27). A detail only shows once you zoom in to it, so its relation needn't carry an overview-sized name — and a shorter name lets it sit close to its big concept. |
+| No stray lines | A relation longer than 2.5× its ideal length counts as a tangle, once more per further multiple (`countStretched`). Without it the swap clean-up traded a few crossings for lines across the whole map: Einstein Field Equations ended up alone at one edge, 13× its ideal length from its neighbours. Longest relation now 4.6× its ideal. |
+| Swaps scored incrementally | Swapping two concepts only changes what involves them, so each trial swap scores just that (their relations, their boxes, the names they could cover) instead of the whole layout — the same result (a test checks it against the full re-score), 5× faster. The 85-concept map, one group of 72, takes about 45 s instead of 4 minutes. Limiting swaps to similar-sized concepts would be faster still but scored clearly worse (best 18 → 20 tangles), so it isn't done. |
+| Built once | The layout is a pure function of the graph (`src/graph/conceptLayout.ts`: no Cytoscape, no DOM). `npm run build:content` runs it (`scripts/build-layout.mjs`, under a minute for 24 seeds per group) and writes `src/data/conceptLayout.json`, which the app ships; the browser only packs the groups for its viewport. The file is reused while the graph and the layout code are unchanged; it's generated, not committed (like `concepts.json`), so Cloudflare's build makes it for every deploy. The browser's search and its localStorage cache are gone; the search runs in the browser only if the shipped file doesn't match the graph (a content edit without a rebuild). |
+| Measured without a browser | Names are sized from a glyph table (`src/graph/glyphWidths.json`, `scripts/measure-glyph-widths.mjs`): each character's width, the larger of the system font (Segoe UI) and Arial (close to Helvetica / San Francisco), so a name is never drawn longer than the layout planned. A concept's box takes its wrapped height and its unwrapped width, whichever way the browser wraps it. The layout key is built from the data (types, sizes, names, relations), never from measured sizes, which can differ in the last digit between Node and a browser. |
+
+Measured: big ↔ small lines **909 → 176** median, big ↔ mid **481 → 351**, big circles at
+least 1.5 radii apart (was 15 px at the closest); in the app, no relation name hidden at
+any zoom and nothing moves after load. (Before: the 69-concept map; after: the 85-concept
+map pulled since, so the extents aren't comparable — 9805 × 5199 before, 9277 × 7740 after.)
+The covered-name check no longer reads a circle's border as a name under it.
+
+**Content fixed with it:** the merged proposals in the old format were migrated —
+importance on the 1–50 scale ÷ 5 (Euler equation 5, Fluid 4, General relativity 10), and
+the four relation conditions moved into the `assumes` of each relation's source (at first
+as concepts of their own; Decision 35 made them words): At non-relativistic energies
+(Electron), A single valued velocity field (Euler equation), On large scales (Spacetime),
+Locally (Special Relativity). A
+relation to a concept that doesn't exist (the validator's error) is now skipped when the app
+loads, with a console warning, instead of stopping the map from drawing.
+
+**Open paths:** a layout that goes from big to small (place the big concepts first, then
+each smaller size around them with the bigger ones held still), if the forces stop being
+enough as the map grows — the build's search grows roughly with the cube of the largest
+group; per-pair gaps between packed groups instead of one gap for all.
+
+## Decision 35 — An assumption is words on the concept, not a concept of its own (2026-10)
+
+Revises Decision 33. Making every assumption a concept filled the map with concepts that
+didn't exist before and were nothing more than the assumption's name — Large number,
+Locally, On large scales — each with placeholder sizes and a review note. An assumption
+needn't be a concept: what it means is written on the concept that assumes it.
+
+| Piece | Rule |
+|---|---|
+| Shape | `assumes` is a list of `{ label, description?, concept? }`: a few words, more detail if it helps, and — only when the map has one — the concept it is. Each needs a label or a concept; with a concept and no label, the concept's name is used. |
+| Card | Listed under the type's heading (Valid under, Applies under, Conditions, else Assumes), each in its words with its description under it; one pointing to a concept is a link to it. |
+| Map | Only an assumption pointing to a concept does anything on the map: the dotted outline on selection, **Assumed by** on that concept, the invisible layout tie, and it keeps a concept from counting as lonely. An assumption in words only is on the card alone. |
+| Editor | A row per assumption (name, "In more detail"); **Add an assumption**, or a search that adds one pointing to a confirmed concept (unlinkable again). Drafts saved with the old list of ids load as rows pointing to those concepts. |
+| Validator | Checks the shape, unknown fields, the concept exists and isn't the concept itself, and that nothing is listed twice (the same concept, or the same words). |
+| Content | The eight concepts created for assumptions were removed and written back into the concepts that assumed them, in their words: Weak-field low-velocity limit (Einstein Field Equations), Large number (Decay equation), Linear potential (Zel'dovich approximation), Ultralight mass (Wave Dark Matter) — each with its description — and At non-relativistic energies (Electron), A single valued velocity field (Euler equation), On large scales (Spacetime), Locally (Special Relativity). Reviews: Wave Dark Matter keeps Sophie's open question about Ultralight mass; Spacetime and Special Relativity ask whether the assumption sits on the right concept, since it came from a relation. 86 → 78 concepts. |
+
+**Open path:** linking an existing assumption in words to a concept later, from the editor
+(today: add the concept from the search and remove the words).
+
+## Decision 36 — The atlas as pages: a page per concept, chapters from the map (2026-10)
+
+An alternative to the canvas, after university lecture notes (a contents sidebar, Previous /
+Up / Next, numbered blocks): every concept has a page. Planned in five steps — (1) pages
+from the data we have, (2) written pages (`content/pages/<id>.md`, numbered blocks),
+(3) pages in proposals (the page file in the same pull request — the backend builds each
+file's path from the id, so it can add this one too), (4) static HTML per page at
+`/atlas/<id>/`, held to the strictest accessibility, (5) figures, equation numbers,
+exercises, a PDF. Step 1 is done:
+
+| Piece | Rule |
+|---|---|
+| Chapters | Like the map reads (Decision 34): a concept's parent is its most general neighbour that's more general than itself (relations, and assumptions that point to a concept); one with none is a chapter. Chapters and sections go bigger first, then more important, then A→Z, and are numbered like a book (3, 3.1, 3.1.1); reading order walks the tree depth-first. `src/graph/contents.ts`, pure. |
+| The page | Section number, the concept with its kind, field and status, **Show on the map**; Definition (a ruled block); the equation or formulas typeset; what it assumes (type's heading); **How it connects** — every relation as a sentence, out and in, with its description and derivation folded; the type's own sections (Explains, Applies to…); Assumed by; **In this chapter/section**. Previous / Up / Next above and below, and the trail of chapters. |
+| Sidebar views | **Contents** (the tree, sections folded except around the current page), **Neighbours** (the current page's relations, out and in, and linked assumptions), **By kind** (type families → kinds → A→Z). One filter for all: a name, kinds of concept, and kinds of relation (the Neighbours view). Filtering keeps the tree's shape — a section above a match shows as context. The chosen view is remembered in this browser. |
+| Ways in | **Open its page** on every concept's card; an **Atlas pages** tab; search opens the page while on the pages; **Read the atlas as pages** on the home page; **Show on the map** back. |
+| Address | `?mode=page&concept=<id>` (`?mode=page`: the chapters); each move is a history entry. Fluff has no page. |
+| Card | Stays as it is — short; the page is the long form. |
+| Loading | The page view is its own chunk, loaded on first visit. |
+
+Accessibility is in docs/ACCESSIBILITY.md → Atlas pages (axe clean in both themes and on a phone).
+
+**Open paths:** a curated contents file that overrides the automatic order; the next four
+steps above.
 
 ## Multi-agent workflow (web-dev-agent-system)
 

@@ -6,6 +6,55 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-60: Atlas pages, step 1 — a page per concept from the data
+
+**Status:** ✅ Implemented <!-- status-line: feature-60 -->
+**Planned:** 2026-10-25 — requested: the atlas viewable as pages, like university lecture notes (contents sidebar, a page per concept with more than the card), reachable from the card and the map; alternative sidebar views (local neighbours, filtering by node and relation type); the card stays; static pages to the highest accessibility standard. Plan in five steps (Decision 36); this is step 1.
+**Implemented:** 2026-10-25
+
+### Implemented
+- `src/graph/contents.ts` — chapters by most general neighbour, book numbering, reading order, Previous / Up / Next, trail; filters; the Neighbours and By-kind views
+- `src/components/PageView.tsx` (lazy) — sidebar (three views, name and kind filters, a phone drawer), the page (definition, equation/formulas, assumptions, relations with folded details, type sections, sub-sections), focus and titles per page, skip link past the contents
+- `App.tsx` — `page` mode (`?mode=page&concept=`), history, the **Atlas pages** tab, search opens pages there; `Home.tsx` — **Read the atlas as pages**; `ConceptMapView.tsx` — **Open its page** on the card; `lib/pageLinks.ts`
+- Tests: contents tree, numbering, order, filters, views; smoke: card → page → Next, Neighbours; axe clean (both themes, phone)
+
+### Review
+Not run — direct session.
+
+## feature-59: Assumptions in words, not concepts
+
+**Status:** ✅ Implemented <!-- status-line: feature-59 -->
+**Planned:** 2026-10-25 — requested: the concepts created for assumptions ("Large number" and the others that didn't exist before) shouldn't be concepts; an assumption needn't reference one — it's described on the concept — though it can point to one eventually; remove the created concepts
+**Implemented:** 2026-10-25
+
+### Implemented
+- `types.ts` — `Assumption {label?, description?, concept?}`, `assumes?: Assumption[]`; `concepts.ts` — `assumedConceptIds`, `assumptionItem`, `assumptionsOf` returns items in words; `cardSections.ts` — sections of assumptions
+- `ConceptCard.tsx` — each assumption in its words with its detail, a link when it points to a concept; `DraftEditor.tsx` — **Assumes** as rows (name, detail) plus a search to add a linked one; `draft.ts` — `DraftAssumption`, `cleanAssumptions`, old drafts' ids read as linked rows; `proposals.ts` / validator — the new shape
+- Content: the eight created concepts removed, their words (and descriptions) back on the concepts that assumed them; three review notes kept or added
+- Tests: assumptions in words and linked, draft export/dedupe/problems, old drafts, layout ties only for linked ones
+
+### Review
+Not run — direct session.
+
+## feature-58: Big concepts spread out, small ones close; the layout is built once
+
+**Status:** ✅ Implemented <!-- status-line: feature-58 -->
+**Planned:** 2026-10-25 — requested: big concepts clustered while small ones sat far out on long lines; the opposite wanted (a minimum distance by generality, small concepts near their general topic); names sized by the smaller end (option 6); the layout computed at build time instead of in every visitor's browser
+**Implemented:** 2026-10-25
+
+### Implemented
+- `layoutOptimize.ts` — `clearance` (1.5 × the smaller radius between rims) in the contact push, `removeOverlaps` and the score (`countCrowded`); push scaled by size; relation length from the two radii, not the name boxes (`idealLength`); 3× pull to the most general neighbour; stray lines scored (`countStretched`); `swapNodes` scores each trial incrementally (same result, 5× faster); a circle's border no longer counts as a name under it
+- `concepts.ts` — `relationFontSize` (the smaller end)
+- `conceptLayout.ts` (new) — the layout as a pure function of the graph: node boxes and names from `glyphWidths.json`, components, a data-only key, the seed search, packing (gaps keep the clearance)
+- `scripts/build-layout.mjs` (new, in `build:content`) → `src/data/conceptLayout.json` (generated, gitignored), reused while graph and code match; `scripts/measure-glyph-widths.mjs` (new) makes the glyph table
+- `GraphView.tsx` — uses the shipped layout (packs only); the browser search is a fallback, the localStorage cache is gone; shared node/name sizing with the build
+- `loadConcepts.ts` — a relation to a missing concept is skipped (console warning) instead of stopping the map
+- Content: local `main` fast-forwarded to GitHub (14 merged proposal files, incl. the missing Wave function); old-format proposals migrated — importance ÷ 5 on three concepts, four relation conditions → assumptions on each relation's source (in words since feature-59)
+- Tests: clearance, hubs with their details, stretched lines, incremental swaps = full re-score, name size by the smaller end, the build-time layout (boxes, key, determinism, no covered names); smoke checks the shipped layout is used and counts from the compiled graph (proposal anchors still among the nearest 3)
+
+### Review
+Not run — direct session.
+
 ## feature-56: Formalism formulas, every type's glyph, legend disclaimer, guide button in the header
 
 **Status:** ✅ Implemented <!-- status-line: feature-56 -->

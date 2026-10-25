@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   alignWide,
   arrangeComponent,
+  better,
+  clearance,
   countBoxOverlaps,
+  countCrowded,
   countCrossings,
   countNodeOverlaps,
+  countStretched,
+  idealLength,
   createRng,
   forceLayout,
   labelCovers,
@@ -12,9 +17,11 @@ import {
   layoutKey,
   placeNew,
   removeOverlaps,
+  scoreLayout,
   stretchForLabels,
+  swapNodes,
 } from './layoutOptimize';
-import type { NodeBox, Positions, Segment } from './layoutOptimize';
+import type { NodeBox, Positions, Segment, SegmentLabels } from './layoutOptimize';
 
 const box = (r = 10, labelW = 60, labelH = 16): NodeBox => ({
   radius: r,
@@ -204,5 +211,90 @@ describe('placeNew', () => {
 
   it('does nothing when there is nothing new', () => {
     expect(placeNew(fixed, [], segments, boxes, createRng(1))).toEqual({});
+  });
+});
+
+describe('big and small concepts', () => {
+  const dist = (pos: Positions, a: string, b: string) => Math.hypot(pos[a].x - pos[b].x, pos[a].y - pos[b].y);
+  it('keeps big circles a share of the smaller radius apart, small ones only the usual margin', () => {
+    expect(clearance(200, 300)).toBe(200 + 300 + 1.5 * 200);
+    expect(clearance(5, 300)).toBe(5 + 300 + 10);
+    // Their boxes are clear, but two big circles 20px apart still crowd each other.
+    const boxes = { a: box(200, 0, 0), b: box(200, 0, 0) };
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 420, y: 0 } };
+    expect(countBoxOverlaps(pos, boxes)).toBe(0);
+    expect(countCrowded(pos, boxes)).toBe(1);
+    const spread = removeOverlaps(pos, boxes);
+    expect(countCrowded(spread, boxes)).toBe(0);
+    expect(dist(spread, 'a', 'b')).toBeGreaterThanOrEqual(clearance(200, 200));
+  });
+  it('lays two hubs out far apart, each with its small concepts close around it', () => {
+    // Two big concepts joined, each with three small ones hanging off it.
+    const boxes: Record<string, NodeBox> = { A: box(150, 0, 0), B: box(150, 0, 0) };
+    const segments: Segment[] = [['A', 'B']];
+    for (const hub of ['A', 'B'])
+      for (let i = 0; i < 3; i++) {
+        boxes[`${hub}${i}`] = box(10, 40, 14);
+        segments.push([`${hub}${i}`, hub]);
+      }
+    const { pos } = arrangeComponent(Object.keys(boxes), segments, boxes, createRng(3));
+    expect(dist(pos, 'A', 'B')).toBeGreaterThanOrEqual(clearance(150, 150) - 1);
+    for (const hub of ['A', 'B'])
+      for (let i = 0; i < 3; i++) {
+        const own = dist(pos, `${hub}${i}`, hub);
+        const other = dist(pos, `${hub}${i}`, hub === 'A' ? 'B' : 'A');
+        // Beside its own hub — just past the rim — and nearer it than the other one.
+        expect(own - 150 - 10).toBeLessThan(200);
+        expect(own).toBeLessThan(other);
+      }
+  });
+});
+
+describe('countStretched', () => {
+  it('counts a relation far past its ideal length, once more per further multiple', () => {
+    const boxes = { a: box(10, 0, 0), b: box(10, 0, 0) };
+    const ideal = idealLength(10, 10, undefined);
+    const at = (d: number): Positions => ({ a: { x: 0, y: 0 }, b: { x: d, y: 0 } });
+    expect(countStretched([['a', 'b']], at(2 * ideal), boxes)).toBe(0);
+    expect(countStretched([['a', 'b']], at(3 * ideal), boxes)).toBe(1);
+    expect(countStretched([['a', 'b']], at(10 * ideal), boxes)).toBe(4);
+  });
+});
+
+describe('swapNodes', () => {
+  // The plain version: re-score the whole layout for every trial swap.
+  function reference(segments: Segment[], start: Positions, boxes: Record<string, NodeBox>, labels: SegmentLabels) {
+    const pos: Positions = Object.fromEntries(Object.entries(start).map(([id, p]) => [id, { ...p }]));
+    const ids = Object.keys(pos);
+    let score = scoreLayout(segments, pos, boxes, labels);
+    for (let pass = 0, improved = true; improved && pass < 4; pass++) {
+      improved = false;
+      for (let i = 0; i < ids.length; i++)
+        for (let j = i + 1; j < ids.length; j++) {
+          const [a, b] = [ids[i], ids[j]];
+          [pos[a], pos[b]] = [pos[b], pos[a]];
+          const next = scoreLayout(segments, pos, boxes, labels);
+          if (better(next, score)) {
+            score = next;
+            improved = true;
+          } else [pos[a], pos[b]] = [pos[b], pos[a]];
+        }
+    }
+    return { pos, score };
+  }
+  it('scores each trial swap incrementally, with the same result as re-scoring everything', () => {
+    for (const seed of [1, 2, 3]) {
+      const rng = createRng(seed);
+      const ids = Array.from({ length: 14 }, (_, i) => `n${i}`);
+      const boxes = Object.fromEntries(ids.map((id, i) => [id, box(i % 4 === 0 ? 60 : 10, 50, 14)]));
+      const segments: Segment[] = ids.slice(1).map((id, i) => [id, ids[Math.floor(rng() * (i + 1))]]);
+      segments.push(['n3', 'n9'], ['n5', 'n12']);
+      const labels: SegmentLabels = segments.map((_, i) => (i % 3 === 0 ? undefined : { length: 40 + 10 * (i % 4), thickness: 14, arrow: 20 }));
+      const start: Positions = Object.fromEntries(ids.map((id) => [id, { x: rng() * 900, y: rng() * 600 }]));
+      const fast = swapNodes(segments, start, boxes, 4, labels);
+      const slow = reference(segments, start, boxes, labels);
+      expect(fast.pos).toEqual(slow.pos);
+      expect(fast.score).toEqual(slow.score);
+    }
   });
 });

@@ -58,6 +58,34 @@ const LABEL_MARGIN = 14;
 /** How hard a relation too short for its name pushes its ends apart. */
 const LABEL_PUSH = 2;
 
+/**
+ * Big concepts keep their distance: two circles keep at least this share of
+ * the smaller one's radius between their rims — a circle-width between two
+ * landmarks, the usual margin between two specific concepts.
+ */
+const CLEARANCE = 1.5;
+
+/** The least centre-to-centre distance two circles keep (CLEARANCE). */
+export const clearance = (radiusA: number, radiusB: number): number =>
+  radiusA + radiusB + Math.max(BOX_MARGIN, CLEARANCE * Math.min(radiusA, radiusB));
+
+/**
+ * How hard a concept pushes the others away grows with its circle:
+ * (radius ÷ the median radius)^MASS_EXP, kept within [MASS_MIN, MASS_MAX].
+ * Big concepts spread out; small ones barely push, so they gather around the
+ * big concept they hang off instead of drifting to the edge.
+ */
+const MASS_EXP = 0.5;
+const MASS_MIN = 0.3;
+const MASS_MAX = 3;
+/**
+ * A concept's pull towards its most general neighbour, as a multiple of a
+ * relation's usual pull — it settles beside that one, not between several.
+ */
+const PARENT_PULL = 3;
+/** Free length a relation gets between its two circles when its name needs less. */
+const LINK_GAP = SPACING * EDGE_ROOM;
+
 /** How long a relation must be for its name to fit between its two circles. */
 export const labelRoom = (radiusA: number, radiusB: number, label: SegmentLabel | undefined): number =>
   radiusA + radiusB + (label ? label.length + (label.arrow ?? 0) + 2 * LABEL_MARGIN : 0);
@@ -114,6 +142,15 @@ function frameHitsRect(f: LabelFrame, x1: number, y1: number, x2: number, y2: nu
   return along <= f.hl + ba && across <= f.ht + bc;
 }
 
+/** Less than this below a circle is its border, not a name (names are 12px and up). */
+const NAME_BELOW_MIN = 4;
+
+/** Does this node — its circle, or its own name under it — cover the relation name? */
+const coversName = (f: LabelFrame, p: Pos, b: NodeBox): boolean =>
+  frameHitsCircle(f, p, b.radius) ||
+  // A name under the circle — not just its border, which a measured box includes.
+  (b.bottom > b.radius + NAME_BELOW_MIN && frameHitsRect(f, p.x + b.left, p.y + b.radius, p.x + b.right, p.y + b.bottom));
+
 /**
  * For each relation with a name, the nodes covering it: a circle over the
  * name, or a concept's own name (under a small circle) over it. A line too
@@ -134,9 +171,7 @@ export function labelCovers(
     const covers = f.visible < label.length ? [s, t] : [];
     for (const id in pos) {
       if (covers.includes(id)) continue;
-      const p = pos[id], b = boxes[id];
-      const underName = b.bottom > b.radius + 1 && frameHitsRect(f, p.x + b.left, p.y + b.radius, p.x + b.right, p.y + b.bottom);
-      if (frameHitsCircle(f, p, b.radius) || underName) covers.push(id);
+      if (coversName(f, pos[id], boxes[id])) covers.push(id);
     }
     if (covers.length) out.set(i, covers);
   });
@@ -145,17 +180,17 @@ export function labelCovers(
 
 const ccw = (a: Pos, b: Pos, c: Pos) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
 
+/** Do two relations cross? (Two that share a concept never count.) */
+function crosses([s1, t1]: Segment, [s2, t2]: Segment, pos: Positions): boolean {
+  if (s1 === s2 || s1 === t2 || t1 === s2 || t1 === t2) return false;
+  const a = pos[s1], b = pos[t1], c = pos[s2], d = pos[t2];
+  return ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d);
+}
+
 export function countCrossings(segments: Segment[], pos: Positions): number {
   let n = 0;
-  for (let i = 0; i < segments.length; i++) {
-    const [s1, t1] = segments[i];
-    for (let j = i + 1; j < segments.length; j++) {
-      const [s2, t2] = segments[j];
-      if (s1 === s2 || s1 === t2 || t1 === s2 || t1 === t2) continue;
-      const a = pos[s1], b = pos[t1], c = pos[s2], d = pos[t2];
-      if (ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d)) n++;
-    }
-  }
+  for (let i = 0; i < segments.length; i++)
+    for (let j = i + 1; j < segments.length; j++) if (crosses(segments[i], segments[j], pos)) n++;
   return n;
 }
 
@@ -188,16 +223,15 @@ export function countNodeOverlaps(
   boxes: Record<string, NodeBox>,
 ): number {
   let n = 0;
-  for (const [s, t] of segments) {
-    const a = pos[s], b = pos[t];
-    for (const id in pos) {
-      if (id === s || id === t) continue;
-      const p = pos[id], box = boxes[id];
-      if (segmentHitsRect(a, b, p.x + box.left - 4, p.y + box.top - 4, p.x + box.right + 4, p.y + box.bottom + 4))
-        n++;
-    }
-  }
+  for (const seg of segments) for (const id in pos) if (passesThrough(seg, id, pos, boxes)) n++;
   return n;
+}
+
+/** Does the relation pass through a concept (its circle or name, padded 4px) it doesn't end at? */
+function passesThrough([s, t]: Segment, id: string, pos: Positions, boxes: Record<string, NodeBox>): boolean {
+  if (id === s || id === t) return false;
+  const p = pos[id], box = boxes[id];
+  return segmentHitsRect(pos[s], pos[t], p.x + box.left - 4, p.y + box.top - 4, p.x + box.right + 4, p.y + box.bottom + 4);
 }
 
 /** x/y overlap of two nodes' margin-padded boxes (both > 0 means they overlap). */
@@ -209,16 +243,60 @@ function overlapOf(a: string, b: string, pos: Positions, boxes: Record<string, N
   };
 }
 
+function boxesOverlap(a: string, b: string, pos: Positions, boxes: Record<string, NodeBox>, margin = BOX_MARGIN) {
+  const o = overlapOf(a, b, pos, boxes, margin);
+  return o.x > 0 && o.y > 0;
+}
+
 /** Pairs of nodes whose label-inclusive boxes (plus a margin) overlap. */
 export function countBoxOverlaps(pos: Positions, boxes: Record<string, NodeBox>, margin = BOX_MARGIN): number {
   const ids = Object.keys(pos);
   let n = 0;
   for (let i = 0; i < ids.length; i++)
     for (let j = i + 1; j < ids.length; j++) {
-      const o = overlapOf(ids[i], ids[j], pos, boxes, margin);
-      if (o.x > 0 && o.y > 0) n++;
+      if (boxesOverlap(ids[i], ids[j], pos, boxes, margin)) n++;
     }
   return n;
+}
+
+/** Pairs of circles closer than their clearance — big concepts crowding each other. */
+/** A relation's ideal length: both circles plus a short gap, or what its name needs if that's more. */
+export const idealLength = (radiusA: number, radiusB: number, label: SegmentLabel | undefined): number =>
+  Math.max(radiusA + radiusB + LINK_GAP, labelRoom(radiusA, radiusB, label));
+
+/**
+ * A relation stretched past this many times its ideal length reads as a
+ * stray line across the map: it counts as a tangle, and once more for each
+ * further multiple — so the search won't trade a few crossings for one.
+ */
+const STRETCH_LIMIT = 2.5;
+
+function stretchCost([s, t]: Segment, label: SegmentLabel | undefined, pos: Positions, boxes: Record<string, NodeBox>) {
+  const d = Math.hypot(pos[s].x - pos[t].x, pos[s].y - pos[t].y);
+  return Math.floor(d / (STRETCH_LIMIT * idealLength(boxes[s].radius, boxes[t].radius, label)));
+}
+
+/** Relations stretched far past their ideal length, weighted by how far (STRETCH_LIMIT). */
+export function countStretched(
+  segments: Segment[],
+  pos: Positions,
+  boxes: Record<string, NodeBox>,
+  labels: SegmentLabels = [],
+): number {
+  return segments.reduce((n, seg, e) => n + stretchCost(seg, labels[e], pos, boxes), 0);
+}
+
+export function countCrowded(pos: Positions, boxes: Record<string, NodeBox>): number {
+  const ids = Object.keys(pos);
+  let n = 0;
+  for (let i = 0; i < ids.length; i++)
+    for (let j = i + 1; j < ids.length; j++) if (crowds(ids[i], ids[j], pos, boxes)) n++;
+  return n;
+}
+
+function crowds(a: string, b: string, pos: Positions, boxes: Record<string, NodeBox>): boolean {
+  const pa = pos[a], pb = pos[b];
+  return Math.hypot(pa.x - pb.x, pa.y - pb.y) < clearance(boxes[a].radius, boxes[b].radius) - 0.5;
 }
 
 export function edgeLength(segments: Segment[], pos: Positions): number {
@@ -245,6 +323,8 @@ export function scoreLayout(
       countCrossings(segments, pos) +
       countNodeOverlaps(segments, pos, boxes) +
       countBoxOverlaps(pos, boxes) +
+      countCrowded(pos, boxes) +
+      countStretched(segments, pos, boxes, labels) +
       COVERED_LABEL_WEIGHT * labelCovers(segments, labels, pos, boxes).size,
     length: edgeLength(segments, pos),
   };
@@ -277,8 +357,9 @@ export interface ForceOptions {
 
 /**
  * Spring-electrical layout (Fruchterman–Reingold) of one connected
- * component. Each pair's ideal distance grows with the two label boxes, so
- * long names get the room they need.
+ * component. Big concepts push harder and keep their clearance; each
+ * relation is as long as its two circles and its name need, and a concept
+ * is pulled hardest towards its most general neighbour.
  */
 export function forceLayout(
   ids: string[],
@@ -290,25 +371,37 @@ export function forceLayout(
 ): Positions {
   const n = ids.length;
   const r = ids.map((id) => reach(boxes[id]));
-  const k = (i: number, j: number) => SPACING * (EDGE_ROOM + r[i] + r[j]);
+  const radius = ids.map((id) => boxes[id].radius);
+  // Closer than this, a pair pushes apart hard: their boxes, and for big
+  // circles the clearance between them.
+  const contactAt = (i: number, j: number) =>
+    Math.max(SPACING * (r[i] + r[j]) + BOX_MARGIN, clearance(radius[i], radius[j]));
   const meanK = SPACING * (EDGE_ROOM + (2 * r.reduce((s, v) => s + v, 0)) / Math.max(n, 1));
-  // Long-range repulsion uses one typical spacing for every pair, so a few
-  // very big concepts don't spread the whole graph out; their size only
-  // counts once two nodes are actually close (the contact push below).
-  const sorted = [...r].sort((a, b) => a - b);
-  const typicalK = SPACING * (EDGE_ROOM + 2 * (sorted[Math.floor(sorted.length / 2)] ?? 0));
+  // Long-range repulsion: one typical spacing, scaled by both concepts' mass.
+  const median = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)] ?? 0;
+  const typicalK = SPACING * (EDGE_ROOM + 2 * median(r));
+  const medianRadius = Math.max(median(radius), 1);
+  const mass = radius.map((v) => Math.min(MASS_MAX, Math.max(MASS_MIN, (v / medianRadius) ** MASS_EXP)));
   const side = meanK * Math.sqrt(n);
   const initial = ids.map((id) => fixed[id] ?? start[id] ?? { x: (rng() - 0.5) * side, y: (rng() - 0.5) * side });
   const x = initial.map((p) => p.x);
   const y = initial.map((p) => p.y);
   const pinned = ids.map((id) => id in fixed);
   const at = new Map(ids.map((id, i) => [id, i]));
-  // A relation's ideal length: the usual spacing, or — when its name needs
-  // more — both circles plus the name. `room` is the least it may be.
-  const links = [...segments, ...ties.filter(([s, t]) => at.has(s) && at.has(t))].map(([s, t], e) => {
-    const i = at.get(s)!, j = at.get(t)!;
-    const room = labelRoom(boxes[s].radius, boxes[t].radius, labels[e]);
-    return { i, j, room, ideal: Math.max(k(i, j), room) };
+  // A relation's ideal length: both circles plus a short gap, or — when its
+  // name needs more — plus the name. `room` is the least it may be.
+  const pairs = [...segments, ...ties.filter(([s, t]) => at.has(s) && at.has(t))].map(
+    ([s, t]) => [at.get(s)!, at.get(t)!] as const,
+  );
+  // Each concept's most general neighbour, if it's bigger than the concept itself.
+  const parent = ids.map(() => -1);
+  for (const [i, j] of pairs)
+    for (const [a, b] of [[i, j], [j, i]] as const)
+      if (radius[b] > radius[a] && (parent[a] < 0 || radius[b] > radius[parent[a]])) parent[a] = b;
+  const links = pairs.map(([i, j], e) => {
+    const room = labelRoom(radius[i], radius[j], labels[e]);
+    const pull = parent[i] === j || parent[j] === i ? PARENT_PULL : 1;
+    return { i, j, room, pull, ideal: idealLength(radius[i], radius[j], labels[e]) };
   });
   const t0 = temperature ?? side / 4;
   for (let it = 0; it < iterations; it++) {
@@ -324,23 +417,23 @@ export function forceLayout(
           dy = rng() - 0.5;
           d = Math.hypot(dx, dy);
         }
-        // Repulsion typicalK²/d, applied along the unit vector (dx, dy) / d,
-        // plus a contact push while the pair is closer than its own spacing.
-        const kij = k(i, j);
-        const contact = d < kij ? (kij - d) / d : 0;
-        const f = (typicalK * typicalK) / (d * d) + contact;
+        // Repulsion typicalK²·massᵢ·massⱼ/d, applied along the unit vector
+        // (dx, dy) / d, plus a contact push while the pair is too close.
+        const near = contactAt(i, j);
+        const contact = d < near ? (near - d) / d : 0;
+        const f = (typicalK * typicalK * mass[i] * mass[j]) / (d * d) + contact;
         fx[i] += dx * f;
         fy[i] += dy * f;
         fx[j] -= dx * f;
         fy[j] -= dy * f;
       }
-    for (const { i, j, room, ideal } of links) {
+    for (const { i, j, room, pull, ideal } of links) {
       if (i === j) continue;
       const dx = x[i] - x[j], dy = y[i] - y[j];
       const d = Math.max(Math.hypot(dx, dy), 1e-3);
-      // Attraction d²/ideal along the unit vector — but while the line is too
-      // short for its name, a firm push apart instead (pulling would win).
-      const f = d < room ? -LABEL_PUSH * ((room - d) / d) : d / ideal;
+      // Attraction pull·d²/ideal along the unit vector — but while the line is
+      // too short for its name, a firm push apart instead (pulling would win).
+      const f = d < room ? -LABEL_PUSH * ((room - d) / d) : (pull * d) / ideal;
       fx[i] -= dx * f;
       fy[i] -= dy * f;
       fx[j] += dx * f;
@@ -405,12 +498,25 @@ export function removeOverlaps(
         const a = ids[i], b = ids[j];
         const ma = canMove(a), mb = canMove(b);
         if (!ma && !mb) continue;
-        const o = overlapOf(a, b, out, boxes, BOX_MARGIN);
-        if (o.x <= 0 || o.y <= 0) continue;
-        moved = true;
-        const ca = centre(a), cb = centre(b);
         // Each side's share of the push: half each, or all of it for the only movable one.
         const sa = ma ? (mb ? 0.5 : 1) : 0, sb = mb ? (ma ? 0.5 : 1) : 0;
+        const o = overlapOf(a, b, out, boxes, BOX_MARGIN);
+        if (o.x <= 0 || o.y <= 0) {
+          // Clear boxes — but two big circles also keep their clearance.
+          const dx = out[b].x - out[a].x, dy = out[b].y - out[a].y;
+          const d = Math.hypot(dx, dy);
+          const short = clearance(boxes[a].radius, boxes[b].radius) - d;
+          if (short <= 0) continue;
+          moved = true;
+          const ux = d > 1e-6 ? dx / d : 1, uy = d > 1e-6 ? dy / d : 0;
+          out[a].x -= ux * (short + SLACK) * sa;
+          out[a].y -= uy * (short + SLACK) * sa;
+          out[b].x += ux * (short + SLACK) * sb;
+          out[b].y += uy * (short + SLACK) * sb;
+          continue;
+        }
+        moved = true;
+        const ca = centre(a), cb = centre(b);
         if (o.x < o.y) {
           const dir = ca.x <= cb.x ? -1 : 1;
           out[a].x += dir * (o.x + SLACK) * sa;
@@ -521,23 +627,97 @@ export function swapNodes(
 ): { pos: Positions; score: LayoutScore } {
   const pos = copy(start);
   const ids = Object.keys(pos);
+  // A swap only changes what involves its two nodes: the relations at either
+  // of them ("moved"), and the terms that name one of them. Each trial scores
+  // just that part before and after, instead of the whole layout — the same
+  // score as scoreLayout, for a fraction of the work.
+  const incident = new Map(ids.map((id) => [id, [] as number[]]));
+  segments.forEach(([s, t], e) => {
+    incident.get(s)?.push(e);
+    if (t !== s) incident.get(t)?.push(e);
+  });
+  const frameOf = (e: number) => {
+    const [s, t] = segments[e], label = labels[e];
+    return label ? labelFrame(pos[s], pos[t], boxes[s].radius, boxes[t].radius, label) : null;
+  };
+  // Each relation name's frame, how many nodes cover it, and whether its line
+  // is too short for it (covered by its own ends) — kept up to date on a swap.
+  const frames = segments.map((_, e) => frameOf(e));
+  const hitsOf = (f: LabelFrame | null) => (f ? ids.filter((id) => coversName(f, pos[id], boxes[id])).length : 0);
+  const isShort = (f: LabelFrame | null, e: number) => Boolean(f && f.visible < labels[e]!.length);
+  const hits = frames.map(hitsOf);
+  const short = frames.map(isShort);
+  const hitBy = (e: number, id: string) => (frames[e] && coversName(frames[e]!, pos[id], boxes[id]) ? 1 : 0);
+  const span = ([s, t]: Segment) => Math.hypot(pos[s].x - pos[t].x, pos[s].y - pos[t].y);
+
+  /** The terms that involve a or b; the moved relations' names in full. */
+  const local = (a: string, b: string, moved: number[], isMoved: Set<number>) => {
+    let tangles = 0, length = 0;
+    const movedFrames = moved.map(frameOf);
+    const movedHits = movedFrames.map(hitsOf);
+    moved.forEach((e, k) => {
+      for (let f = 0; f < segments.length; f++)
+        if ((!isMoved.has(f) || f > e) && crosses(segments[e], segments[f], pos)) tangles++;
+      for (const id of ids) if (passesThrough(segments[e], id, pos, boxes)) tangles++;
+      if (movedHits[k] > 0 || isShort(movedFrames[k], e)) tangles += COVERED_LABEL_WEIGHT;
+      tangles += stretchCost(segments[e], labels[e], pos, boxes);
+      length += span(segments[e]);
+    });
+    segments.forEach((seg, e) => {
+      if (isMoved.has(e)) return;
+      if (passesThrough(seg, a, pos, boxes)) tangles++;
+      if (passesThrough(seg, b, pos, boxes)) tangles++;
+    });
+    for (const id of ids)
+      for (const x of [a, b])
+        if (id !== a && id !== b && (x === a || id !== a)) {
+          if (boxesOverlap(x, id, pos, boxes)) tangles++;
+          if (crowds(x, id, pos, boxes)) tangles++;
+        }
+    if (boxesOverlap(a, b, pos, boxes)) tangles++;
+    if (crowds(a, b, pos, boxes)) tangles++;
+    return { tangles, length, movedFrames, movedHits };
+  };
+
   let score = scoreLayout(segments, pos, boxes, labels);
   for (let pass = 0, improved = true; improved && pass < maxPasses; pass++) {
     improved = false;
     for (let i = 0; i < ids.length; i++)
       for (let j = i + 1; j < ids.length; j++) {
         const a = ids[i], b = ids[j];
+        const isMoved = new Set([...incident.get(a)!, ...incident.get(b)!]);
+        const moved = [...isMoved];
+        // The other names: only a's and b's cover can change.
+        const was = segments.map((_, e) => (isMoved.has(e) ? 0 : hitBy(e, a) + hitBy(e, b)));
+        const before = local(a, b, moved, isMoved);
         [pos[a], pos[b]] = [pos[b], pos[a]];
-        const next = scoreLayout(segments, pos, boxes, labels);
+        const after = local(a, b, moved, isMoved);
+        let names = 0;
+        const nextHits = hits.map((h, e) => {
+          if (isMoved.has(e)) return h;
+          const next = h - was[e] + hitBy(e, a) + hitBy(e, b);
+          names += COVERED_LABEL_WEIGHT * (Number(next > 0 || short[e]) - Number(h > 0 || short[e]));
+          return next;
+        });
+        const next = {
+          tangles: score.tangles + after.tangles - before.tangles + names,
+          length: score.length + after.length - before.length,
+        };
         if (better(next, score)) {
           score = next;
           improved = true;
+          nextHits.forEach((h, e) => (hits[e] = h));
+          moved.forEach((e, k) => {
+            frames[e] = after.movedFrames[k];
+            hits[e] = after.movedHits[k];
+            short[e] = isShort(frames[e], e);
+          });
         } else {
           [pos[a], pos[b]] = [pos[b], pos[a]];
         }
       }
   }
-  return { pos, score };
+  return { pos, score: scoreLayout(segments, pos, boxes, labels) };
 }
 
 /** One full arrangement of a component: force layout → widen → de-overlap → swap clean-up. */

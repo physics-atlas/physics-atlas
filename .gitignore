@@ -34,3 +34,6 @@ src/data/concepts.json
 # Local Cloudflare secrets (wrangler dev) — never commit
 .dev.vars
 .wrangler/
+
+# Generated from concepts.json by scripts/build-layout.mjs (npm run build:content)
+src/data/conceptLayout.json

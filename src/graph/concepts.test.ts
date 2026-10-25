@@ -14,6 +14,7 @@ import {
   neighborsOf,
   nodeRadius,
   normalizeRelationship,
+  relationFontSize,
   revealZoom,
   sentenceParts,
   splitFluff,
@@ -60,15 +61,24 @@ describe('assumptions and lists', () => {
     expect(joinList(['a', 'b', 'c'])).toBe('a, b and c');
   });
 
-  it('a concept assumes others by id — both ways in the index, and part of its sub-view', () => {
+  it('a concept assumes things in words; one pointing to a concept links both ways and joins its sub-view', () => {
     const graph = {
       version: 1,
-      nodes: [concept('z', { assumes: ['lp', 'gone'] }), concept('lp'), concept('s')],
+      nodes: [
+        concept('z', {
+          assumes: [{ label: 'Sample regime', description: 'Sample detail.' }, { concept: 'lp' }, { label: 'Gone', concept: 'gone' }],
+        }),
+        concept('lp'),
+        concept('s'),
+      ],
       edges: [rel('e1', 'z', 's', 'approximates')],
     };
     const index = buildConceptIndex(graph);
     const { assumes, assumedBy } = assumptionsOf('z', index);
-    expect(assumes.map((n) => n.id)).toEqual(['lp']);
+    // In words, the linked concept's name when it has none of its own.
+    expect(assumes.map((a) => a.label)).toEqual(['Sample regime', 'LP', 'Gone']);
+    expect(assumes[0].description).toBe('Sample detail.');
+    expect(assumes.map((a) => a.node?.id)).toEqual([undefined, 'lp', undefined]);
     expect(assumedBy).toEqual([]);
     expect(assumptionsOf('lp', index).assumedBy.map((n) => n.id)).toEqual(['z']);
     expect(neighborsOf('z', index).sort()).toEqual(['lp', 's', 'z']);
@@ -136,6 +146,11 @@ describe('generality (size) and importance (zoom visibility)', () => {
     expect(mid.px).toBeGreaterThan(2);
     expect(mid.px).toBeLessThan(3);
     expect(mid.strength).toBeCloseTo(0.5);
+  });
+  it("sizes a relation's name by its smaller end: a landmark's tie to a detail keeps a detail-sized name", () => {
+    expect(relationFontSize([7, 270], [1, 10])).toBe(relationFontSize([7, 7], [1, 1]));
+    expect(relationFontSize([270, 270], [10, 10])).toBeGreaterThan(relationFontSize([270, 7], [10, 1]));
+    expect(relationFontSize([270, 120], [10, 6])).toBe(relationFontSize([120, 120], [6, 6]));
   });
 });
 
