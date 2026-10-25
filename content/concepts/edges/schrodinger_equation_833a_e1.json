@@ -1,0 +1,6 @@
+{
+  "id": "schrodinger_equation_833a_e1",
+  "source": "schrodinger_equation_833a",
+  "target": "schrodinger_poisson_equation",
+  "relationship": "relates"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "schrodinger_equation_833a",
+  "label": "Schrödinger Equation",
+  "type": "equation",
+  "importance": 10,
+  "generality": 8,
+  "attrs": {
+    "description": "Evolves the probability density of a particle over time and space given a potential landscapebu",
+    "equation": "i\\hbar\\frac{\\partial\\psi}{\\partial t} = -\\frac{\\hbar^2}{2m}\\nabla^2\\psi +V\\psi",
+    "variables": [
+      {
+        "symbol": "\\psi(x,t)",
+        "meaning": "Wave function"
+      },
+      {
+        "symbol": "V(x,t)",
+        "meaning": "Potential"
+      }
+    ],
+    "conditions": [],
+    "representations": [
+      {
+        "name": "Using Hamiltonian operator",
+        "equation": "i\\hbar\\frac{\\partial\\psi}{\\partial t} =\\hat H\\psi"
+      }
+    ],
+    "domain": "Quantum mechanics"
+  }
+}
