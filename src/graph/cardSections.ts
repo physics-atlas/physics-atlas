@@ -1,4 +1,5 @@
-import type { EdgeCondition, GraphEdge, GraphNode, NodeType } from '../data/types';
+import type { GraphEdge, GraphNode, NodeType } from '../data/types';
+import { assumptionsOf } from './concepts';
 import type { ConceptIndex } from './concepts';
 
 export interface CardSection {
@@ -9,10 +10,10 @@ export interface CardSection {
   via?: NodeType[];
 }
 
-/** Lists the assumptions on a concept's relations (edge `conditions`). */
+/** Lists what a concept assumes (its `assumes`) under a type-specific heading. */
 export interface ConditionSection {
   heading: string;
-  /** Also list the conditions on the relations of neighbours of these types. */
+  /** Also list what neighbours of these types assume — "applies under" through its system. */
   via?: NodeType[];
 }
 
@@ -105,15 +106,15 @@ export const CARD_SECTIONS: Record<NodeType, CardSection[]> = {
   fluff: [{ heading: 'Pokes fun at', types: [...PHYSICS, 'claim', 'finding', 'dataset', 'learning_goal', 'misconception'] }],
 };
 
-/** Shown first on the card — what the concept's relations assume. */
+/** Shown first on the card — what the concept assumes (types without an entry: "Assumes"). */
 export const CONDITION_SECTIONS: Partial<Record<NodeType, ConditionSection>> = {
   physical_system: { heading: 'Conditions' },
   phenomenon: { heading: 'Applies under', via: ['physical_system', 'model_regime'] },
   process: { heading: 'Occurs under', via: ['physical_system'] },
   model_regime: { heading: 'Valid under' },
   theory: { heading: 'Valid under' },
-  // "Linked", since the equation's own attrs.conditions list renders above
-  equation: { heading: 'Linked conditions' },
+  // "Assumes", since the equation's own attrs.conditions list renders above as "Conditions"
+  equation: { heading: 'Assumes' },
 };
 
 /** Physics concepts get a "Learning goals" section (content still TBD). */
@@ -126,10 +127,9 @@ export interface SectionItem {
 }
 
 export interface ConditionItem {
-  condition: EdgeCondition;
-  /** The relation that holds under this condition */
-  edge: GraphEdge;
-  /** The neighbour whose relation this is, for `via` sections */
+  /** The assumed concept */
+  node: GraphNode;
+  /** The neighbour that assumes it, for `via` sections */
   via?: GraphNode;
 }
 
@@ -162,20 +162,16 @@ export function sectionItems(id: string, section: CardSection, index: ConceptInd
   return items;
 }
 
-/** Conditions on the concept's own relations, then on its `via` neighbours' relations. */
+/** What the concept assumes, then what its `via` neighbours assume. */
 export function conditionItems(id: string, section: ConditionSection, index: ConceptIndex): ConditionItem[] {
-  const own = incident(id, index);
-  const items: ConditionItem[] = own.flatMap((edge) =>
-    (edge.conditions ?? []).map((condition) => ({ condition, edge })),
-  );
+  const items: ConditionItem[] = assumptionsOf(id, index).assumes.map((node) => ({ node }));
   if (!section.via) return items;
-  const seen = new Set(own.map((e) => e.id));
-  for (const hop of neighbours(id, index).filter((n) => section.via!.includes(n.type))) {
-    for (const edge of incident(hop.id, index)) {
-      if (seen.has(edge.id)) continue;
-      seen.add(edge.id);
-      for (const condition of edge.conditions ?? []) items.push({ condition, edge, via: hop });
+  const seen = new Set([id, ...items.map((i) => i.node.id)]);
+  for (const hop of neighbours(id, index).filter((n) => section.via!.includes(n.type)))
+    for (const node of assumptionsOf(hop.id, index).assumes) {
+      if (seen.has(node.id)) continue;
+      seen.add(node.id);
+      items.push({ node, via: hop });
     }
-  }
   return items;
 }

@@ -11,7 +11,6 @@ import {
   edgeLabelSize,
   edgeWeight,
   effectiveImportance,
-  joinList,
   labelSize,
   lonelyLine,
   nodeRadius,
@@ -56,6 +55,8 @@ const PAST_VIEW = 0.9;
 // So do the draft, what it connects to, and the concepts it points the proposer at.
 const PINNED = [
   'chosen',
+  'sel-assumed',
+  'edge-sel-end',
   'goal-node',
   'sel-pre',
   'sel-post',
@@ -147,6 +148,10 @@ interface GraphViewProps {
    * confirmed concept, never in the layout cache.
    */
   fluff?: ConceptGraph | null;
+  /** The relation whose card is open: drawn like a hovered one, its two concepts with it. */
+  selectedEdgeId?: string | null;
+  /** Clicking a line selects its relation (null: clicking off it). */
+  onSelectEdge?: (id: string | null) => void;
 }
 
 export interface DraftOverlay {
@@ -163,7 +168,7 @@ const ZOOM_STEP = 1.5;
 const NO_IDS: string[] = [];
 const NO_SHAPES: DraftShape[] = [];
 /** What an edit draft overrides on the confirmed concept while it's previewed. */
-const SUBJECT_KEYS = ['title', 'label', 'badge', 'color', 'size', 'radius', 'importance', 'fontSize', 'fontSizeEmph', 'type', 'icon'];
+const SUBJECT_KEYS = ['title', 'label', 'badge', 'color', 'size', 'radius', 'importance', 'fontSize', 'fontSizeEmph', 'type', 'icon', 'assumes'];
 const DRAFT_BADGE = 'Draft · not submitted';
 /** The zoom the editor opens at, at least: mid-importance names are readable (15px × 0.75 ≥ 9px). */
 const DRAFT_ZOOM = 0.75;
@@ -584,6 +589,19 @@ const styleFor = (light: boolean) => {
     selector: 'node.concept-node.sel-pre, node.concept-node.sel-post',
     style: { opacity: 1, 'text-opacity': 1, 'background-opacity': 0.7 },
   },
+  // What the selected concept assumes (and what assumes it): no line, so a dotted outline.
+  {
+    selector: 'node.concept-node.sel-assumed',
+    style: {
+      opacity: 1,
+      'text-opacity': 1,
+      'background-opacity': 0.6,
+      'border-style': 'dotted',
+      'border-width': 3,
+      'border-color': silver,
+      'border-opacity': 1,
+    },
+  },
   {
     selector: 'edge.concept-edge.sel-pre, edge.concept-edge.sel-post',
     style: {
@@ -694,7 +712,7 @@ const styleFor = (light: boolean) => {
   // Hovering a line: its relation name grows and the two concepts it joins
   // pop out, their names on the same plate as the relation name.
   {
-    selector: 'edge.concept-edge.edge-hovered',
+    selector: 'edge.concept-edge.edge-hovered, edge.concept-edge.edge-selected',
     style: {
       'text-opacity': 1,
       opacity: 1,
@@ -718,7 +736,7 @@ const styleFor = (light: boolean) => {
     style: { 'background-opacity': 0.85 },
   },
   {
-    selector: 'node.concept-node.edge-end',
+    selector: 'node.concept-node.edge-end, node.concept-node.edge-sel-end',
     style: {
       opacity: 1,
       'text-opacity': 1,
@@ -738,7 +756,10 @@ const styleFor = (light: boolean) => {
     },
   },
   // A name written inside its circle stays where it is, under the glyph.
-  { selector: 'node.concept-node.label-inside.edge-end', style: { 'text-margin-y': 'data(labelShift)' } },
+  {
+    selector: 'node.concept-node.label-inside.edge-end, node.concept-node.label-inside.edge-sel-end',
+    style: { 'text-margin-y': 'data(labelShift)' },
+  },
 ] as unknown as cytoscape.StylesheetJson;
 };
 
@@ -759,6 +780,8 @@ interface ConceptComponent {
   segments: Segment[];
   /** Each segment's relation name — its line gets the room the name needs */
   labels: SegmentLabels;
+  /** Concept → what it assumes: pulled close, never drawn */
+  ties: Segment[];
 }
 
 interface ComponentLayout {
@@ -803,22 +826,51 @@ function layoutConcepts(
   cy: cytoscape.Core,
   onImproved: (positions: Positions) => void,
 ): () => void {
-  const all = cy
-    .elements()
-    .components()
-    .sort((a, b) => b.nodes().length - a.nodes().length);
+  // Components join through relations and through assumptions (ties): an
+  // assumed concept is laid out next to what assumes it, though no line is drawn.
+  const ties: Segment[] = [];
+  cy.nodes().forEach((n) => {
+    for (const a of (n.data('assumes') as string[] | undefined) ?? []) if (cy.$id(a).nonempty()) ties.push([n.id(), a]);
+  });
+  const parent = new Map(cy.nodes().map((n) => [n.id(), n.id()]));
+  const find = (x: string): string => {
+    while (parent.get(x) !== x) {
+      parent.set(x, parent.get(parent.get(x)!)!);
+      x = parent.get(x)!;
+    }
+    return x;
+  };
+  const join = (a: string, b: string) => {
+    parent.set(find(a), find(b));
+  };
+  cy.edges().forEach((e) => join(e.source().id(), e.target().id()));
+  for (const [a, b] of ties) join(a, b);
+  const groups = new Map<string, string[]>();
+  cy.nodes().forEach((n) => {
+    const root = find(n.id());
+    groups.set(root, [...(groups.get(root) ?? []), n.id()]);
+  });
+  const all = [...groups.values()].sort((a, b) => b.length - a.length);
   const comps: ConceptComponent[] = all
-    .filter((c) => c.nodes().length > 1)
-    .map((c) => ({
-      ids: c.nodes().map((n) => n.id()),
-      segments: c.edges().map((e) => [e.source().id(), e.target().id()] as Segment),
-      labels: c.edges().map((e) => relationLabel(e)),
-    }));
+    .filter((ids) => ids.length > 1)
+    .map((ids) => {
+      const inside = new Set(ids);
+      const edges = cy
+        .edges()
+        .toArray()
+        .filter((e) => inside.has((e as cytoscape.EdgeSingular).source().id())) as cytoscape.EdgeSingular[];
+      return {
+        ids,
+        segments: edges.map((e) => [e.source().id(), e.target().id()] as Segment),
+        labels: edges.map((e) => relationLabel(e)),
+        ties: ties.filter(([a]) => inside.has(a)),
+      };
+    });
   // Unlinked concepts share one compact row instead of each taking a full slot.
-  const loneIds = all.filter((c) => c.nodes().length === 1).map((c) => c.nodes()[0].id());
+  const loneIds = all.filter((ids) => ids.length === 1).map((ids) => ids[0]);
   const key = layoutKey(
     cy.nodes().map((n) => n.id()),
-    comps.flatMap((c) => c.segments),
+    comps.flatMap((c) => [...c.segments, ...c.ties.map(([a, b]) => [a, `assumes:${b}`] as Segment)]),
     // The names' lengths are part of the layout: a renamed relation re-lays it out.
     `concepts|${comps.flatMap((c) => c.labels.map((l) => Math.round(l?.length ?? 0))).join('.')}`,
   );
@@ -845,7 +897,7 @@ function layoutConcepts(
       COMPONENT_GAP,
     );
 
-  const best = comps.map((c, i) => arrangeComponent(c.ids, c.segments, boxes, createRng(1 + i), c.labels));
+  const best = comps.map((c, i) => arrangeComponent(c.ids, c.segments, boxes, createRng(1 + i), c.labels, c.ties));
   const shown = pack(best);
   setPositions(cy, shown);
 
@@ -870,7 +922,7 @@ function layoutConcepts(
     }
     const i = job.comp;
     const comp = comps[i];
-    const candidate = arrangeComponent(comp.ids, comp.segments, boxes, createRng(job.seed), comp.labels);
+    const candidate = arrangeComponent(comp.ids, comp.segments, boxes, createRng(job.seed), comp.labels, comp.ties);
     if (better(candidate.score, best[i].score)) {
       best[i] = candidate;
       improved = true;
@@ -910,6 +962,7 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
       labelShift: inside ? 0.4 * radius : 4,
       type: n.type,
       icon: typeIconUri(n.type, iconColor) ?? undefined,
+      assumes: n.assumes ?? [],
     },
     classes: `concept-node${inside ? ' label-inside' : ''} ${classes}`.trim(),
     // Only the draft can be dragged; everything else is placed by the layout.
@@ -919,9 +972,8 @@ function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, cla
 
 function conceptEdgeElement(e: GraphEdge, classes = '', status?: string) {
   const relation = normalizeRelationship(e.relationship) ?? e.relationship.trim();
-  const assumed = (e.conditions ?? []).map((c) => c.label);
-  // The assumption goes on its own line under the relation name, then the status.
-  const lines = [relation, assumed.length ? `assuming ${joinList(assumed)}` : '', status ? `(${status})` : ''];
+  // The status, when there is one, on its own line under the relation name.
+  const lines = [relation, status ? `(${status})` : ''];
   return {
     // width and strength are recomputed with the zoom (applyFade); these hold until then.
     data: {
@@ -1062,11 +1114,15 @@ export default function GraphView({
   draftRecall = 0,
   fun = false,
   fluff = null,
+  selectedEdgeId = null,
+  onSelectEdge,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onSelectEdgeRef = useRef(onSelectEdge);
+  onSelectEdgeRef.current = onSelectEdge;
   const applyFadeRef = useRef<(() => void) | null>(null);
   /** Positions for the overlay given confirmed positions — null when there's no overlay. */
   const placeOverlayRef = useRef<((confirmed: Positions) => Positions) | null>(null);
@@ -1306,9 +1362,12 @@ export default function GraphView({
       const tgt = e.target;
       if (tgt === cy) {
         onSelectRef.current(null);
+        onSelectEdgeRef.current?.(null);
         return;
       }
       if (typeof tgt.isNode === 'function' && tgt.isNode()) onSelectRef.current(tgt.id());
+      else if (typeof tgt.isEdge === 'function' && tgt.isEdge() && tgt.hasClass('concept-edge'))
+        onSelectEdgeRef.current?.(tgt.id());
     });
 
     // Hover: light up the concept's direct connections — what leads into it
@@ -1618,6 +1677,10 @@ export default function GraphView({
           .nodes('.concept-node')
           .not('.draft, .layer-hidden')
           .filter((n) => (n as cytoscape.NodeSingular).connectedEdges().not('.layer-hidden').empty())
+          .filter((n) => {
+            const own = (n.data('assumes') as string[] | undefined) ?? [];
+            return own.length === 0 && cy.nodes().every((m) => !((m.data('assumes') as string[] | undefined) ?? []).includes(n.id()));
+          })
           .map((n) => ({ id: n.id(), label: n.data('title') as string, importance: n.data('importance') as number }))
       : [];
     setLonely((prev) =>
@@ -1636,7 +1699,7 @@ export default function GraphView({
     if (!cy) return;
     cy.batch(() => {
       cy.elements().removeClass(
-        'chosen dimmed onpath done sel-soft sel-pre sel-post goal-node path-node draft-near conflict-match',
+        'chosen dimmed onpath done sel-soft sel-pre sel-post sel-assumed goal-node path-node draft-near conflict-match edge-selected edge-sel-end',
       );
       const near = new Set(draftNearIds);
       const similar = new Set(draftConflictIds);
@@ -1663,6 +1726,12 @@ export default function GraphView({
           cy.elements().addClass('sel-soft');
           n.incomers().removeClass('sel-soft').addClass('sel-pre');
           n.outgoers().removeClass('sel-soft').addClass('sel-post');
+          // What it assumes, and what assumes it: no line, a dotted outline.
+          const assumes = new Set((n.data('assumes') as string[] | undefined) ?? []);
+          cy.nodes()
+            .filter((m) => assumes.has(m.id()) || ((m.data('assumes') as string[] | undefined) ?? []).includes(selectedId))
+            .removeClass('sel-soft')
+            .addClass('sel-assumed');
           n.removeClass('sel-soft').addClass('chosen');
         }
       } else {
@@ -1678,6 +1747,13 @@ export default function GraphView({
           });
         }
         if (goalId) cy.$id(goalId).addClass('goal-node');
+      }
+      // A relation's card is open: it and its two concepts stand out, the rest recede.
+      const picked = selectedEdgeId ? cy.$id(selectedEdgeId) : cy.collection();
+      if (picked.nonempty() && picked.isEdge()) {
+        cy.elements().addClass('sel-soft');
+        picked.removeClass('sel-soft').addClass('edge-selected');
+        (picked as cytoscape.EdgeSingular).connectedNodes().removeClass('sel-soft').addClass('edge-sel-end');
       }
     });
     // What's pinned just changed — re-run the zoom level of detail.
@@ -1695,6 +1771,7 @@ export default function GraphView({
     draftNearIds,
     draftConflictIds,
     draftShapes,
+    selectedEdgeId,
   ]);
 
   // Glide to the focused concept (search / home jumps) — a smooth pan+zoom

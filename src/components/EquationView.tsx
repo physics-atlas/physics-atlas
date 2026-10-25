@@ -1,4 +1,4 @@
-import type { EquationAttrs, EquationVariable } from '../data/types';
+import type { EquationAttrs, EquationVariable, Formula } from '../data/types';
 import { MathText } from './RichText';
 
 // An equation on the concept card, typeset like the editor's preview: the main
@@ -62,5 +62,32 @@ export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
         </>
       )}
     </div>
+  );
+}
+
+/** A mathematical formalism's formulas — how it works — each typeset, named and with its variables. */
+export function FormulaView({ formulas }: { formulas: Formula[] }) {
+  return (
+    <section className="rel-block concept-equation">
+      <h3 className="block-heading">
+        Formulas
+        {formulas.length > 0 && <span className="rel-count">{formulas.length}</span>}
+      </h3>
+      {formulas.length === 0 ? (
+        <p className="concept-empty">None written yet.</p>
+      ) : (
+        <ul className="concept-representations">
+          {formulas.map((f, i) => (
+            <li key={`${f.name ?? ''}-${i}`} className="concept-representation">
+              {f.name && <p className="concept-representation-name">{f.name}</p>}
+              <div className="concept-equation-formula">
+                <MathText tex={f.equation} display />
+              </div>
+              {f.variables && f.variables.length > 0 && <Variables variables={f.variables} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

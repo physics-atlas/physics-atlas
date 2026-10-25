@@ -150,6 +150,7 @@ it. Every type currently has one.
 | Type | Fields |
 |---|---|
 | Every type except `equation`, `learning_goal`, `resource` | `description` (required), `domain` (optional) |
+| `formalism` | `description`, `formulas` (optional: `{equation, name?, variables?}[]` — how the formalism works, LaTeX), `domain` (optional) |
 | `equation` | `description`, `equation` (the main formula, LaTeX), `variables` (`{symbol, meaning}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
 | `learning_goal` | `description` only — **no `domain`** |
 | `resource` | `link` (http/https), `mediaType`, `estimatedMinutes` (number), `rating` (0–5), `reviewCount` (integer) — **no `description`/`domain`** |
@@ -184,7 +185,8 @@ Equations are names only). The six equations were written as Unicode text before
 label} {relationship} {target label}."* The `relationship` string is looked
 up (trimmed, case-insensitive) against the template table in
 `conceptVocabulary.json` — an edge whose relationship isn't in the table
-fails validation. The 32 known relationships:
+fails validation. The 30 known relationships (an assumption isn't one of them: it's
+[`assumes` on the concept](#assumptions--assumes-on-the-concept)):
 
 | `relationship` | Sentence template |
 |---|---|
@@ -202,7 +204,6 @@ fails validation. The 32 known relationships:
 | `explains` | `{s} explains {t}.` |
 | `links` | `{s} links to {t}.` |
 | `is a` | `{s} is a {t}.` |
-| `assumes a` | `{s} assumes a {t}.` |
 | `describes` | `{s} describes {t}.` |
 | `happens in` | `{s} happens in {t}.` |
 | `exhibits` | `{s} exhibits {t}.` |
@@ -218,7 +219,6 @@ fails validation. The 32 known relationships:
 | `supported by` | `{s} is supported by {t}.` |
 | `addresses` | `{s} addresses {t}.` |
 | `approximates` | `{s} approximates {t}.` |
-| `assumes` | `{s} assumes {t}.` |
 | `is a class of` | `{s} is a class of {t}.` |
 
 The twelve from `exhibits` to `addresses` follow the intended pattern by node type (not enforced by the
@@ -245,37 +245,60 @@ The full sentence appears in each concept's card under **Relations**.
 Adding a new relationship type means adding a row to `conceptVocabulary.json`
 first — the validator refuses any edge whose relationship isn't in the table.
 
-## Conditions and assumptions — on the edge, not a node
+### How two concepts connect: `description` and `derivation`
 
-A condition is not a concept of its own: it qualifies a relation. Write it as
-an optional `conditions` list on the edge it applies to:
+Clicking a line opens the relation's card (so does **Details** beside it in a concept's
+**All relations**): its type, the two concepts, and how they connect. Two optional
+fields, both Markdown with LaTeX (`$…$` inline, `$$…$$` on its own line):
 
 ```json
 {
-  "id": "e63",
-  "source": "zeldovich_approximation",
-  "target": "structure_formation",
-  "relationship": "approximates",
-  "conditions": [
-    {
-      "label": "linear potential",
-      "description": "The assumption that the gravitational potential keeps its initial, linear-theory form …"
-    }
-  ]
+  "id": "e13",
+  "source": "einstein_eq",
+  "target": "newtonian_gravity",
+  "relationship": "leads to",
+  "description": "Sample: a sentence or two on how the two are linked, with $x$ inline.",
+  "derivation": "Sample: the first step …\n\n$$a = b$$\n\nso the second follows."
 }
 ```
 
-This reads *"Zel'dovich approximation approximates Structure Formation under the
-assumption of linear potential."* Several conditions read *"under the assumptions
-of A and B"*. `label` is required and sits mid-sentence, so write it in lower case
-unless it's a name. `description` is optional and shows on the card. On the map the
-edge label gets a second line, *"assuming linear potential"*. Cards list the
-conditions under a type-specific heading (e.g. **Valid under** for a model,
-**Applies under** for a phenomenon). Leave the field out when there are none, since
-an empty list fails validation.
+`description` is a few sentences on how they're linked; `derivation` shows, step by
+step, how one follows from the other. Leave either out until it's written — the card says
+*Not described yet* / *No derivation yet*. (The example only shows the format.)
+
+## Assumptions — `assumes` on the concept
+
+An assumption is a concept of its own — a limit, an approximation, a property — and
+a concept lists what it assumes by id, in an optional top-level `assumes`:
+
+```json
+{
+  "id": "zeldovich_approximation",
+  "type": "model_regime",
+  "label": "Zel'dovich approximation",
+  "assumes": ["linear_potential"],
+  "attrs": { "description": "…" }
+}
+```
+
+It isn't a relation, so no line is drawn — assumptions will be common, and a line for
+each would clutter the map. Instead the concept's card lists them under a type-specific
+heading (**Valid under** for a model or theory, **Applies under** for a phenomenon —
+also through the system or model it's linked to — **Conditions** for a physical system,
+**Assumes** otherwise), the assumed concept's card lists **Assumed by**, and selecting
+either one marks the other on the map with a dotted outline. The layout keeps them
+near each other. Rules: every id must be a concept, a concept can't assume itself, no id
+twice; leave the field out when there are none. The proposal editor has an **Assumes**
+field (confirmed concepts).
+
+Until 2026-10 assumptions were text on a relation (`"conditions": [{ "label": … }]`).
+The four there became concepts — Weak-field low-velocity limit, Large number, Linear
+potential, Ultralight mass — each assumed by its relation's source and marked with a
+`review` to check. The validator now refuses `conditions` on a relation, and `assumes`
+as a relationship.
 
 An equation's own `attrs.conditions` (plain strings, see above) stays as it is.
-That list describes the equation itself, not one of its relations.
+That list describes the equation itself.
 
 ## How the concept curriculum is built
 
@@ -356,8 +379,8 @@ be a landmark (a small circle that's always there).
 Clicking a concept highlights its direct connections in both directions (silver
 leads into it, gold leads out of it) and opens its card: the
 description, the epistemic status, then sections that depend on its type —
-e.g. a phenomenon lists the conditions it applies under (the `conditions` on its
-own relations, or on the relations of the system/model that exhibits it), where it is seen and what explains
+e.g. a phenomenon lists what it applies under (what it assumes, or what the
+system/model that exhibits it assumes), where it is seen and what explains
 it, plus its learning goals (still TBD). The sections are configured per type in
 `src/graph/cardSections.ts`; they list linked concepts of the right type in
 either edge direction, so they fill in as you add edges. Every relation is

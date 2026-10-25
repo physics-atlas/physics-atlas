@@ -42,13 +42,14 @@ const jeans = (): Draft => ({
   evidence: [{ kind: 'arxiv', ref: '2101.01234', note: 'Sample' }],
   author: 'Sample author',
   relations: [
-    { key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of', conditions: [] },
+    { key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of' },
     {
       key: 'r2',
       source: 'zeldovich_approximation',
       target: NEW_CONCEPT,
       relationship: 'relates',
-      conditions: [{ label: ' linear growth ', description: '' }, { label: '  ' }],
+      description: ' Growth stays linear while $\\delta \\ll 1$. ',
+      derivation: '  ',
     },
   ],
 });
@@ -59,7 +60,7 @@ const builds = (on: Draft): Draft => ({
   label: 'Jeans mass',
   type: 'property',
   description: 'Sample: the mass inside a Jeans length.',
-  relations: [{ key: 'r1', source: NEW_CONCEPT, target: draftRef(on.suffix), relationship: 'depends on', conditions: [] }],
+  relations: [{ key: 'r1', source: NEW_CONCEPT, target: draftRef(on.suffix), relationship: 'depends on' }],
 });
 
 const vlasov = () => concepts.nodes.find((n) => n.id === 'vlasov_equation')!;
@@ -93,12 +94,42 @@ describe('what a draft becomes', () => {
     const [e1, e2] = draftEdges(d, alone(d));
     expect(e1).toEqual({ id: `${id}_e1`, source: id, target: 'structure_formation', relationship: 'is a condition of' });
     expect(e2.target).toBe(id);
-    expect(e2.conditions).toEqual([{ label: 'linear growth' }]);
+    // Trimmed, and an empty derivation is left out.
+    expect(e2.description).toBe('Growth stays linear while $\\delta \\ll 1$.');
+    expect('derivation' in e2).toBe(false);
   });
   it('joins several domains the vocabulary way', () => {
     expect(draftNode({ ...jeans(), domains: ['Cosmology', 'Astrophysics'] }, concepts).attrs).toMatchObject({
       domain: 'Cosmology / Astrophysics',
     });
+  });
+  it('what it assumes is exported, and an edit starts from it', () => {
+    const d = { ...jeans(), assumes: ['linear_potential', 'linear_potential'] };
+    expect(draftNode(d, concepts).assumes).toEqual(['linear_potential']);
+    expect('assumes' in draftNode(jeans(), concepts)).toBe(false);
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const gone = { ...jeans(), assumes: ['nowhere'] };
+    expect(draftProblems(gone, alone(gone)).map((p) => p.field)).toEqual(['assumes']);
+    const z = newEditDraft(concepts.nodes.find((n) => n.id === 'zeldovich_approximation')!, fixed, at);
+    expect(z.assumes).toEqual(['linear_potential']);
+    expect(draftNode(z, concepts)).toEqual(concepts.nodes.find((n) => n.id === 'zeldovich_approximation'));
+  });
+  it('a formalism carries its formulas: the LaTeX, a name and variables when given', () => {
+    const d: Draft = {
+      ...jeans(),
+      type: 'formalism',
+      formulas: [
+        { name: ' A vector in a basis ', equation: ' v = v^i e_i ', variables: [{ symbol: 'e_i', meaning: 'Basis vectors' }] },
+        { name: '', equation: '', variables: [] },
+      ],
+    };
+    expect(draftNode(d, concepts).attrs).toMatchObject({
+      formulas: [{ name: 'A vector in a basis', equation: 'v = v^i e_i', variables: [{ symbol: 'e_i', meaning: 'Basis vectors' }] }],
+    });
+    const nameOnly = { ...d, formulas: [{ name: 'To do', equation: '', variables: [] }] };
+    expect(draftProblems(nameOnly, alone(nameOnly)).map((p) => [p.field, p.index])).toEqual([['formulas', 0]]);
+    // Formulas only belong to formalisms.
+    expect('formulas' in draftNode({ ...d, type: 'property' }, concepts).attrs).toBe(false);
   });
   it('an equation carries the equation and empty lists', () => {
     const node = draftNode({ ...jeans(), type: 'equation', equation: ' a = b ' }, concepts);
@@ -196,7 +227,7 @@ describe('pullRequestText', () => {
     expect(text).toContain('# Add Jeans scale');
     expect(text).toContain('Sample claim with $\\lambda_J$.');
     expect(text).toContain('- Jeans scale is a condition of Structure Formation.');
-    expect(text).toContain("- Zel'dovich approximation relates to Jeans scale under the assumption of linear growth.");
+    expect(text).toContain("- Zel'dovich approximation relates to Jeans scale.");
     expect(text).toContain('[arXiv:2101.01234](https://arxiv.org/abs/2101.01234) — Sample');
     expect(text).toContain(`content/concepts/nodes/${conceptId(jeans())}.json`);
     expect(text).toContain('Proposed by Sample author.');
@@ -261,7 +292,7 @@ describe('several drafts, and relations between them', () => {
   });
   it('a relation into someone else’s open proposal depends on it too', () => {
     const sample = fixtureProposals().find((p) => p.id === 'sample-jeans-scale')!;
-    const c = { ...builds(a), relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'jeans_scale_s1', relationship: 'relates', conditions: [] }] };
+    const c = { ...builds(a), relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'jeans_scale_s1', relationship: 'relates' }] };
     const withSample: DraftContext = { confirmed: concepts, drafts: [c], proposals: [sample] };
     expect(draftProposal(c, withSample).dependsOn).toEqual(['sample-jeans-scale']);
     expect(draftProblems(c, withSample)).toEqual([]);
@@ -368,7 +399,7 @@ describe('editing a confirmed concept', () => {
     expect(text).toContain('- Delete `content/concepts/edges/e62.json`');
   });
   it('new relations get ids that two edits of one concept can’t share', () => {
-    const d = { ...edit(), relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'kinetic_theory', relationship: 'relates', conditions: [] }] };
+    const d = { ...edit(), relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'kinetic_theory', relationship: 'relates' }] };
     expect(draftEdges(d, alone(d))[0].id).toBe(`vlasov_equation_${d.suffix}_e1`);
   });
   it('on the map, the subject is the confirmed concept itself', () => {

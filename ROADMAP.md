@@ -6,6 +6,49 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-56: Formalism formulas, every type's glyph, legend disclaimer, guide button in the header
+
+**Status:** ✅ Implemented <!-- status-line: feature-56 -->
+**Planned:** 2026-10-25 — requested: glyphs from Sophie's sketch (in white); LaTeX formulas for mathematical formalisms; the guide button between search and tabs; a disclaimer at the foot of the legend
+**Implemented:** 2026-10-25
+
+### Implemented
+- `typeIcons.ts` — ten glyphs (flag, open book, thought with ≠, question, magnifier, flask, bar chart, step in a cycle, gear, apple) in the existing line style
+- `types.ts` — `FormalismAttrs.formulas` (`Formula {equation, name?, variables?}`); validator shape + KaTeX check; `EquationView.tsx` `FormulaView` on the card; editor **Formulas**
+- `App.tsx` — the guide's button in the header (state lifted; greeting fixed for React's dev double run); `Legend.tsx` — the disclaimer
+
+### Review
+Not run — direct session. build / lint / test (168) clean; smoke passes with no failures.
+
+## feature-55: Relation cards
+
+**Status:** ✅ Implemented <!-- status-line: feature-55 -->
+**Planned:** 2026-10-25 — requested: a card for relations like for concepts, with their type, ends and how they connect, e.g. a derivation
+**Implemented:** 2026-10-25
+
+### Implemented
+- `EdgeCard.tsx` (lazy) — type, sentence, From / To, How they connect, Derivation, open question; proposed relations say so
+- `GraphView.tsx` — clicking a line selects it (`onSelectEdge`), the relation and its ends stand out; `ConceptMapView.tsx` — the card, focus in/out, Escape, **Details** in a concept's relation list
+- `GraphEdge.description` / `derivation` (Markdown + LaTeX); editor fields per relation with previews; validator checks them
+
+### Review
+Not run — direct session.
+
+## feature-54: Assumptions as concepts (`assumes`)
+
+**Status:** ✅ Implemented <!-- status-line: feature-54 -->
+**Planned:** 2026-10-25 — requested: *assumes* as a node attribute holding several concepts, not drawn as a connection; existing data remade; in the editor (scope confirmed: each relation's source assumes; card + highlight)
+**Implemented:** 2026-10-25
+
+### Implemented
+- `types.ts` — `assumes?: string[]`, relation `conditions` removed; `concepts.ts` — `assumedBy` in the index, `assumptionsOf`, `neighborsOf` includes them; `cardSections.ts` — sections from assumptions
+- `GraphView.tsx` — layout ties (invisible), `sel-assumed` dotted outline, no lonely bubble for a held concept; `DraftEditor.tsx` — **Assumes** field; `draft.ts` / `proposals.ts` — export and checks
+- Data: four new concepts from the relation conditions (e13, e58, e63, e66), each with a review note; `assumes` / `assumes a` relation types removed; validator refuses relation `conditions`
+- Tests: assumptions in the index and drafts, formulas, relation description/derivation; smoke counts 68 concepts
+
+### Review
+Not run — direct session.
+
 ## feature-53: Room for every relation name
 
 **Status:** ✅ Implemented <!-- status-line: feature-53 -->

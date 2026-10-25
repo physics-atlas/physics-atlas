@@ -9,17 +9,15 @@ export default function RelationSentence({
   byId,
   selfId,
   onPick,
-  withConditions = true,
 }: {
   edge: GraphEdge;
   byId: ConceptMap;
   selfId: string;
   onPick: (id: string) => void;
-  withConditions?: boolean;
 }) {
   return (
     <>
-      {sentenceParts(edge, byId, withConditions).map((part, i) =>
+      {sentenceParts(edge, byId).map((part, i) =>
         typeof part === 'string' ? (
           <Fragment key={i}>{part}</Fragment>
         ) : part.id === selfId ? (

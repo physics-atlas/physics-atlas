@@ -280,6 +280,8 @@ toggle between a layered and a free layout.
 
 ## Decision 16 — Conditions are edge attributes; 16 node types (2026-10)
 
+> *2026-10:* conditions on relations were replaced — assumptions are concepts listed in a concept's `assumes` (Decision 33).
+
 A condition only means something relative to a relation: the Zel'dovich
 approximation approximates structure formation *under the assumption of* a
 linear potential. As a `conditions` node it was joined to only one end of that
@@ -659,6 +661,24 @@ have their names hidden until hovered. Layout cache v9.
 
 **Open paths:** names overlapping each other (where lines cross) aren't scored yet; a
 proposal could be allowed to nudge the confirmed concepts next to it.
+
+## Decision 33 — Assumptions are concepts a concept `assumes`; relations get cards (2026-10)
+
+Supersedes Decision 16's "conditions are edge attributes". Assumptions will be common, so
+each is a concept of its own and a concept lists what it assumes — no line on the map.
+
+| Piece | Rule |
+|---|---|
+| `assumes` | An optional top-level list of concept ids on a concept. Not a relation: nothing is drawn. The card lists it under a type-specific heading (Valid under, Applies under — also through the linked system or model — Conditions, else Assumes), the other side lists **Assumed by**, and selecting either marks the other with a dotted outline (pattern, not colour; the card says it in words). The layout ties them together invisibly, so they sit near each other without counting as crossings. Lonely-concept bubbles (fun mode) don't fire for a concept held by an assumption. |
+| Migration | The four relation conditions became concepts — Weak-field low-velocity limit, Large number, Linear potential (model/behaviour regime) and Ultralight mass (property) — each assumed by its relation's **source** (the user's choice, over a hand-picked mapping that would have put the weak-field limit on Newtonian Gravity). Descriptions carried over unchanged; type, importance and generality are placeholders under a `review`. The `assumes` and `assumes a` relationship types were removed; the validator refuses relation `conditions` and points to `assumes`. |
+| Relation cards | Clicking a line, or **Details** beside a relation in a concept's card (the keyboard route), opens the relation's card: its type, the sentence, From / To, and two optional fields — `description` (how they connect) and `derivation` — both Markdown + LaTeX. The proposal editor has both per relation. The relation and its two concepts stand out on the map while the card is open. Proposing a description or derivation for an *existing* relation isn't possible from the editor yet (open path). |
+| Formalism formulas | A mathematical formalism's `attrs.formulas`: `{equation, name?, variables?}[]` — formulas that show how it works, typeset on its card ("Formulas"), editable in the proposal editor. The validator checks each with KaTeX. |
+| Map guide | Its button moved into the header, between the search and the view tabs. |
+| Legend | Ends with: "This categorization does not claim to be exhaustive or fundamental — we welcome discussion and contribution on this framework." |
+| Glyphs | Every type has one now: ten more from Sophie's second sketch (flag, open book, thought with ≠, question, magnifier, flask, bar chart, step in a cycle, gear, Newton's apple), drawn in the same 24-unit line style. |
+
+**Open paths:** an "edit relation" proposal (description, derivation, type) for confirmed
+relations; assumptions of a proposal on another proposal's concept (only confirmed ones now).
 
 ## Multi-agent workflow (web-dev-agent-system)
 

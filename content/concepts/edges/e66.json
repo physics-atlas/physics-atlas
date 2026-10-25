@@ -2,12 +2,5 @@
   "id": "e66",
   "source": "wave_dark_matter",
   "target": "interference",
-  "relationship": "exhibits",
-  "conditions": [
-    {
-      "label": "ultralight mass",
-      "description": "The assumption that the dark matter particle is extremely light (around 10⁻²² eV), so its de Broglie wavelength reaches galactic scales."
-    }
-  ],
-  "review": "Ultralight mass was a separate node that Wave Dark Matter 'assumes'; it is attached here because the long de Broglie wavelength is what makes interference visible. Sophie to confirm it belongs on this edge rather than on 'is a class of Dark Matter'."
+  "relationship": "exhibits"
 }

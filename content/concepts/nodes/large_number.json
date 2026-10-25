@@ -1,0 +1,11 @@
+{
+  "id": "large_number",
+  "type": "model_regime",
+  "label": "Large number",
+  "importance": 4,
+  "generality": 3,
+  "attrs": {
+    "description": "The large-sample condition under which radioactive decay is well described statistically."
+  },
+  "review": "Was the assumption \"large number\" on relation e58 (Decay equation describes Alpha decay) until 2026-10, when assumptions became concepts; it's now in the \"assumes\" of Decay equation, the relation's source. Type, importance and generality are placeholders — Sophie to check them, and that Decay equation is the concept that assumes it."
+}

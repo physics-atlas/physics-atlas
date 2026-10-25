@@ -146,8 +146,11 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   can't take focus. The equivalent route is search, the list panel and the card's
   relation links. A keyboard-navigable canvas (arrow keys between neighbours) is a
   possible next step.
-- **Nine of the sixteen node types have no glyph yet.** Their type is still named in
-  text everywhere, but the glyph would add a second non-colour cue on the canvas.
+- **Relations open a card by click or by keyboard.** Lines on the canvas aren't
+  focusable, so every relation also has a **Details** button in its concepts' cards
+  (All relations) that opens the same card; focus moves into it and Escape returns.
+  What a selected concept assumes is marked with a dotted outline (a pattern, not a
+  colour) and named on the card.
 - **Not yet tested with assistive technology.** A pass with NVDA + Firefox and
   VoiceOver + Safari, and an automated axe check in `npm run smoke`, are still to do.
   The proposal editor is the most form-heavy part, so it should come first.

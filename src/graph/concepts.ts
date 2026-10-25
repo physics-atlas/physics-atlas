@@ -16,24 +16,17 @@ export function normalizeRelationship(raw: string): EdgeType | null {
 }
 
 /**
- * The edge's sentence ({s}/{t} filled with node labels, plus "under the
- * assumption of …" when the edge has conditions) split into text runs
+ * The edge's sentence ({s}/{t} filled with node labels) split into text runs
  * and node references, so a view can render the other node's label as a
  * control. Falls back to a plain "{s} — {raw} — {t}" reading only for an
  * unknown relationship type — a case the validator already rejects, so this
  * is a defensive fallback, not a normal path.
  */
-export function sentenceParts(
-  edge: GraphEdge,
-  byId: ConceptMap,
-  withConditions = true,
-): (string | { id: string; label: string })[] {
+export function sentenceParts(edge: GraphEdge, byId: ConceptMap): (string | { id: string; label: string })[] {
   const s = { id: edge.source, label: byId.get(edge.source)?.label ?? edge.source };
   const t = { id: edge.target, label: byId.get(edge.target)?.label ?? edge.target };
   const type = normalizeRelationship(edge.relationship);
-  let template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} — ${edge.relationship} — {t}`;
-  const clause = withConditions ? conditionClause(edge) : null;
-  if (clause) template = `${template.replace(/\.$/, '')} ${clause}.`;
+  const template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} — ${edge.relationship} — {t}`;
   return template
     .split(/(\{s\}|\{t\})/)
     .filter((part) => part !== '')
@@ -45,18 +38,13 @@ export function joinList(items: string[]): string {
   return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
-/** "under the assumption(s) of …" for an edge with conditions, else null. */
-export function conditionClause(edge: GraphEdge): string | null {
-  const labels = (edge.conditions ?? []).map((c) => c.label);
-  if (labels.length === 0) return null;
-  return `under the assumption${labels.length > 1 ? 's' : ''} of ${joinList(labels)}`;
-}
-
 export interface ConceptIndex {
   byId: ConceptMap;
   incoming: Map<string, GraphEdge[]>;
   outgoing: Map<string, GraphEdge[]>;
   degree: Map<string, number>;
+  /** id → the concepts that list it in their `assumes` */
+  assumedBy: Map<string, string[]>;
 }
 
 /** byId + incoming/outgoing adjacency + degree (in + out), for every node. */
@@ -76,7 +64,16 @@ export function buildConceptIndex(graph: ConceptGraph): ConceptIndex {
     degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
     degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
   }
-  return { byId, incoming, outgoing, degree };
+  const assumedBy = new Map<string, string[]>();
+  for (const n of graph.nodes)
+    for (const a of n.assumes ?? []) assumedBy.set(a, [...(assumedBy.get(a) ?? []), n.id]);
+  return { byId, incoming, outgoing, degree, assumedBy };
+}
+
+/** What a concept assumes, and what assumes it — concepts that exist only. */
+export function assumptionsOf(id: string, index: ConceptIndex): { assumes: GraphNode[]; assumedBy: GraphNode[] } {
+  const known = (ids: string[]) => ids.map((x) => index.byId.get(x)).filter((n): n is GraphNode => Boolean(n));
+  return { assumes: known(index.byId.get(id)?.assumes ?? []), assumedBy: known(index.assumedBy.get(id) ?? []) };
 }
 
 /** Generality: 1 (very specific) – 10 (very general). Sets the circle size. */
@@ -227,6 +224,9 @@ export function neighborsOf(id: string, index: ConceptIndex): string[] {
   const ids = new Set([id]);
   for (const e of index.incoming.get(id) ?? []) ids.add(e.source);
   for (const e of index.outgoing.get(id) ?? []) ids.add(e.target);
+  // What it assumes, and what assumes it, belong to its sub-view too.
+  const { assumes, assumedBy } = assumptionsOf(id, index);
+  for (const n of [...assumes, ...assumedBy]) ids.add(n.id);
   return [...ids];
 }
 

@@ -733,6 +733,17 @@ body {
   font-style: italic;
 }
 
+/* Last in the legend, across its full width: the categories are a proposal, not a verdict. */
+.legend-disclaimer {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
 /* One row per family of types: its name in a fixed column, the types beside it */
 .legend-type-group {
   display: grid;
@@ -844,22 +855,9 @@ body {
   }
 }
 
-/* Concept map: the guide's button at the top middle, the guide itself under it. */
-.map-hint-area {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: min(60ch, calc(100% - 32px));
-  pointer-events: none;
-}
-
+/* Concept map: the guide at the top middle of the map; its button is in the header. */
 .map-hint-toggle {
-  pointer-events: auto;
+  flex: none;
   min-height: 32px;
   padding: 4px 14px;
   border: 1px solid var(--border);
@@ -878,8 +876,9 @@ body {
 }
 
 .concept-map-view .map-hint {
-  position: static;
-  transform: none;
+  bottom: auto;
+  top: 12px;
+  width: min(60ch, calc(100% - 32px));
 }
 
 .concept-map-view .map-hint[hidden] {
@@ -1214,37 +1213,63 @@ body {
   color: var(--muted);
 }
 
-/* Edge conditions on the card: the assumption, what it means, where it applies */
-.concept-condition-list {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.concept-condition-list li {
-  display: grid;
-  gap: 2px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.concept-condition-label {
+/* A relation's card: "From" / "To" before each concept, the sentence on top. */
+.edge-card-sentence {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--ink);
 }
 
-.concept-condition-description {
+.edge-card-role {
+  min-width: 2.6em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--ink-2);
 }
 
-.concept-condition-edge {
+/* "Details" after each relation in a concept card's list — the keyboard route to its card. */
+.concept-relation-details {
   font-size: 12px;
-  color: var(--muted);
 }
 
-.concept-condition-edge .concept-via {
-  margin-left: 6px;
+/* The editor: what a concept assumes (chips), and a relation's optional description and derivation. */
+.draft-assumes {
+  margin: 12px 0 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.draft-assumes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.draft-assumes-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.draft-relation-more {
+  margin: 8px 0;
+}
+
+.draft-relation-more > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 .concept-all-relations > summary {
@@ -1703,7 +1728,6 @@ input[type='checkbox'] {
 .type-definition-term,
 .concept-empty,
 .concept-via,
-.concept-condition-edge,
 .search-result-context {
   font-style: italic;
 }

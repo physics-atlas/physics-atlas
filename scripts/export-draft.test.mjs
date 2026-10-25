@@ -22,15 +22,15 @@ const draft = {
   generality: 7,
   importance: 5,
   relations: [
-    { key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of', conditions: [] },
-    { key: 'r2', source: 'zeldovich_approximation', target: NEW_CONCEPT, relationship: 'relates', conditions: [{ label: 'linear growth' }] },
+    { key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of' },
+    { key: 'r2', source: 'zeldovich_approximation', target: NEW_CONCEPT, relationship: 'relates', description: 'Sample: how they connect.' },
   ],
 };
 const edit = {
   ...newEditDraft(confirmed.nodes.find((n) => n.id === 'vlasov_equation'), () => 0.75, at),
   generality: 6,
   removals: ['e62'],
-  relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'kinetic_theory', relationship: 'relates', conditions: [] }],
+  relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'kinetic_theory', relationship: 'relates' }],
 };
 const ctx = { confirmed, drafts: [draft, edit], proposals: [] };
 

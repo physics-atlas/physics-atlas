@@ -65,6 +65,20 @@ export interface EquationAttrs {
   domain?: string;
 }
 
+/** A formula that shows how a mathematical formalism works — typeset on its card. */
+export interface Formula {
+  /** What it shows: "A vector in a basis" */
+  name?: string;
+  /** LaTeX */
+  equation: string;
+  variables?: EquationVariable[];
+}
+
+export interface FormalismAttrs extends ConceptAttrs {
+  /** Formulas and equations that show how the formalism works, each with its variables */
+  formulas?: Formula[];
+}
+
 export interface LearningGoalAttrs {
   description: string;
 }
@@ -92,14 +106,21 @@ interface GraphNodeBase {
   epistemicStatus?: string;
   /** An open question for Sophie — cleared by deleting the field */
   review?: string;
+  /**
+   * Ids of the concepts this one assumes ("Zel'dovich approximation assumes
+   * Linear potential"). Not a relation: no line is drawn; the card lists it,
+   * and selecting the concept highlights what it assumes.
+   */
+  assumes?: string[];
 }
 
 export type GraphNode =
   | (GraphNodeBase & {
-      type: Exclude<NodeType, 'equation' | 'learning_goal' | 'resource'>;
+      type: Exclude<NodeType, 'equation' | 'formalism' | 'learning_goal' | 'resource'>;
       attrs: ConceptAttrs;
     })
   | (GraphNodeBase & { type: 'equation'; attrs: EquationAttrs })
+  | (GraphNodeBase & { type: 'formalism'; attrs: FormalismAttrs })
   | (GraphNodeBase & { type: 'learning_goal'; attrs: LearningGoalAttrs })
   | (GraphNodeBase & { type: 'resource'; attrs: ResourceAttrs });
 
@@ -109,19 +130,12 @@ export interface GraphEdge {
   target: string;
   /** Verbatim as authored; the resolved EdgeType comes from normalizeRelationship() */
   relationship: string;
-  /**
-   * Assumptions the relation holds under — "Zel'dovich approximation
-   * approximates Structure Formation under the assumption of linear potential".
-   */
-  conditions?: EdgeCondition[];
+  /** How the two concepts connect, in a few sentences (Markdown + LaTeX) — on the relation's card */
+  description?: string;
+  /** A derivation of one from the other (Markdown + LaTeX, `$$…$$` for display maths) */
+  derivation?: string;
   /** An open question for Sophie — cleared by deleting the field */
   review?: string;
-}
-
-export interface EdgeCondition {
-  /** Reads mid-sentence, so usually lower case: "linear potential" */
-  label: string;
-  description?: string;
 }
 
 export interface ConceptGraph {

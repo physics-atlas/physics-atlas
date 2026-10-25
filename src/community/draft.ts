@@ -1,9 +1,9 @@
 import { NODE_TYPE_LABELS } from '../data/types';
 import type {
   ConceptGraph,
-  EdgeCondition,
   EquationRepresentation,
   EquationVariable,
+  Formula,
   GraphEdge,
   GraphNode,
   NodeType,
@@ -42,7 +42,10 @@ export interface DraftRelation {
   source: string;
   target: string;
   relationship: string;
-  conditions: EdgeCondition[];
+  /** How the two concepts connect (Markdown + LaTeX) — shown on the relation's card */
+  description?: string;
+  /** A derivation of one from the other (Markdown + LaTeX) */
+  derivation?: string;
 }
 
 /** A representation as the form edits it: every field there, empty until filled in. */
@@ -67,6 +70,10 @@ export interface Draft {
   equation: string;
   variables: EquationVariable[];
   representations: DraftRepresentation[];
+  /** Mathematical formalisms: formulas that show how it works (name optional) */
+  formulas: DraftRepresentation[];
+  /** Confirmed concepts this one assumes — no line on the map */
+  assumes: string[];
   /** 1–10, the size of its circle; left out = the curator decides */
   generality?: number;
   /** 1–10, how far out it stays visible; left out = the curator decides */
@@ -106,6 +113,8 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     equation: '',
     variables: [],
     representations: [],
+    formulas: [],
+    assumes: [],
     relations: [],
     removals: [],
     claim: '',
@@ -131,6 +140,10 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
     representations: Array.isArray(attrs.representations)
       ? (attrs.representations as (EquationRepresentation | string)[]).map(toDraftRepresentation)
       : [],
+    formulas: Array.isArray(attrs.formulas)
+      ? (attrs.formulas as Formula[]).map((f) => toDraftRepresentation({ ...f, name: f.name ?? '' }))
+      : [],
+    assumes: [...(node.assumes ?? [])],
     ...(node.generality !== undefined ? { generality: node.generality } : {}),
     ...(node.importance !== undefined ? { importance: node.importance } : {}),
   };
@@ -164,6 +177,7 @@ export const proposalTitle = (d: Draft): string =>
 const clamp = (v: number, max: number) => Math.min(max, Math.max(1, Math.round(v)));
 const inRange = (v: number, max: number) => Number.isInteger(v) && v >= 1 && v <= max;
 const EQUATION_ONLY = ['equation', 'variables', 'conditions', 'representations'];
+const FORMALISM_ONLY = ['formulas'];
 
 /** A stored representation (or, before representations had formulas, just its name) as the form edits it. */
 const toDraftRepresentation = (r: EquationRepresentation | string): DraftRepresentation =>
@@ -184,6 +198,17 @@ const cleanRepresentations = (rs: DraftRepresentation[]): EquationRepresentation
       name: r.name,
       ...(r.equation ? { equation: r.equation } : {}),
       ...(r.variables.length ? { variables: r.variables } : {}),
+    }));
+
+/** A formalism's formulas as stored: the formula, its name and variables when given. */
+const cleanFormulas = (fs: DraftRepresentation[]) =>
+  fs
+    .map((f) => ({ name: f.name.trim(), equation: f.equation.trim(), variables: cleanVariables(f.variables) }))
+    .filter((f) => f.name || f.equation || f.variables.length)
+    .map((f) => ({
+      ...(f.name ? { name: f.name } : {}),
+      equation: f.equation,
+      ...(f.variables.length ? { variables: f.variables } : {}),
     }));
 
 /** `next` with its keys in `base`'s order (new keys last), so an edit's diff shows only what changed. */
@@ -208,22 +233,25 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const type = d.type || 'property';
   if (type === 'resource') throw new Error('resources are not proposed through the editor');
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
-  const { importance: _i, generality: _g, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
+  const { importance: _i, generality: _g, assumes: _a, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
   void _i;
   void _g;
+  void _a;
   const kept = Object.fromEntries(
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, review notes) is kept.
       ([k]) =>
-        !['description', 'domain', 'equation', 'variables', 'representations'].includes(k) &&
-        (type === 'equation' || !EQUATION_ONLY.includes(k)),
+        !['description', 'domain', 'equation', 'variables', 'representations', 'formulas'].includes(k) &&
+        (type === 'equation' || !EQUATION_ONLY.includes(k)) &&
+        (type === 'formalism' || !FORMALISM_ONLY.includes(k)),
     ),
   );
   const scales = {
     ...(d.importance !== undefined ? { importance: d.importance } : {}),
     ...(d.generality !== undefined ? { generality: d.generality } : {}),
   };
-  const head = { ...rest, id, label, type, ...scales };
+  const assumes = [...new Set(d.assumes)];
+  const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}) };
   const attrs =
     type === 'equation'
       ? {
@@ -237,7 +265,12 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
         }
       : type === 'learning_goal'
         ? { description }
-        : { description, ...(domain ? { domain } : {}) };
+        : type === 'formalism'
+          ? (() => {
+              const formulas = cleanFormulas(d.formulas);
+              return { description, ...(formulas.length ? { formulas } : {}), ...kept, ...(domain ? { domain } : {}) };
+            })()
+          : { description, ...(domain ? { domain } : {}) };
   return inOrderOf(base, { ...head, attrs: inOrderOf(baseAttrs, attrs) }) as GraphNode;
 }
 
@@ -251,10 +284,16 @@ function edgesWith(d: Draft, end: (ref: string) => string | null, prefix: string
     const source = end(r.source);
     const target = end(r.target);
     if (!source || !target) return;
-    const conditions = r.conditions
-      .map((c) => ({ label: c.label.trim(), ...(c.description?.trim() ? { description: c.description.trim() } : {}) }))
-      .filter((c) => c.label);
-    out.push({ id: `${prefix}_e${i + 1}`, source, target, relationship: r.relationship, ...(conditions.length ? { conditions } : {}) });
+    const description = r.description?.trim();
+    const derivation = r.derivation?.trim();
+    out.push({
+      id: `${prefix}_e${i + 1}`,
+      source,
+      target,
+      relationship: r.relationship,
+      ...(description ? { description } : {}),
+      ...(derivation ? { derivation } : {}),
+    });
   });
   return out;
 }
@@ -380,6 +419,8 @@ export type DraftField =
   | 'equation'
   | 'variables'
   | 'representations'
+  | 'formulas'
+  | 'assumes'
   | 'generality'
   | 'importance'
   | 'claim'
@@ -421,6 +462,23 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
           message: `In representation ${index + 1}, give every variable both its symbol and what it stands for.`,
         });
     });
+  }
+  if (d.type === 'formalism')
+    d.formulas.forEach((f, index) => {
+      if (!f.equation.trim() && (f.name.trim() || cleanVariables(f.variables).length))
+        out.push({ field: 'formulas', index, message: `Write formula ${index + 1} in LaTeX.` });
+      if (cleanVariables(f.variables).some((v) => !v.symbol || !v.meaning))
+        out.push({
+          field: 'formulas',
+          index,
+          message: `In formula ${index + 1}, give every variable both its symbol and what it stands for.`,
+        });
+    });
+  const confirmedIds = new Set(ctx.confirmed.nodes.map((n) => n.id));
+  for (const a of d.assumes) {
+    if (a === d.editOf) out.push({ field: 'assumes', message: "A concept can't assume itself." });
+    else if (!confirmedIds.has(a))
+      out.push({ field: 'assumes', message: `It assumes “${a}”, which isn't on the map any more — remove it.` });
   }
   if (d.generality !== undefined && !inRange(d.generality, GENERALITY_MAX))
     out.push({ field: 'generality', message: `Generality is a whole number from 1 to ${GENERALITY_MAX}.` });
@@ -646,8 +704,8 @@ export function parseDraft(raw: unknown): Draft | null {
       isString(x.source) &&
       isString(x.target) &&
       isString(x.relationship) &&
-      Array.isArray(x.conditions) &&
-      x.conditions.every((c) => c && isString((c as EdgeCondition).label))
+      (x.description === undefined || isString(x.description)) &&
+      (x.derivation === undefined || isString(x.derivation))
     );
   };
   if (!Array.isArray(d.relations) || !d.relations.every(relationOk)) return null;
@@ -668,6 +726,15 @@ export function parseDraft(raw: unknown): Draft | null {
     return Boolean(x) && isString(x.name) && isString(x.equation) && Array.isArray(x.variables) && x.variables.every(variableOk);
   };
   if (!Array.isArray(representations) || !representations.every(representationOk)) return null;
+  const formulas = d.formulas ?? [];
+  if (!Array.isArray(formulas) || !formulas.every(representationOk)) return null;
+  const assumes = d.assumes ?? [];
+  if (!Array.isArray(assumes) || !assumes.every(isString)) return null;
+  // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
+  const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
+    void _c;
+    return r as unknown as DraftRelation;
+  });
   // Before version 3, importance ran 1–50: the same depth is a fifth of it now.
   const importance =
     d.version !== 3 && typeof d.importance === 'number' ? Math.max(1, Math.round(d.importance / 5)) : (d.importance as number | undefined);
@@ -677,6 +744,9 @@ export function parseDraft(raw: unknown): Draft | null {
     removals: removals as string[],
     variables: variables as EquationVariable[],
     representations: representations as DraftRepresentation[],
+    formulas: formulas as DraftRepresentation[],
+    assumes: assumes as string[],
+    relations,
     ...(importance !== undefined ? { importance } : {}),
   };
 }

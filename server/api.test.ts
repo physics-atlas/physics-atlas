@@ -109,7 +109,7 @@ const jeans = (): Draft => ({
   label: 'Jeans scale',
   type: 'property',
   description: 'Sample: the length scale above which gravity overcomes pressure support.',
-  relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of', conditions: [] }],
+  relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of' }],
 });
 const alone = (...drafts: Draft[]): DraftContext => ({ confirmed: concepts, drafts, proposals: [] });
 const submit = (gh: ReturnType<typeof fakeGitHub>, session: string | undefined, proposal: Proposal, origin = ORIGIN) =>
@@ -289,7 +289,7 @@ describe('submitting a proposal', () => {
       label: 'Jeans mass',
       type: 'property',
       description: 'Sample.',
-      relations: [{ key: 'r1', source: NEW_CONCEPT, target: `@draft:${a.suffix}`, relationship: 'relates', conditions: [] }],
+      relations: [{ key: 'r1', source: NEW_CONCEPT, target: `@draft:${a.suffix}`, relationship: 'relates' }],
     };
     const res = await submit(gh, session, draftProposal(b, alone(a, b)));
     expect(res.status).toBe(409);

@@ -268,6 +268,11 @@ export interface ForceOptions {
   temperature?: number;
   /** Relation names (indexed like the segments): each relation gets the length its name needs. */
   labels?: SegmentLabels;
+  /**
+   * Pairs pulled together like relations but never drawn — a concept and what
+   * it assumes — so they sit near each other. Not scored: there's no line to cross.
+   */
+  ties?: Segment[];
 }
 
 /**
@@ -281,7 +286,7 @@ export function forceLayout(
   boxes: Record<string, NodeBox>,
   rng: () => number,
   iterations = FORCE_ITERATIONS,
-  { fixed = {}, start = {}, temperature, labels = [] }: ForceOptions = {},
+  { fixed = {}, start = {}, temperature, labels = [], ties = [] }: ForceOptions = {},
 ): Positions {
   const n = ids.length;
   const r = ids.map((id) => reach(boxes[id]));
@@ -300,7 +305,7 @@ export function forceLayout(
   const at = new Map(ids.map((id, i) => [id, i]));
   // A relation's ideal length: the usual spacing, or — when its name needs
   // more — both circles plus the name. `room` is the least it may be.
-  const links = segments.map(([s, t], e) => {
+  const links = [...segments, ...ties.filter(([s, t]) => at.has(s) && at.has(t))].map(([s, t], e) => {
     const i = at.get(s)!, j = at.get(t)!;
     const room = labelRoom(boxes[s].radius, boxes[t].radius, labels[e]);
     return { i, j, room, ideal: Math.max(k(i, j), room) };
@@ -542,8 +547,9 @@ export function arrangeComponent(
   boxes: Record<string, NodeBox>,
   rng: () => number,
   labels: SegmentLabels = [],
+  ties: Segment[] = [],
 ): { pos: Positions; score: LayoutScore } {
-  const laid = forceLayout(ids, segments, boxes, rng, FORCE_ITERATIONS, { labels });
+  const laid = forceLayout(ids, segments, boxes, rng, FORCE_ITERATIONS, { labels, ties });
   const spread = removeOverlaps(alignWide(laid), boxes);
   const swapped = removeOverlaps(swapNodes(segments, spread, boxes, 4, labels).pos, boxes);
   const pos = stretchForLabels(swapped, segments, labels, boxes);

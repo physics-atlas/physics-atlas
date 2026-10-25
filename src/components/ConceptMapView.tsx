@@ -25,7 +25,7 @@ import { buildConceptIndex, conceptPathFor, neighborsOf, splitFluff } from '../g
 import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
-import ConceptCard, { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
+import ConceptCard, { CONCEPT_CARD_TITLE_ID, EDGE_CARD_TITLE_ID } from './ConceptCard';
 import GraphView from './GraphView';
 import type { DraftOverlay } from './GraphView';
 import Legend from './Legend';
@@ -38,6 +38,9 @@ const ProposalCard = lazy(() => import('./ProposalCard'));
 const DraftEditor = lazy(() => import('./DraftEditor'));
 // KaTeX is large: the typeset equation loads when an equation's card first opens.
 const EquationView = lazy(() => import('./EquationView'));
+const FormulaView = lazy(() => import('./EquationView').then((m) => ({ default: m.FormulaView })));
+// A relation's card typesets its description and derivation: loaded on demand too.
+const EdgeCard = lazy(() => import('./EdgeCard'));
 
 const NO_PROPOSALS: Proposal[] = [];
 const NO_NEAR = { ids: [] as string[], byHand: false, ghost: '' };
@@ -50,9 +53,8 @@ const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCo
 // path open on the left, the map card on the right, the type legend along the
 // bottom — mirrored in App.css.
 const PATH_PANEL_INSET = 304;
-/** How long the map guide shows before it steps aside to its button. */
-const HINT_SECONDS = 3;
-const MAP_HINT_ID = 'map-hint';
+/** The map guide's id — its button, in the header, controls it. */
+export const MAP_HINT_ID = 'map-hint';
 const LEGEND_INSET = 110;
 const CARD_MIN_WIDTH = 380;
 const CARD_MARGIN = 16;
@@ -78,6 +80,8 @@ interface ConceptMapViewProps {
   community?: boolean;
   /** Fun mode: lonely concepts speak up, and fluff concepts appear. */
   fun?: boolean;
+  /** The map guide is shown (its button is in the header) */
+  hintOpen?: boolean;
   onFunChange?: (on: boolean) => void;
 }
 
@@ -94,6 +98,7 @@ export default function ConceptMapView({
   community = false,
   fun = false,
   onFunChange,
+  hintOpen = false,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -117,13 +122,6 @@ export default function ConceptMapView({
   const [loadError, setLoadError] = useState('');
   const [lastSubmitted, setLastSubmitted] = useState<{ number: number; url: string; title: string } | null>(null);
   const [signInProblem, setSignInProblem] = useState<SignInProblem | null>(signInProblemOnLoad);
-  // The map guide greets a visitor, steps aside after a few seconds, and stays
-  // one click away ("How to read this map"). Opened again, it stays open.
-  const [hintOpen, setHintOpen] = useState(true);
-  useEffect(() => {
-    const t = window.setTimeout(() => setHintOpen(false), HINT_SECONDS * 1000);
-    return () => window.clearTimeout(t);
-  }, []);
   useEffect(() => {
     if (!community) return;
     let alive = true;
@@ -283,7 +281,7 @@ export default function ConceptMapView({
       ...d,
       relations: [
         ...d.relations,
-        { key: `r${Date.now().toString(36)}${d.relations.length}`, source: NEW_CONCEPT, target: ref, relationship: 'relates', conditions: [] },
+        { key: `r${Date.now().toString(36)}${d.relations.length}`, source: NEW_CONCEPT, target: ref, relationship: 'relates' },
       ],
     }));
     setDraftStatus(
@@ -360,6 +358,26 @@ export default function ConceptMapView({
   };
 
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
+  // A relation's card: opened by clicking its line, or "Details" in a concept's
+  // relation list. Picking a concept closes it, and the other way round.
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (selectedId) setSelectedEdgeId(null);
+  }, [selectedId]);
+  const edgeById = useMemo(
+    () =>
+      new Map<string, { edge: GraphEdge; proposal?: string }>([
+        ...graph.edges.map((edge) => [edge.id, { edge }] as const),
+        ...activeProposals.flatMap((p) => p.edges.map((edge) => [edge.id, { edge, proposal: p.title }] as const)),
+      ]),
+    [graph.edges, activeProposals],
+  );
+  const selectedEdge = !drafting && selectedEdgeId ? edgeById.get(selectedEdgeId) : undefined;
+  const selectEdge = (id: string | null) => {
+    if (drafting) return;
+    if (id) onSelect(null);
+    setSelectedEdgeId(id);
+  };
   // An edit proposal has no concept of its own: its card opens from the
   // confirmed concept's "Open proposals" list, for as long as that's selected.
   const [openProposal, setOpenProposal] = useState<{ id: string; on: string } | null>(null);
@@ -386,7 +404,11 @@ export default function ConceptMapView({
     () => (selectedId && cardOpen ? new Set(neighborsOf(selectedId, mergedIndex)) : null),
     [selectedId, cardOpen, mergedIndex],
   );
-  const fitIds = path?.highlight ?? neighbors;
+  const edgeEnds = useMemo(
+    () => (selectedEdge ? new Set([selectedEdge.edge.source, selectedEdge.edge.target]) : null),
+    [selectedEdge],
+  );
+  const fitIds = edgeEnds ?? path?.highlight ?? neighbors;
   // Concept progress shares the topic store; the prefix keeps the id spaces apart.
   const doneIds = useMemo(
     () =>
@@ -421,6 +443,19 @@ export default function ConceptMapView({
   }, [drafting]);
   const closeCard = () => {
     onSelect(null);
+    returnFocusRef.current?.focus({ preventScroll: true });
+    returnFocusRef.current = null;
+  };
+  const edgeCardRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!selectedEdgeId) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !edgeCardRef.current?.contains(active) && active !== document.body)
+      returnFocusRef.current = active;
+    edgeCardRef.current?.focus({ preventScroll: true });
+  }, [selectedEdgeId]);
+  const closeEdgeCard = () => {
+    setSelectedEdgeId(null);
     returnFocusRef.current?.focus({ preventScroll: true });
     returnFocusRef.current = null;
   };
@@ -615,27 +650,15 @@ export default function ConceptMapView({
           )}
         </div>
 
-        {!cardOpen && !drafting && !goal && (
-          <div className="map-hint-area">
-            <button
-              type="button"
-              className="map-hint-toggle"
-              aria-expanded={hintOpen}
-              aria-controls={MAP_HINT_ID}
-              onClick={() => setHintOpen((o) => !o)}
-            >
-              {hintOpen ? 'Hide the map guide' : 'How to read this map'}
-            </button>
-            <p className="map-hint" id={MAP_HINT_ID} hidden={!hintOpen}>
-              Colour = kind of concept, size = how general it is — zoom in to reveal less
-              important concepts. Each line names its relation —
-              hover one to highlight the two concepts it joins. Click a concept to see its direct
-              connections — <span className="ink-pre">silver</span> leads into it,{' '}
-              <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
-              it means.
-            </p>
-          </div>
-        )}
+        {/* The map guide; its button is in the header (App.tsx). */}
+        <p className="map-hint" id={MAP_HINT_ID} hidden={!hintOpen}>
+          Colour = kind of concept, size = how general it is — zoom in to reveal less
+          important concepts. Each line names its relation — hover one to highlight the two
+          concepts it joins, click it to read how they connect. Click a concept to see its direct
+          connections — <span className="ink-pre">silver</span> leads into it,{' '}
+          <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
+          it means.
+        </p>
 
         {drafting && draft && (
           <aside
@@ -726,6 +749,12 @@ export default function ConceptMapView({
                 </Suspense>
               )}
 
+              {selected.type === 'formalism' && (
+                <Suspense fallback={<p className="concept-empty">Loading the formulas…</p>}>
+                  <FormulaView formulas={selected.attrs.formulas ?? []} />
+                </Suspense>
+              )}
+
               {selected.type === 'resource' && (
                 <div className="rel-block">
                   <a
@@ -758,6 +787,7 @@ export default function ConceptMapView({
                   selfId={selected.id}
                   index={index}
                   onPick={onFocus}
+                  onDetails={selectEdge}
                 />
               )}
               {incoming.length > 0 && (
@@ -767,6 +797,7 @@ export default function ConceptMapView({
                   selfId={selected.id}
                   index={index}
                   onPick={onFocus}
+                  onDetails={selectEdge}
                 />
               )}
             </details>
@@ -828,6 +859,29 @@ export default function ConceptMapView({
           </aside>
         )}
 
+        {selectedEdge && !cardOpen && (
+          <aside
+            className="map-card concept-map-card"
+            key={selectedEdgeId}
+            ref={edgeCardRef}
+            tabIndex={-1}
+            aria-labelledby={EDGE_CARD_TITLE_ID}
+            onKeyDown={(e) => e.key === 'Escape' && closeEdgeCard()}
+          >
+            <Suspense fallback={<p className="concept-empty">Loading the relation…</p>}>
+              <EdgeCard
+                edge={selectedEdge.edge}
+                byId={mergedIndex.byId}
+                onPick={onFocus}
+                proposedIn={selectedEdge.proposal}
+              />
+            </Suspense>
+            <button className="map-card-close" onClick={closeEdgeCard} aria-label="Close relation card">
+              ×
+            </button>
+          </aside>
+        )}
+
         {/* Canvas, map controls and legend come last in the DOM so keyboard
             users reach the concept list, path and card first; CSS keeps the
             canvas underneath. */}
@@ -841,6 +895,8 @@ export default function ConceptMapView({
           directionalSelect={!goal}
           focus={focus}
           onSelect={selectOnMap}
+          selectedEdgeId={selectedEdge ? selectedEdgeId : null}
+          onSelectEdge={selectEdge}
           theme={theme}
           label={`Concept map, ${graph.nodes.length} concepts${
             overlay ? ` and ${overlay.nodes.length} proposed` : ''
@@ -849,7 +905,7 @@ export default function ConceptMapView({
           fitIds={fitIds}
           fitInsets={{
             left: goal ? PATH_PANEL_INSET : 0,
-            right: cardOpen || drafting ? cardInset() : 0,
+            right: cardOpen || drafting || selectedEdge ? cardInset() : 0,
             bottom: LEGEND_INSET,
           }}
           overlay={overlay}
@@ -1001,12 +1057,15 @@ function RelationGroup({
   selfId,
   index,
   onPick,
+  onDetails,
 }: {
   heading: string;
   edges: GraphEdge[];
   selfId: string;
   index: ConceptIndex;
   onPick: (id: string) => void;
+  /** Opens the relation's card */
+  onDetails: (edgeId: string) => void;
 }) {
   return (
     <>
@@ -1014,7 +1073,10 @@ function RelationGroup({
       <ul className="concept-relations">
         {edges.map((e) => (
           <li key={e.id}>
-            <RelationSentence edge={e} byId={index.byId} selfId={selfId} onPick={onPick} />
+            <RelationSentence edge={e} byId={index.byId} selfId={selfId} onPick={onPick} />{' '}
+            <button type="button" className="draft-link concept-relation-details" onClick={() => onDetails(e.id)}>
+              Details<span className="visually-hidden"> of this relation</span>
+            </button>
           </li>
         ))}
       </ul>

@@ -68,8 +68,8 @@ console.log('home-explore search:', exploreSearch);
 if (!exploreSearch.startsWith('?mode=concepts'))
   errors.push(`expected home-explore to land on ?mode=concepts, got ${exploreSearch}`);
 const exploreNodeCount = await page.evaluate(() => window.__cy?.nodes().length ?? 0);
-if (exploreNodeCount !== 64)
-  errors.push(`expected 64 concept nodes after home-explore, got ${exploreNodeCount}`);
+if (exploreNodeCount !== 68)
+  errors.push(`expected 68 concept nodes after home-explore, got ${exploreNodeCount}`);
 const tabTexts = await page.$$eval('.mode-tab', (els) => els.map((e) => e.textContent?.trim()));
 console.log('mode tabs:', tabTexts);
 if (tabTexts.some((t) => t === 'Full map')) errors.push('a "Full map" tab is still in the header nav');
@@ -110,8 +110,8 @@ const conceptCounts = await page.evaluate(() => ({
   edges: window.__cy?.edges().length ?? 0,
 }));
 console.log(`concept map: ${conceptCounts.nodes} nodes, ${conceptCounts.edges} edges`);
-if (conceptCounts.nodes !== 64 || conceptCounts.edges !== 66)
-  errors.push(`expected 64 concept nodes / 66 edges, got ${conceptCounts.nodes}/${conceptCounts.edges}`);
+if (conceptCounts.nodes !== 68 || conceptCounts.edges !== 66)
+  errors.push(`expected 68 concept nodes / 66 edges, got ${conceptCounts.nodes}/${conceptCounts.edges}`);
 // Zoomed out to the overview, every visible line keeps ≥ 1 px on screen, and
 // lines touching a landmark are drawn wider than lines between two details.
 const lines = await page.evaluate(() => {

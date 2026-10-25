@@ -81,7 +81,7 @@ const EVIDENCE_PLACEHOLDERS: Record<EvidenceKind, string> = {
 };
 
 const plain = (e: GraphEdge, byId: ConceptMap) =>
-  sentenceParts(e, byId, false)
+  sentenceParts(e, byId)
     .map((part) => (typeof part === 'string' ? part : part.label))
     .join('');
 
@@ -151,6 +151,11 @@ export default function DraftEditor({
   const own = mapId(draft);
   const byId = byMapId;
   const problems = useMemo(() => draftProblems(draft, ctx), [draft, ctx]);
+  // What it can assume: confirmed concepts, not itself, not ones already listed.
+  const assumableEntries = useMemo(() => {
+    const confirmed = new Set(ctx.confirmed.nodes.map((n) => n.id));
+    return searchEntries.filter((e) => confirmed.has(e.ref) && e.ref !== draft.editOf && !draft.assumes.includes(e.ref));
+  }, [searchEntries, ctx.confirmed, draft.editOf, draft.assumes]);
   const deps = useMemo(() => draftDependencies(draft, ctx), [draft, ctx]);
   // What this draft's relations are checked against: other proposals, and your other drafts.
   const otherRelations = useMemo(
@@ -206,7 +211,7 @@ export default function DraftEditor({
     const key = `r${Date.now().toString(36)}`;
     update((d) => ({
       ...d,
-      relations: [...d.relations, { key, source: pairFrom, target, relationship: 'relates', conditions: [] }],
+      relations: [...d.relations, { key, source: pairFrom, target, relationship: 'relates' }],
     }));
     setPairFrom(null);
     setNote(`Added a relation between ${byId.get(pairFrom)?.label} and ${byId.get(target)?.label}.`);
@@ -481,44 +486,51 @@ export default function DraftEditor({
                     onChange={(t) => setRelation(r.key, (x) => ({ ...x, relationship: t }))}
                   />
                 </Field>
-                {r.conditions.map((c, j) => (
-                  <div key={j} className="draft-condition">
-                    <Field id={fieldId(`cond-${r.key}-${j}`)} label={`Assumption ${j + 1}`} hint="Reads “… under the assumption of …”">
-                      <input
-                        id={fieldId(`cond-${r.key}-${j}`)}
-                        className="draft-input"
-                        value={c.label}
-                        placeholder="linear potential"
-                        onChange={(e) =>
-                          setRelation(r.key, (x) => ({
-                            ...x,
-                            conditions: x.conditions.map((y, k) => (k === j ? { ...y, label: e.target.value } : y)),
-                          }))
-                        }
-                        aria-describedby={fieldId(`cond-${r.key}-${j}-hint`)}
-                      />
-                    </Field>
-                    <button
-                      type="button"
-                      className="draft-link"
-                      onClick={() =>
-                        setRelation(r.key, (x) => ({ ...x, conditions: x.conditions.filter((_, k) => k !== j) }))
-                      }
-                    >
-                      Remove assumption {j + 1}
-                    </button>
-                  </div>
-                ))}
-                <div className="draft-row-actions">
-                  <button
-                    type="button"
-                    className="draft-button"
-                    onClick={() =>
-                      setRelation(r.key, (x) => ({ ...x, conditions: [...x.conditions, { label: '' }] }))
-                    }
+                <details className="draft-relation-more" open={Boolean(r.description || r.derivation)}>
+                  <summary>How they connect — a description and a derivation (optional)</summary>
+                  <Field
+                    id={fieldId(`reldesc-${r.key}`)}
+                    label="How they connect"
+                    hint="A few sentences, shown on the relation's card. Markdown and $LaTeX$."
+                    optional
                   >
-                    Add an assumption
-                  </button>
+                    <textarea
+                      id={fieldId(`reldesc-${r.key}`)}
+                      className="draft-input"
+                      rows={3}
+                      value={r.description ?? ''}
+                      onChange={(e) => setRelation(r.key, (x) => ({ ...x, description: e.target.value }))}
+                      aria-describedby={fieldId(`reldesc-${r.key}-hint`)}
+                    />
+                  </Field>
+                  {r.description?.trim() && (
+                    <div className="draft-preview" aria-label="Preview">
+                      <RichText source={r.description} />
+                    </div>
+                  )}
+                  <Field
+                    id={fieldId(`relderiv-${r.key}`)}
+                    label="Derivation"
+                    hint="How one follows from the other, step by step. Markdown, $inline$ and $$display$$ LaTeX."
+                    optional
+                  >
+                    <textarea
+                      id={fieldId(`relderiv-${r.key}`)}
+                      className="draft-input draft-mono"
+                      rows={5}
+                      value={r.derivation ?? ''}
+                      onChange={(e) => setRelation(r.key, (x) => ({ ...x, derivation: e.target.value }))}
+                      aria-describedby={fieldId(`relderiv-${r.key}-hint`)}
+                      spellCheck={false}
+                    />
+                  </Field>
+                  {r.derivation?.trim() && (
+                    <div className="draft-preview" aria-label="Preview">
+                      <RichText source={r.derivation} />
+                    </div>
+                  )}
+                </details>
+                <div className="draft-row-actions">
                   <button
                     type="button"
                     className="draft-button"
@@ -582,6 +594,45 @@ export default function DraftEditor({
         </Field>
 
         {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
+
+        <fieldset className="draft-assumes">
+          <legend className="draft-label">
+            Assumes <span className="draft-optional">optional</span>
+          </legend>
+          <p className="draft-hint" id={fieldId('assumes-hint')}>
+            Concepts this one takes for granted — a limit, an approximation, a property. No line is drawn; they're
+            listed on its card, and highlighted when it's selected.
+          </p>
+          {draft.assumes.length > 0 && (
+            <ul className="draft-assumes-list">
+              {draft.assumes.map((id) => {
+                const n = ctx.confirmed.nodes.find((x) => x.id === id);
+                return (
+                  <li key={id}>
+                    {n && <TypeBadge type={n.type} />}
+                    <span>{n?.label ?? id}</span>
+                    <button
+                      type="button"
+                      className="draft-link"
+                      onClick={() => update((d) => ({ ...d, assumes: d.assumes.filter((x) => x !== id) }))}
+                    >
+                      Remove<span className="visually-hidden"> {n?.label ?? id}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div id={fieldId('assumes')} tabIndex={-1}>
+            <SearchBox
+              entries={assumableEntries}
+              onPick={(id) => update((d) => ({ ...d, assumes: d.assumes.includes(id) ? d.assumes : [...d.assumes, id] }))}
+              placeholder="Add a concept it assumes…"
+              label="Add a concept it assumes"
+            />
+          </div>
+        </fieldset>
 
         <fieldset className="draft-domains">
           <legend className="draft-label">
@@ -1032,6 +1083,76 @@ function VariableRows({
         onClick={() => onChange([...variables, { symbol: '', meaning: '' }])}
       >
         Add a variable
+      </button>
+    </fieldset>
+  );
+}
+
+/** A mathematical formalism's formulas: how it works, each typeset, named and with its variables. */
+function FormulaFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  const setFormula = (i: number, change: Partial<DraftRepresentation>) =>
+    update((d) => ({ ...d, formulas: d.formulas.map((f, j) => (j === i ? { ...f, ...change } : f)) }));
+  return (
+    <fieldset className="draft-representations">
+      <legend className="draft-label">
+        Formulas <span className="draft-optional">optional</span>
+      </legend>
+      <p className="draft-hint">
+        Formulas and equations that show how the formalism works — a definition, a rule, a worked identity — each with
+        its variables.
+      </p>
+      {draft.formulas.map((f, i) => (
+        <div key={i} className="draft-relation draft-representation">
+          <Field id={fieldId(`formulas-${i}`)} label={`Formula ${i + 1} (LaTeX)`}>
+            <LatexInput
+              id={fieldId(`formulas-${i}`)}
+              value={f.equation}
+              placeholder="\vec v = \sum_i v^i \, \hat e_i"
+              onChange={(equation) => setFormula(i, { equation })}
+            />
+          </Field>
+          <Field id={fieldId(`formula-name-${i}`)} label="What it shows" optional>
+            <input
+              id={fieldId(`formula-name-${i}`)}
+              className="draft-input"
+              value={f.name}
+              placeholder="A vector in a basis"
+              onChange={(e) => setFormula(i, { name: e.target.value })}
+            />
+          </Field>
+          <VariableRows
+            title="Its variables"
+            variables={f.variables}
+            onChange={(variables) => setFormula(i, { variables })}
+            idBase={fieldId(`formula-${i}-var`)}
+            focusId={fieldId(`formula-${i}-variables`)}
+          />
+          <div className="draft-row-actions">
+            <button
+              type="button"
+              className="draft-button"
+              onClick={() => update((d) => ({ ...d, formulas: d.formulas.filter((_, j) => j !== i) }))}
+            >
+              Remove formula {i + 1}
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="draft-button"
+        id={draft.formulas.length ? undefined : fieldId('formulas')}
+        onClick={() => update((d) => ({ ...d, formulas: [...d.formulas, { name: '', equation: '', variables: [] }] }))}
+      >
+        Add a formula
       </button>
     </fieldset>
   );

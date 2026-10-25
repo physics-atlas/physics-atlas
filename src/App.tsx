@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Home from './components/Home';
-import ConceptMapView from './components/ConceptMapView';
+import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
@@ -24,6 +24,9 @@ const VIEW_TITLES: Record<Mode, string> = {
 // The community view (.claude/plans/epic-community-review.md) is the concept
 // map with the proposed layer and the proposal editor.
 const isConceptView = (m: Mode) => m === 'concepts' || m === 'community';
+
+/** How long the map guide shows on arrival before it steps aside to its button. */
+const HINT_SECONDS = 3;
 
 function initialMode(): Mode {
   const params = new URLSearchParams(window.location.search);
@@ -67,6 +70,21 @@ export default function App() {
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
   // Fun mode: off on every visit; kept while switching between the map's two tabs.
   const [fun, setFun] = useState(false);
+  // The map guide greets a visitor on the map, steps aside after a few seconds,
+  // and stays one click away ("How to read this map"). Opened again, it stays.
+  const [hintOpen, setHintOpen] = useState(false);
+  const greeted = useRef(false);
+  useEffect(() => {
+    if (!isConceptView(mode) || greeted.current) return;
+    setHintOpen(true);
+    // Greeted once the guide has stepped aside — set here, not above, so a
+    // re-run of this effect (leaving early, React's dev double run) greets again.
+    const t = window.setTimeout(() => {
+      greeted.current = true;
+      setHintOpen(false);
+    }, HINT_SECONDS * 1000);
+    return () => window.clearTimeout(t);
+  }, [mode]);
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
   const motion = useMotion();
@@ -175,6 +193,15 @@ export default function App() {
             </button>
           </p>
           <SearchBox entries={fun ? conceptSearchEntries : seriousSearchEntries} onPick={focusOn} />
+          <button
+            type="button"
+            className="map-hint-toggle"
+            aria-expanded={hintOpen}
+            aria-controls={MAP_HINT_ID}
+            onClick={() => setHintOpen((o) => !o)}
+          >
+            {hintOpen ? 'Hide the map guide' : 'How to read this map'}
+          </button>
           <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
@@ -225,6 +252,7 @@ export default function App() {
             community={mode === 'community'}
             fun={fun}
             onFunChange={setFun}
+            hintOpen={hintOpen}
           />
         )}
       </main>

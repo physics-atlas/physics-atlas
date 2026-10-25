@@ -84,6 +84,7 @@ if (typeof data.version !== 'number') errors.push('top-level "version" must be a
 
 const ALLOWED_ATTRS = {
   equation: ['description', 'equation', 'variables', 'conditions', 'representations', 'domain'],
+  formalism: ['description', 'formulas', 'domain'],
   learning_goal: ['description'],
   resource: ['link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
 };
@@ -157,6 +158,22 @@ function checkNodeAttrs(where, node) {
         if (r.variables !== undefined) checkVariables(where, `${at}.variables`, r.variables);
       });
   }
+
+  if (node.type === 'formalism' && attrs.formulas !== undefined) {
+    if (!Array.isArray(attrs.formulas)) errors.push(`${where}: attrs.formulas must be an array`);
+    else
+      attrs.formulas.forEach((f, i) => {
+        const at = `attrs.formulas[${i}]`;
+        if (!f || typeof f !== 'object' || typeof f.equation !== 'string' || !f.equation.trim())
+          return errors.push(`${where}: ${at} needs an "equation" (the formula, in LaTeX)`);
+        checkLatex(where, `${at}.equation`, f.equation);
+        for (const key of Object.keys(f))
+          if (!['name', 'equation', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+        if (f.name !== undefined && (typeof f.name !== 'string' || !f.name.trim()))
+          errors.push(`${where}: ${at}.name must be text (or left out)`);
+        if (f.variables !== undefined) checkVariables(where, `${at}.variables`, f.variables);
+      });
+  }
 }
 
 function checkVariables(where, at, variables) {
@@ -228,7 +245,11 @@ for (const e of data.edges) {
   } else {
     const type = normalizeRelationship(e.relationship);
     if (!type) {
-      errors.push(`${where}: unknown edge type "${e.relationship}" — add it to conceptVocabulary.json first`);
+      errors.push(
+        /^assumes/i.test(e.relationship.trim())
+          ? `${where}: "assumes" isn't a relation any more — list the assumed concept in the source concept's "assumes" instead`
+          : `${where}: unknown edge type "${e.relationship}" — add it to conceptVocabulary.json first`,
+      );
     } else {
       if (sourceOk) degree.set(e.source, degree.get(e.source) + 1);
       if (targetOk) degree.set(e.target, degree.get(e.target) + 1);
@@ -250,17 +271,13 @@ for (const e of data.edges) {
     }
   }
 
-  if (e.conditions !== undefined) {
-    if (!Array.isArray(e.conditions) || e.conditions.length === 0)
-      errors.push(`${where}: conditions must be a non-empty array (delete the field if there are none)`);
-    else
-      e.conditions.forEach((c, i) => {
-        if (!c || typeof c.label !== 'string' || !c.label.trim())
-          errors.push(`${where}: conditions[${i}].label must be a non-empty string`);
-        if (c?.description !== undefined && typeof c.description !== 'string')
-          errors.push(`${where}: conditions[${i}].description must be a string`);
-      });
-  }
+  if (e.conditions !== undefined)
+    errors.push(
+      `${where}: relations no longer carry "conditions" — make each assumption a concept and list it in the assuming concept's "assumes" (docs/AUTHORING.md)`,
+    );
+  for (const key of ['description', 'derivation'])
+    if (e[key] !== undefined && (typeof e[key] !== 'string' || !e[key].trim()))
+      errors.push(`${where}: "${key}" must be text (Markdown + LaTeX), or left out`);
   if (e.review !== undefined) warn.push(`${where}: open review — ${e.review}`);
 }
 
@@ -271,8 +288,26 @@ for (const [type, variants] of casingByType) {
   }
 }
 
+// `assumes`: other concepts, by id — not a relation, so it draws no line.
+const assumedIds = new Set();
+for (const n of data.nodes) {
+  if (n.assumes === undefined) continue;
+  const where = `node "${n.id}"`;
+  if (!Array.isArray(n.assumes) || n.assumes.some((a) => typeof a !== 'string')) {
+    errors.push(`${where}: "assumes" must be a list of concept ids`);
+    continue;
+  }
+  if (n.assumes.length === 0) errors.push(`${where}: "assumes" is empty — delete the field if it assumes nothing`);
+  if (new Set(n.assumes).size !== n.assumes.length) errors.push(`${where}: "assumes" lists a concept twice`);
+  for (const a of n.assumes) {
+    if (a === n.id) errors.push(`${where}: a concept can't assume itself`);
+    else if (!ids.has(a)) errors.push(`${where}: assumes "${a}", which isn't a concept`);
+    assumedIds.add(a);
+  }
+}
 for (const id of ids) {
-  if (degree.get(id) === 0) warn.push(`node "${id}" has no edges`);
+  const inAssumption = assumedIds.has(id) || byId.get(id)?.assumes?.length;
+  if (degree.get(id) === 0 && !inAssumption) warn.push(`node "${id}" has no edges`);
 }
 for (const n of data.nodes) {
   if (n.type === 'learning_goal' && ids.has(n.id) && (strictPrereqsByNode.get(n.id) ?? []).length === 0)

@@ -5,6 +5,9 @@
   "importance": 6,
   "generality": 4,
   "epistemicStatus": "Candidate",
+  "assumes": [
+    "ultralight_mass"
+  ],
   "attrs": {
     "description": "Bosonic matter which behaves like a wave on sub-galactic scales due to coherence of wave functions at cold temperatures with a small mass.",
     "domain": "Cosmology"

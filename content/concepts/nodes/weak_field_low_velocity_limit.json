@@ -1,0 +1,11 @@
+{
+  "id": "weak_field_low_velocity_limit",
+  "type": "model_regime",
+  "label": "Weak-field low-velocity limit",
+  "importance": 4,
+  "generality": 3,
+  "attrs": {
+    "description": "The regime where gravitational fields are weak and velocities are much smaller than the speed of light, so spacetime curvature can be treated as a small perturbation on flat space."
+  },
+  "review": "Was the assumption \"weak-field low-velocity limit\" on relation e13 (Einstein Field Equations leads to Newtonian Gravity) until 2026-10, when assumptions became concepts; it's now in the \"assumes\" of Einstein Field Equations, the relation's source. Type, importance and generality are placeholders — Sophie to check them, and that Einstein Field Equations is the concept that assumes it."
+}

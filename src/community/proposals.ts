@@ -55,6 +55,12 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   }
   for (const id of p.removals ?? [])
     if (!confirmedEdges.has(id)) problems.push(`${where}: removes relation "${id}", which isn't on the map`);
+  // What a proposed concept assumes must be on the map (assumptions draw no line, so no dependency).
+  for (const n of [...p.nodes, ...(p.edits ?? [])])
+    for (const a of n.assumes ?? [])
+      if (a === n.id) problems.push(`${where}: concept "${n.id}" assumes itself`);
+      else if (!confirmedNodes.has(a) && !ownNodes.has(a))
+        problems.push(`${where}: concept "${n.id}" assumes "${a}", which isn't a confirmed concept`);
 
   const deps = new Set(p.dependsOn ?? []);
   if (deps.has(p.id)) problems.push(`${where}: depends on itself`);

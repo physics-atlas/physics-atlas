@@ -104,6 +104,10 @@ function TypeLegend({ statuses, draft, fun }: { statuses: boolean; draft: boolea
           ))}
         </span>
       )}
+      <p className="legend-disclaimer">
+        This categorization does not claim to be exhaustive or fundamental — we welcome discussion and contribution
+        on this framework.
+      </p>
     </div>
   );
 }

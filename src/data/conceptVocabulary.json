@@ -157,7 +157,6 @@
     "explains": "{s} explains {t}.",
     "links": "{s} links to {t}.",
     "is a": "{s} is a {t}.",
-    "assumes a": "{s} assumes a {t}.",
     "describes": "{s} describes {t}.",
     "happens in": "{s} happens in {t}.",
     "exhibits": "{s} exhibits {t}.",
@@ -173,7 +172,6 @@
     "supported by": "{s} is supported by {t}.",
     "addresses": "{s} addresses {t}.",
     "approximates": "{s} approximates {t}.",
-    "assumes": "{s} assumes {t}.",
     "is a class of": "{s} is a class of {t}."
   },
   "mediaTypes": ["text", "video", "quiz"],

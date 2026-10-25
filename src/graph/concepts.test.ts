@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GraphEdge, GraphNode } from '../data/types';
 import {
   buildConceptIndex,
-  conditionClause,
+  assumptionsOf,
   domainsOf,
   edgeWeight,
   effectiveGenerality,
@@ -50,21 +50,9 @@ describe('sentenceParts', () => {
     expect(parts).toEqual([{ id: 'z', label: 'Z' }, ' approximates ', { id: 's', label: 'S' }, '.']);
   });
 
-  it('adds the assumptions an edge holds under before the full stop', () => {
-    const edge = rel('e1', 'z', 's', 'approximates', { conditions: [{ label: 'linear potential' }] });
-    const text = sentenceParts(edge, byId)
-      .map((p) => (typeof p === 'string' ? p : p.label))
-      .join('');
-    expect(text).toBe('Z approximates S under the assumption of linear potential.');
-  });
-
-  it('can leave the assumptions out', () => {
-    const edge = rel('e1', 'z', 's', 'approximates', { conditions: [{ label: 'linear potential' }] });
-    expect(sentenceParts(edge, byId, false).at(-1)).toBe('.');
-  });
 });
 
-describe('conditions', () => {
+describe('assumptions and lists', () => {
   it('joinList reads naturally', () => {
     expect(joinList([])).toBe('');
     expect(joinList(['a'])).toBe('a');
@@ -72,11 +60,19 @@ describe('conditions', () => {
     expect(joinList(['a', 'b', 'c'])).toBe('a, b and c');
   });
 
-  it('conditionClause is singular or plural', () => {
-    expect(conditionClause(rel('e', 'a', 'b', 'relates'))).toBeNull();
-    expect(conditionClause(rel('e', 'a', 'b', 'relates', { conditions: [{ label: 'x' }, { label: 'y' }] }))).toBe(
-      'under the assumptions of x and y',
-    );
+  it('a concept assumes others by id — both ways in the index, and part of its sub-view', () => {
+    const graph = {
+      version: 1,
+      nodes: [concept('z', { assumes: ['lp', 'gone'] }), concept('lp'), concept('s')],
+      edges: [rel('e1', 'z', 's', 'approximates')],
+    };
+    const index = buildConceptIndex(graph);
+    const { assumes, assumedBy } = assumptionsOf('z', index);
+    expect(assumes.map((n) => n.id)).toEqual(['lp']);
+    expect(assumedBy).toEqual([]);
+    expect(assumptionsOf('lp', index).assumedBy.map((n) => n.id)).toEqual(['z']);
+    expect(neighborsOf('z', index).sort()).toEqual(['lp', 's', 'z']);
+    expect(neighborsOf('lp', index).sort()).toEqual(['lp', 'z']);
   });
 });
 

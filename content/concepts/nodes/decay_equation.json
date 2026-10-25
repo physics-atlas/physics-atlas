@@ -4,6 +4,9 @@
   "label": "Decay equation",
   "importance": 6,
   "generality": 6,
+  "assumes": [
+    "large_number"
+  ],
   "attrs": {
     "description": "An equation describing the exponential decrease of the number of undecayed nuclei over time.",
     "equation": "N(t) = N_0 e^{-\\lambda t}",

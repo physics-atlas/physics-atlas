@@ -4,6 +4,9 @@
   "label": "Zel'dovich approximation",
   "importance": 6,
   "generality": 4,
+  "assumes": [
+    "linear_potential"
+  ],
   "attrs": {
     "description": "A first-order Lagrangian model of structure formation in which particles move on straight lines from their initial positions, displaced along the gradient of the initial gravitational potential.",
     "domain": "Cosmology"
