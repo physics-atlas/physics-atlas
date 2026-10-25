@@ -2,7 +2,7 @@
   "id": "misconception_force",
   "type": "misconception",
   "label": "Misconception: gravity is a pulling force",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "The idea that gravity is a force pulling objects directly toward one another through space, rather than the effect of objects following straight paths (geodesics) through curved spacetime.",

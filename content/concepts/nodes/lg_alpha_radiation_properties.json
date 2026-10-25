@@ -2,7 +2,7 @@
   "id": "lg_alpha_radiation_properties",
   "type": "learning_goal",
   "label": "Explain the properties of alpha radiation using information about the properties of an alpha particle",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "description": "Use the composition and properties of an alpha particle to explain the behavior of alpha radiation."

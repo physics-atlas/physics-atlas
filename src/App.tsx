@@ -51,9 +51,12 @@ const conceptSearchEntries: SearchEntry[] = concepts.nodes
     color: TYPE_COLORS[n.type],
   }))
   .sort((a, b) => a.title.localeCompare(b.title));
+/** Fluff is fun mode only — search finds it only then. */
+const isFluff = (e: SearchEntry) => concepts.nodes.find((n) => n.id === e.ref)?.type === 'fluff';
+const seriousSearchEntries = conceptSearchEntries.filter((e) => !isFluff(e));
 
 /** The concepts visible at every zoom — the home page's starting points. */
-const landmarkEntries = conceptSearchEntries.filter(
+const landmarkEntries = seriousSearchEntries.filter(
   (e) => concepts.nodes.find((n) => n.id === e.ref)?.importance === IMPORTANCE_MAX,
 );
 
@@ -62,6 +65,8 @@ export default function App() {
   const [conceptGoal, setConceptGoal] = useState(initialConceptGoal);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
+  // Fun mode: off on every visit; kept while switching between the map's two tabs.
+  const [fun, setFun] = useState(false);
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
   const motion = useMotion();
@@ -169,7 +174,7 @@ export default function App() {
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
-          <SearchBox entries={conceptSearchEntries} onPick={focusOn} />
+          <SearchBox entries={fun ? conceptSearchEntries : seriousSearchEntries} onPick={focusOn} />
           <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
@@ -197,7 +202,7 @@ export default function App() {
         {mode !== 'home' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
         {mode === 'home' && (
           <Home
-            entries={conceptSearchEntries}
+            entries={seriousSearchEntries}
             landmarks={landmarkEntries}
             onPick={homePick}
             onExplore={() => setMode('concepts')}
@@ -218,6 +223,8 @@ export default function App() {
             focus={focus}
             theme={theme}
             community={mode === 'community'}
+            fun={fun}
+            onFunChange={setFun}
           />
         )}
       </main>

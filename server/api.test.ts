@@ -169,10 +169,31 @@ describe('signing in with GitHub', () => {
     const me = await (await call(gh, '/api/me', { headers: { cookie: session } })).json();
     expect(me).toMatchObject({ configured: true, user: { login: 'ada', id: 42, name: 'Ada L' }, invited: true });
   });
-  it('refuses a callback whose state does not match', async () => {
+  it('refuses a callback whose state does not match, and says so on the site', async () => {
     const gh = fakeGitHub();
-    const res = await call(gh, '/api/auth/callback?code=good&state=forged', { headers: { cookie: 'atlas_oauth_state=real|/' } });
-    expect(res.status).toBe(400);
+    const res = await call(gh, '/api/auth/callback?code=good&state=forged', {
+      headers: { cookie: 'atlas_oauth_state=real|/?mode=community' },
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/?mode=community&signin=expired');
+    expect(cookieFrom(res, 'atlas_session')).toBeUndefined();
+  });
+  it('brings every failed sign-in back to the site with its reason', async () => {
+    const gh = fakeGitHub();
+    const back = async (query: string) => {
+      const login = await call(gh, '/api/auth/login?return=/?mode=community');
+      const state = new URL(login.headers.get('location')!).searchParams.get('state')!;
+      const res = await call(gh, `/api/auth/callback?state=${state}&${query}`, {
+        headers: { cookie: cookieFrom(login, 'atlas_oauth_state')! },
+      });
+      expect(cookieFrom(res, 'atlas_session')).toBeUndefined();
+      return Object.fromEntries(new URL(res.headers.get('location')!, ORIGIN).searchParams);
+    };
+    expect(await back('error=access_denied')).toEqual({ mode: 'community', signin: 'denied', detail: 'access_denied' });
+    expect(await back('error=redirect_uri_mismatch')).toMatchObject({ signin: 'github', detail: 'redirect_uri_mismatch' });
+    expect(await back('code=stale')).toMatchObject({ signin: 'failed', detail: 'bad_verification_code' });
+    // GitHub's reason is passed on as a code only, never as text to show.
+    expect((await back('error=%3Cb%3Ehi%3C%2Fb%3E')).detail).toBe('bhib');
   });
   it('never redirects off the site', async () => {
     const gh = fakeGitHub();

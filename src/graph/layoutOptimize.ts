@@ -12,6 +12,24 @@ export type Positions = Record<string, Pos>;
 /** [sourceId, targetId] */
 export type Segment = [string, string];
 
+/**
+ * A relation's name as the layout sees it: a box along its line (length ×
+ * thickness, model px), centred on the visible part of the line — between the
+ * two circles, which is where Cytoscape draws it. Indexed like the segments.
+ */
+export interface SegmentLabel {
+  length: number;
+  thickness: number;
+  /**
+   * How much the target's arrowhead shortens the drawn line (model px). The
+   * name sits in the middle of what's drawn, so it shifts by half of this
+   * towards the source.
+   */
+  arrow?: number;
+}
+
+export type SegmentLabels = (SegmentLabel | undefined)[];
+
 export interface NodeBox {
   /** Circle radius */
   radius: number;
@@ -34,6 +52,96 @@ const EDGE_ROOM = 90;
  */
 export const SPACING = 0.84;
 const FORCE_ITERATIONS = 400;
+
+/** Clear space either side of a relation name, along its line. */
+const LABEL_MARGIN = 14;
+/** How hard a relation too short for its name pushes its ends apart. */
+const LABEL_PUSH = 2;
+
+/** How long a relation must be for its name to fit between its two circles. */
+export const labelRoom = (radiusA: number, radiusB: number, label: SegmentLabel | undefined): number =>
+  radiusA + radiusB + (label ? label.length + (label.arrow ?? 0) + 2 * LABEL_MARGIN : 0);
+
+interface LabelFrame {
+  cx: number;
+  cy: number;
+  ux: number;
+  uy: number;
+  /** half the name's length, half its thickness */
+  hl: number;
+  ht: number;
+  /** the line's visible length, between the circles */
+  visible: number;
+}
+
+function labelFrame(a: Pos, b: Pos, ra: number, rb: number, label: SegmentLabel): LabelFrame | null {
+  const d = Math.hypot(b.x - a.x, b.y - a.y);
+  if (d < 1e-6) return null;
+  const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+  const arrow = label.arrow ?? 0;
+  const from = { x: a.x + ux * ra, y: a.y + uy * ra };
+  const to = { x: b.x - ux * (rb + arrow), y: b.y - uy * (rb + arrow) };
+  return {
+    cx: (from.x + to.x) / 2,
+    cy: (from.y + to.y) / 2,
+    ux,
+    uy,
+    hl: label.length / 2,
+    ht: label.thickness / 2,
+    visible: d - ra - rb - arrow,
+  };
+}
+
+/** Does a circle touch the name's (rotated) box? */
+function frameHitsCircle(f: LabelFrame, p: Pos, r: number): boolean {
+  const dx = p.x - f.cx, dy = p.y - f.cy;
+  const along = Math.max(Math.abs(dx * f.ux + dy * f.uy) - f.hl, 0);
+  const across = Math.max(Math.abs(-dx * f.uy + dy * f.ux) - f.ht, 0);
+  return along * along + across * across < r * r;
+}
+
+/** Does an axis-aligned box touch the name's (rotated) box? Separating axes: x, y, along, across. */
+function frameHitsRect(f: LabelFrame, x1: number, y1: number, x2: number, y2: number): boolean {
+  const hx = (x2 - x1) / 2, hy = (y2 - y1) / 2;
+  const dx = (x1 + x2) / 2 - f.cx, dy = (y1 + y2) / 2 - f.cy;
+  // The name's half-extents projected onto x and y.
+  const fx = f.hl * Math.abs(f.ux) + f.ht * Math.abs(f.uy);
+  const fy = f.hl * Math.abs(f.uy) + f.ht * Math.abs(f.ux);
+  if (Math.abs(dx) > hx + fx || Math.abs(dy) > hy + fy) return false;
+  // The box's half-extents projected onto the name's own axes.
+  const along = Math.abs(dx * f.ux + dy * f.uy), across = Math.abs(-dx * f.uy + dy * f.ux);
+  const ba = hx * Math.abs(f.ux) + hy * Math.abs(f.uy), bc = hx * Math.abs(f.uy) + hy * Math.abs(f.ux);
+  return along <= f.hl + ba && across <= f.ht + bc;
+}
+
+/**
+ * For each relation with a name, the nodes covering it: a circle over the
+ * name, or a concept's own name (under a small circle) over it. A line too
+ * short for its name lists its own ends. Only nodes in `pos` count.
+ */
+export function labelCovers(
+  segments: Segment[],
+  labels: SegmentLabels,
+  pos: Positions,
+  boxes: Record<string, NodeBox>,
+): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  segments.forEach(([s, t], i) => {
+    const label = labels[i];
+    if (!label || !pos[s] || !pos[t]) return;
+    const f = labelFrame(pos[s], pos[t], boxes[s].radius, boxes[t].radius, label);
+    if (!f) return;
+    const covers = f.visible < label.length ? [s, t] : [];
+    for (const id in pos) {
+      if (covers.includes(id)) continue;
+      const p = pos[id], b = boxes[id];
+      const underName = b.bottom > b.radius + 1 && frameHitsRect(f, p.x + b.left, p.y + b.radius, p.x + b.right, p.y + b.bottom);
+      if (frameHitsCircle(f, p, b.radius) || underName) covers.push(id);
+    }
+    if (covers.length) out.set(i, covers);
+  });
+  return out;
+}
 
 const ccw = (a: Pos, b: Pos, c: Pos) => (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
 
@@ -123,14 +231,21 @@ export interface LayoutScore {
   length: number;
 }
 
+/** A covered relation name costs more than a crossing: it can't be read at all. */
+const COVERED_LABEL_WEIGHT = 2;
+
 export function scoreLayout(
   segments: Segment[],
   pos: Positions,
   boxes: Record<string, NodeBox>,
+  labels: SegmentLabels = [],
 ): LayoutScore {
   return {
     tangles:
-      countCrossings(segments, pos) + countNodeOverlaps(segments, pos, boxes) + countBoxOverlaps(pos, boxes),
+      countCrossings(segments, pos) +
+      countNodeOverlaps(segments, pos, boxes) +
+      countBoxOverlaps(pos, boxes) +
+      COVERED_LABEL_WEIGHT * labelCovers(segments, labels, pos, boxes).size,
     length: edgeLength(segments, pos),
   };
 }
@@ -151,6 +266,8 @@ export interface ForceOptions {
   start?: Positions;
   /** Largest first step; small for a local settle around a good start. */
   temperature?: number;
+  /** Relation names (indexed like the segments): each relation gets the length its name needs. */
+  labels?: SegmentLabels;
 }
 
 /**
@@ -164,7 +281,7 @@ export function forceLayout(
   boxes: Record<string, NodeBox>,
   rng: () => number,
   iterations = FORCE_ITERATIONS,
-  { fixed = {}, start = {}, temperature }: ForceOptions = {},
+  { fixed = {}, start = {}, temperature, labels = [] }: ForceOptions = {},
 ): Positions {
   const n = ids.length;
   const r = ids.map((id) => reach(boxes[id]));
@@ -181,7 +298,13 @@ export function forceLayout(
   const y = initial.map((p) => p.y);
   const pinned = ids.map((id) => id in fixed);
   const at = new Map(ids.map((id, i) => [id, i]));
-  const links = segments.map(([s, t]) => [at.get(s)!, at.get(t)!] as const);
+  // A relation's ideal length: the usual spacing, or — when its name needs
+  // more — both circles plus the name. `room` is the least it may be.
+  const links = segments.map(([s, t], e) => {
+    const i = at.get(s)!, j = at.get(t)!;
+    const room = labelRoom(boxes[s].radius, boxes[t].radius, labels[e]);
+    return { i, j, room, ideal: Math.max(k(i, j), room) };
+  });
   const t0 = temperature ?? side / 4;
   for (let it = 0; it < iterations; it++) {
     const temp = t0 * (1 - it / iterations) + 1;
@@ -206,11 +329,13 @@ export function forceLayout(
         fx[j] -= dx * f;
         fy[j] -= dy * f;
       }
-    for (const [i, j] of links) {
+    for (const { i, j, room, ideal } of links) {
       if (i === j) continue;
       const dx = x[i] - x[j], dy = y[i] - y[j];
-      // Attraction d²/k along the unit vector.
-      const f = Math.hypot(dx, dy) / k(i, j);
+      const d = Math.max(Math.hypot(dx, dy), 1e-3);
+      // Attraction d²/ideal along the unit vector — but while the line is too
+      // short for its name, a firm push apart instead (pulling would win).
+      const f = d < room ? -LABEL_PUSH * ((room - d) / d) : d / ideal;
       fx[i] -= dx * f;
       fy[i] -= dy * f;
       fx[j] += dx * f;
@@ -313,10 +438,12 @@ export function placeNew(
   segments: Segment[],
   boxes: Record<string, NodeBox>,
   rng: () => number,
+  labels: SegmentLabels = [],
 ): Positions {
   if (newIds.length === 0) return {};
   const isNew = new Set(newIds);
-  const touching = segments.filter(([s, t]) => isNew.has(s) || isNew.has(t));
+  const touchingIdx = segments.map((_, i) => i).filter((i) => isNew.has(segments[i][0]) || isNew.has(segments[i][1]));
+  const touching = touchingIdx.map((i) => segments[i]);
   const neighbours = (id: string) =>
     touching.flatMap(([s, t]) => (s === id ? [t] : t === id ? [s] : []));
 
@@ -351,13 +478,19 @@ export function placeNew(
   );
   const ids = [...near, ...newIds];
   const inRun = new Set(ids);
+  const inRunIdx = touchingIdx.filter((i) => inRun.has(segments[i][0]) && inRun.has(segments[i][1]));
   const settled = forceLayout(
     ids,
-    touching.filter(([s, t]) => inRun.has(s) && inRun.has(t)),
+    inRunIdx.map((i) => segments[i]),
     boxes,
     rng,
     PLACE_ITERATIONS,
-    { fixed: Object.fromEntries(near.map((id) => [id, fixed[id]])), start, temperature: EDGE_ROOM },
+    {
+      fixed: Object.fromEntries(near.map((id) => [id, fixed[id]])),
+      start,
+      temperature: EDGE_ROOM,
+      labels: inRunIdx.map((i) => labels[i]),
+    },
   );
   const clear = removeOverlaps(
     { ...fixed, ...Object.fromEntries(newIds.map((id) => [id, settled[id]])) },
@@ -365,7 +498,9 @@ export function placeNew(
     60,
     isNew,
   );
-  return Object.fromEntries(newIds.map((id) => [id, clear[id]]));
+  // Only the new nodes move: they make the room their relations' names need.
+  const roomy = stretchForLabels(clear, touching, touchingIdx.map((i) => labels[i]), boxes, isNew);
+  return Object.fromEntries(newIds.map((id) => [id, roomy[id]]));
 }
 
 /**
@@ -377,17 +512,18 @@ export function swapNodes(
   start: Positions,
   boxes: Record<string, NodeBox>,
   maxPasses = 4,
+  labels: SegmentLabels = [],
 ): { pos: Positions; score: LayoutScore } {
   const pos = copy(start);
   const ids = Object.keys(pos);
-  let score = scoreLayout(segments, pos, boxes);
+  let score = scoreLayout(segments, pos, boxes, labels);
   for (let pass = 0, improved = true; improved && pass < maxPasses; pass++) {
     improved = false;
     for (let i = 0; i < ids.length; i++)
       for (let j = i + 1; j < ids.length; j++) {
         const a = ids[i], b = ids[j];
         [pos[a], pos[b]] = [pos[b], pos[a]];
-        const next = scoreLayout(segments, pos, boxes);
+        const next = scoreLayout(segments, pos, boxes, labels);
         if (better(next, score)) {
           score = next;
           improved = true;
@@ -405,10 +541,51 @@ export function arrangeComponent(
   segments: Segment[],
   boxes: Record<string, NodeBox>,
   rng: () => number,
+  labels: SegmentLabels = [],
 ): { pos: Positions; score: LayoutScore } {
-  const spread = removeOverlaps(alignWide(forceLayout(ids, segments, boxes, rng)), boxes);
-  const pos = removeOverlaps(swapNodes(segments, spread, boxes).pos, boxes);
-  return { pos, score: scoreLayout(segments, pos, boxes) };
+  const laid = forceLayout(ids, segments, boxes, rng, FORCE_ITERATIONS, { labels });
+  const spread = removeOverlaps(alignWide(laid), boxes);
+  const swapped = removeOverlaps(swapNodes(segments, spread, boxes, 4, labels).pos, boxes);
+  const pos = stretchForLabels(swapped, segments, labels, boxes);
+  return { pos, score: scoreLayout(segments, pos, boxes, labels) };
+}
+
+const STRETCH_ROUNDS = 6;
+
+/**
+ * The force layout gets most relations their room, not all — a node pulled
+ * by many neighbours gives way. This finishes the job: every relation still
+ * too short for its name moves its (movable) ends apart along its line, then
+ * names that now overlap are pushed apart again; a few rounds settle it.
+ */
+export function stretchForLabels(
+  start: Positions,
+  segments: Segment[],
+  labels: SegmentLabels,
+  boxes: Record<string, NodeBox>,
+  movable?: Set<string>,
+): Positions {
+  let pos = copy(start);
+  const canMove = (id: string) => !movable || movable.has(id);
+  for (let round = 0; round < STRETCH_ROUNDS; round++) {
+    let short = false;
+    segments.forEach(([s, t], i) => {
+      const a = pos[s], b = pos[t];
+      if (!labels[i] || !a || !b || s === t) return;
+      const room = labelRoom(boxes[s].radius, boxes[t].radius, labels[i]);
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d >= room - 0.5 || (!canMove(s) && !canMove(t))) return;
+      short = true;
+      const ux = d > 1e-6 ? (b.x - a.x) / d : 1, uy = d > 1e-6 ? (b.y - a.y) / d : 0;
+      const gap = room - d + SLACK;
+      const share = canMove(s) && canMove(t) ? gap / 2 : gap;
+      if (canMove(s)) pos[s] = { x: a.x - ux * share, y: a.y - uy * share };
+      if (canMove(t)) pos[t] = { x: b.x + ux * share, y: b.y + uy * share };
+    });
+    if (!short) break;
+    pos = removeOverlaps(pos, boxes, 60, movable);
+  }
+  return pos;
 }
 
 /** Deterministic PRNG (Park–Miller) so the search is reproducible. */

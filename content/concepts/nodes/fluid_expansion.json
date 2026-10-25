@@ -2,7 +2,7 @@
   "id": "fluid_expansion",
   "type": "property",
   "label": "Fluid Expansion",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "The scalar expansion of a fluid congruence, describing the local rate at which neighboring fluid elements separate.",

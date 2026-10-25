@@ -2,15 +2,15 @@
   "id": "schrodinger_poisson_equation",
   "type": "equation",
   "label": "Schrödinger-Poisson eq.",
-  "importance": 30,
+  "importance": 6,
   "generality": 2,
   "epistemicStatus": "Candidate",
   "attrs": {
     "description": "Describes the evolution of a Schrödinger wave which is self-gravitational.",
-    "equation": "iħ ∂ψ/∂t = −(ħ²/2m)∇²ψ + mΦψ,  ∇²Φ = 4πGm|ψ|²",
+    "equation": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = -\\frac{\\hbar^2}{2m} \\nabla^2 \\psi + m \\Phi \\psi, \\quad \\nabla^2 \\Phi = 4\\pi G m |\\psi|^2",
     "variables": [
       {
-        "symbol": "ψ",
+        "symbol": "\\psi",
         "meaning": "Wavefunction (classical field) of the dark matter"
       },
       {
@@ -18,11 +18,11 @@
         "meaning": "Particle mass"
       },
       {
-        "symbol": "Φ",
+        "symbol": "\\Phi",
         "meaning": "Gravitational potential"
       },
       {
-        "symbol": "ħ",
+        "symbol": "\\hbar",
         "meaning": "Reduced Planck constant"
       },
       {

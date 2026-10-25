@@ -50,10 +50,13 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
           <Todo label="To-do" />
         </p>
       )}
-      <p className="concept-status">
-        Epistemic status:{' '}
-        {node.epistemicStatus ? <strong>{node.epistemicStatus}</strong> : <Todo label="To-do" />}
-      </p>
+      {/* Fluff makes no claim, so it has no epistemic status to settle. */}
+      {node.type !== 'fluff' && (
+        <p className="concept-status">
+          Epistemic status:{' '}
+          {node.epistemicStatus ? <strong>{node.epistemicStatus}</strong> : <Todo label="To-do" />}
+        </p>
+      )}
 
       {children}
 

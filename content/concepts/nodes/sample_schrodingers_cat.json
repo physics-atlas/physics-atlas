@@ -1,0 +1,10 @@
+{
+  "id": "sample_schrodingers_cat",
+  "type": "fluff",
+  "label": "Sample: Schrödinger's cat",
+  "importance": 6,
+  "generality": 3,
+  "attrs": {
+    "description": "Sample fluff — rename or delete this node. Officially both asleep and awake until someone opens the box; unofficially, asleep."
+  }
+}

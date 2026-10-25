@@ -2,7 +2,7 @@
   "id": "wave_dark_matter",
   "type": "physical_system",
   "label": "Wave Dark Matter",
-  "importance": 30,
+  "importance": 6,
   "generality": 4,
   "epistemicStatus": "Candidate",
   "attrs": {

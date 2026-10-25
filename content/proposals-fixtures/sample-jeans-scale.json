@@ -24,7 +24,7 @@
       "id": "jeans_scale_s1",
       "type": "property",
       "label": "Jeans scale",
-      "importance": 30,
+      "importance": 6,
       "generality": 6,
       "attrs": {
         "description": "Sample: the length scale above which gravity overcomes pressure support.",

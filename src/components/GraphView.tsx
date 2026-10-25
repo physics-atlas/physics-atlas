@@ -7,10 +7,13 @@ import type { DraftShape } from '../community/draft';
 import {
   buildConceptIndex,
   INSIDE_LABEL_RADIUS,
+  EDGE_LABEL_FONT,
+  edgeLabelSize,
   edgeWeight,
   effectiveImportance,
   joinList,
   labelSize,
+  lonelyLine,
   nodeRadius,
   normalizeRelationship,
   revealZoom,
@@ -24,17 +27,27 @@ import {
   createRng,
   layoutKey,
   packComponents,
+  labelCovers,
   placeNew,
   removeOverlaps,
   SPACING,
 } from '../graph/layoutOptimize';
 import { reducedMotion } from '../lib/motion';
-import type { LayoutScore, NodeBox, Pos, Positions, Segment } from '../graph/layoutOptimize';
+import type { LayoutScore, NodeBox, Pos, Positions, Segment, SegmentLabel, SegmentLabels } from '../graph/layoutOptimize';
 
 const ICON_BOOST_PX = 14;
 /** A line's width in model px when zoomed in — and highlighted (hover, path, proposal). */
 const EDGE_WIDTH = 1.5;
 const EDGE_WIDTH_EMPH = 2.5;
+/** Highlighted (hover, path, selection) and hovered-line names, as multiples of it. */
+const EDGE_FONT_EMPH = 1.15;
+const EDGE_FONT_HOVER = 1.35;
+/** Where a relation name wraps, at EDGE_LABEL_FONT — it widens in step with the font. */
+const EDGE_LABEL_MAX = 220;
+/** Cytoscape hides a name smaller than this on screen ('min-zoomed-font-size'). */
+const MIN_LABEL_PX = 9;
+/** The arrowheads' 'arrow-scale'. */
+const ARROW_SCALE = 0.8;
 /** A circle wider than this share of the view has been zoomed past: it fades to an outline. */
 const PAST_VIEW = 0.9;
 /** Classes that keep a concept on screen at any zoom — what the user is looking at. */
@@ -87,7 +100,7 @@ interface GraphViewProps {
   goalId?: string | null;
   /**
    * Animate-fit the viewport to these nodes whenever the set changes; going
-   * back to null re-fits the whole graph.
+   * back to null leaves the view where it is.
    */
   fitIds?: Set<string> | null;
   /** Screen px covered by overlay panels on each side, kept clear by `fitIds`. */
@@ -123,6 +136,17 @@ interface GraphViewProps {
   onDraftNear?: (ids: string[], byHand: boolean, ghostId: string) => void;
   /** Bump to move the active ghost into the middle of the view. */
   draftRecall?: number;
+  /**
+   * Fun mode: concepts without a relation say so in a speech bubble (a button
+   * that selects them), and proposals of the fluff type show.
+   */
+  fun?: boolean;
+  /**
+   * Fun mode's fluff concepts and their relations, drawn on top of `concepts`
+   * like the proposals: placed around what they connect to, never moving a
+   * confirmed concept, never in the layout cache.
+   */
+  fluff?: ConceptGraph | null;
 }
 
 export interface DraftOverlay {
@@ -296,7 +320,7 @@ const styleFor = (light: boolean) => {
       // More important concepts get bigger names, like a map's city labels;
       // names too small to read on screen are dropped.
       'font-size': 'data(fontSize)',
-      'min-zoomed-font-size': 9,
+      'min-zoomed-font-size': MIN_LABEL_PX,
       // Every glow (hover, selection, edge ends) follows the circle.
       'underlay-shape': 'ellipse',
       'transition-property': 'opacity, text-opacity, background-opacity, border-width, border-color',
@@ -483,7 +507,7 @@ const styleFor = (light: boolean) => {
       'line-opacity': edgeOpacity,
       'target-arrow-shape': 'triangle',
       'target-arrow-color': edgeArrow,
-      'arrow-scale': 0.8,
+      'arrow-scale': ARROW_SCALE,
       'transition-property': 'opacity, width, line-color, target-arrow-color',
       'transition-duration': '0.3s',
       'transition-timing-function': 'ease-in-out',
@@ -494,15 +518,15 @@ const styleFor = (light: boolean) => {
     style: {
       label: 'data(relation)',
       color: relationInk,
-      'font-size': 11,
+      'font-size': 'data(fontSize)',
       'font-style': 'italic',
       // Cytoscape drops a label whose on-screen size falls below this, so
       // relation names vanish when zoomed out instead of piling up.
-      'min-zoomed-font-size': 9,
+      'min-zoomed-font-size': MIN_LABEL_PX,
       'font-family': 'system-ui, -apple-system, "Segoe UI", sans-serif',
       'text-rotation': 'autorotate',
       'text-wrap': 'wrap',
-      'text-max-width': '220px',
+      'text-max-width': 'data(labelMax)',
       'text-background-color': surface,
       'text-background-opacity': 0.75,
       'text-background-padding': 2,
@@ -519,6 +543,9 @@ const styleFor = (light: boolean) => {
     },
   },
   { selector: 'edge.dimmed', style: { opacity: 0.08 } },
+  // A name a circle still covers (the layout couldn't clear it) stays hidden
+  // until its relation is highlighted — the states below bring it back.
+  { selector: 'edge.label-covered', style: { 'text-opacity': 0 } },
   // Persistent selection tree (a click) — same silver/gold coding as hover,
   // but sticky. Defined before hover so a live hover still wins on top.
   { selector: 'node.sel-soft', style: { opacity: 0.4 } },
@@ -560,9 +587,10 @@ const styleFor = (light: boolean) => {
   {
     selector: 'edge.concept-edge.sel-pre, edge.concept-edge.sel-post',
     style: {
+      'text-opacity': 1,
       opacity: 1,
       color: ink,
-      'font-size': 12.5,
+      'font-size': 'data(fontSizeEmph)',
       'font-weight': 'bold',
       'text-background-opacity': 0.85,
       'z-index': 15,
@@ -655,8 +683,9 @@ const styleFor = (light: boolean) => {
   {
     selector: 'edge.concept-edge.onpath, edge.concept-edge.hover-pre, edge.concept-edge.hover-post',
     style: {
+      'text-opacity': 1,
       color: ink,
-      'font-size': 12.5,
+      'font-size': 'data(fontSizeEmph)',
       'font-weight': 'bold',
       'text-background-opacity': 0.85,
       'z-index': 15,
@@ -667,13 +696,14 @@ const styleFor = (light: boolean) => {
   {
     selector: 'edge.concept-edge.edge-hovered',
     style: {
+      'text-opacity': 1,
       opacity: 1,
       width: 'data(widthEmph)',
       'line-opacity': 1,
       'line-color': onpath,
       'target-arrow-color': onpathArrow,
       color: ink,
-      'font-size': 15,
+      'font-size': 'data(fontSizeHover)',
       'font-weight': 'bold',
       'text-background-opacity': 0.95,
       'text-background-padding': 3,
@@ -721,12 +751,14 @@ const styleFor = (light: boolean) => {
 const SEARCH_SEEDS = 24;
 const COMPONENT_GAP = 120 * SPACING;
 const LONE_NODE_GAP = 40 * SPACING;
-const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v8';
+const LAYOUT_STORE_KEY = 'physics-atlas-concept-layout-v9';
 const layoutCache = new Map<string, Positions>();
 
 interface ConceptComponent {
   ids: string[];
   segments: Segment[];
+  /** Each segment's relation name — its line gets the room the name needs */
+  labels: SegmentLabels;
 }
 
 interface ComponentLayout {
@@ -780,13 +812,15 @@ function layoutConcepts(
     .map((c) => ({
       ids: c.nodes().map((n) => n.id()),
       segments: c.edges().map((e) => [e.source().id(), e.target().id()] as Segment),
+      labels: c.edges().map((e) => relationLabel(e)),
     }));
   // Unlinked concepts share one compact row instead of each taking a full slot.
   const loneIds = all.filter((c) => c.nodes().length === 1).map((c) => c.nodes()[0].id());
   const key = layoutKey(
     cy.nodes().map((n) => n.id()),
     comps.flatMap((c) => c.segments),
-    'concepts',
+    // The names' lengths are part of the layout: a renamed relation re-lays it out.
+    `concepts|${comps.flatMap((c) => c.labels.map((l) => Math.round(l?.length ?? 0))).join('.')}`,
   );
   const cached = layoutCache.get(key) ?? readStoredLayout(key);
   if (cached) {
@@ -811,7 +845,7 @@ function layoutConcepts(
       COMPONENT_GAP,
     );
 
-  const best = comps.map((c, i) => arrangeComponent(c.ids, c.segments, boxes, createRng(1 + i)));
+  const best = comps.map((c, i) => arrangeComponent(c.ids, c.segments, boxes, createRng(1 + i), c.labels));
   const shown = pack(best);
   setPositions(cy, shown);
 
@@ -836,7 +870,7 @@ function layoutConcepts(
     }
     const i = job.comp;
     const comp = comps[i];
-    const candidate = arrangeComponent(comp.ids, comp.segments, boxes, createRng(job.seed));
+    const candidate = arrangeComponent(comp.ids, comp.segments, boxes, createRng(job.seed), comp.labels);
     if (better(candidate.score, best[i].score)) {
       best[i] = candidate;
       improved = true;
@@ -898,6 +932,10 @@ function conceptEdgeElement(e: GraphEdge, classes = '', status?: string) {
       width: EDGE_WIDTH,
       widthEmph: EDGE_WIDTH_EMPH,
       strength: 0,
+      fontSize: EDGE_LABEL_FONT,
+      fontSizeEmph: EDGE_LABEL_FONT * EDGE_FONT_EMPH,
+      fontSizeHover: EDGE_LABEL_FONT * EDGE_FONT_HOVER,
+      labelMax: EDGE_LABEL_MAX,
     },
     classes: `concept-edge ${classes}`.trim(),
   };
@@ -931,6 +969,66 @@ function overlayElements(overlay: ConceptOverlay, iconColor: string): cytoscape.
   ];
 }
 
+let measureCtx: CanvasRenderingContext2D | null = null;
+
+/**
+ * A relation's name as the layout needs it: measured in the font it's drawn
+ * in (edgeLabelSize, italic), wrapped where Cytoscape wraps it, plus its plate.
+ */
+function relationLabel(e: cytoscape.EdgeSingular): SegmentLabel | undefined {
+  const text = String(e.data('relation') ?? '').trim();
+  if (!text || e.empty()) return undefined;
+  const [s, t] = [e.source(), e.target()];
+  const { px, strength } = edgeWeight(
+    [s.data('radius') as number, t.data('radius') as number],
+    [s.data('importance') as number, t.data('importance') as number],
+  );
+  const font = edgeLabelSize(px, strength);
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return undefined;
+  measureCtx.font = `italic ${font}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  const max = (EDGE_LABEL_MAX * font) / EDGE_LABEL_FONT;
+  let length = 0;
+  let lines = 0;
+  for (const line of text.split('\n')) {
+    const w = measureCtx.measureText(line).width;
+    length = Math.max(length, Math.min(w, max));
+    lines += Math.max(1, Math.ceil(w / max));
+  }
+  // The arrowhead, as Cytoscape sizes it (max((width·13.37)^0.9, 29) × arrow-scale),
+  // at the zoom where the name first shows — the farthest out, where lines
+  // and so arrows are widest in model px; closer in it only gets smaller.
+  const legibleZoom = MIN_LABEL_PX / font;
+  const width = Math.max(EDGE_WIDTH, px / legibleZoom);
+  const arrow = ARROW_SCALE * Math.max((width * 13.37) ** 0.9, 29);
+  // The plate (text-background-padding 2) on every side.
+  return { length: length + 4, thickness: lines * font * 1.2 + 4, arrow };
+}
+
+const relationLabels = (cy: cytoscape.Core, edgeIds: string[]): SegmentLabels =>
+  edgeIds.map((id) => {
+    const e = cy.$id(id);
+    return e.nonempty() && e.isEdge() ? relationLabel(e as cytoscape.EdgeSingular) : undefined;
+  });
+
+/** For every shown relation, the concepts whose circle (or name) covers its name — by edge id. */
+function relationCovers(cy: cytoscape.Core): Map<string, string[]> {
+  const edges = cy
+    .edges()
+    .toArray()
+    .filter((e) => !e.hasClass('layer-hidden')) as cytoscape.EdgeSingular[];
+  const segments = edges.map((e) => [e.source().id(), e.target().id()] as Segment);
+  const labels = edges.map((e) => relationLabel(e));
+  const pos: Positions = {};
+  cy.nodes()
+    .not('.layer-hidden')
+    .forEach((n) => {
+      pos[n.id()] = { ...n.position() };
+    });
+  const covers = labelCovers(segments, labels, pos, nodeBoxes(cy.nodes()));
+  return new Map([...covers].map(([i, ids]) => [edges[i].id(), ids]));
+}
+
 /** Label-inclusive extents of the given nodes, as offsets from each centre. */
 function nodeBoxes(nodes: cytoscape.NodeCollection): Record<string, NodeBox> {
   const boxes: Record<string, NodeBox> = {};
@@ -962,6 +1060,8 @@ export default function GraphView({
   draft = null,
   onDraftNear,
   draftRecall = 0,
+  fun = false,
+  fluff = null,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -970,6 +1070,21 @@ export default function GraphView({
   const applyFadeRef = useRef<(() => void) | null>(null);
   /** Positions for the overlay given confirmed positions — null when there's no overlay. */
   const placeOverlayRef = useRef<((confirmed: Positions) => Positions) | null>(null);
+  /** The same for fun mode's fluff layer. */
+  const placeFluffRef = useRef<((confirmed: Positions) => Positions) | null>(null);
+  /** The lonely concepts' speech bubbles (fun mode), and what moves them with the map. */
+  const [lonely, setLonely] = useState<{ id: string; label: string; importance: number }[]>([]);
+  const bubbleRefs = useRef(new Map<string, HTMLButtonElement>());
+  const placeBubblesRef = useRef<(() => void) | null>(null);
+  /** Relation names a circle still covers, by edge id (with who covers them) — the safety net. */
+  const coversRef = useRef(new Map<string, string[]>());
+  /** Re-measures the covers after anything moves, then re-applies the zoom level of detail. */
+  const refreshCovers = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    coversRef.current = relationCovers(cy);
+    applyFadeRef.current?.();
+  };
   const fitIdsRef = useRef(fitIds);
   fitIdsRef.current = fitIds;
   const fitInsetsRef = useRef(fitInsets);
@@ -1033,8 +1148,9 @@ export default function GraphView({
       viewportTouchedRef.current = true;
     });
     const cancelLayoutSearch = layoutConcepts(cy, (improved) => {
-      // Proposals follow the confirmed graph into its better arrangement.
-      const positions = { ...improved, ...(placeOverlayRef.current?.(improved) ?? {}) };
+      // Fluff and proposals follow the confirmed graph into its better arrangement.
+      const withFluff = { ...improved, ...(placeFluffRef.current?.(improved) ?? {}) };
+      const positions = { ...withFluff, ...(placeOverlayRef.current?.(withFluff) ?? {}) };
       const reduced = reducedMotion();
       const refit = () => {
         const ids = fitIdsRef.current;
@@ -1043,7 +1159,7 @@ export default function GraphView({
           else fitBeside(cy, cy.elements(), overviewInsets());
         }
         // The overview zoom moved with the layout, even if the viewport didn't.
-        applyFadeRef.current?.();
+        refreshCovers();
       };
       if (reduced) {
         setPositions(cy, positions);
@@ -1063,6 +1179,7 @@ export default function GraphView({
       glide.run();
     });
     fitBeside(cy, cy.elements(), overviewInsets(), false);
+    coversRef.current = relationCovers(cy);
 
     // Map-style level of detail: as you zoom out, less important concepts
     // (and the lines to them) disappear, leaving the landmarks; zooming in
@@ -1098,14 +1215,70 @@ export default function GraphView({
           const emph = Math.round(100 * Math.max(EDGE_WIDTH_EMPH, (px + 1.5) / z)) / 100;
           if (e.data('width') !== width) e.data({ width, widthEmph: emph });
           if (e.data('strength') !== strength) e.data('strength', strength);
+          // A relation's name grows with its line (edgeLabelSize) — the same
+          // size the layout made room for.
+          const font = edgeLabelSize(px, strength);
+          if (e.data('fontSize') !== font)
+            e.data({
+              fontSize: font,
+              fontSizeEmph: font * EDGE_FONT_EMPH,
+              fontSizeHover: font * EDGE_FONT_HOVER,
+              labelMax: (EDGE_LABEL_MAX * font) / EDGE_LABEL_FONT,
+            });
+          // The safety net: a name a shown circle still covers stays hidden
+          // until the relation is highlighted (hover, selection, path).
+          const coverers = coversRef.current.get(e.id());
+          const covered = (coverers ?? []).some((id) => {
+            const n = cy.$id(id);
+            return n.nonempty() && !['zoom-hidden', 'zoom-past', 'layer-hidden'].some((c) => n.hasClass(c));
+          });
+          e.toggleClass('label-covered', covered);
         });
       });
+      // A speech bubble shows and hides with its concept.
+      placeBubblesRef.current?.();
     };
     applyFade();
     cy.on('zoom', () => {
       if (!fadeFrame) fadeFrame = window.requestAnimationFrame(applyFade);
     });
     applyFadeRef.current = applyFade;
+
+    // Fun mode's speech bubbles are HTML over the canvas: they follow their
+    // concept through every pan, zoom and layout glide (rAF-throttled).
+    let bubbleFrame = 0;
+    const placeBubbles = () => {
+      bubbleFrame = 0;
+      const z = cy.zoom();
+      const insets = fitInsetsRef.current ?? NO_INSETS;
+      const shown: { el: HTMLButtonElement; importance: number }[] = [];
+      for (const [id, el] of bubbleRefs.current) {
+        const n = cy.$id(id);
+        const gone = n.empty() || ['zoom-hidden', 'zoom-past', 'layer-hidden'].some((c) => n.hasClass(c));
+        const p = n.renderedPosition();
+        // The tail sits on the circle's upper right.
+        const r = (gone ? 0 : (n.data('radius') as number)) * z * 0.7;
+        const x = p.x + r, y = p.y - r;
+        // Not under a side panel either: the card is see-through glass.
+        el.hidden = gone || x < insets.left || y < 0 || x > cy.width() - insets.right || y > cy.height();
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        if (!el.hidden) shown.push({ el, importance: n.data('importance') as number });
+      }
+      // Bubbles that would overlap behave like map labels: the more important
+      // concept keeps its bubble; zooming in brings the other one back.
+      const kept: DOMRect[] = [];
+      for (const { el } of shown.sort((a, b) => b.importance - a.importance)) {
+        const box = el.getBoundingClientRect();
+        if (kept.some((k) => box.left < k.right && k.left < box.right && box.top < k.bottom && k.top < box.bottom))
+          el.hidden = true;
+        else kept.push(box);
+      }
+    };
+    placeBubblesRef.current = placeBubbles;
+    cy.on('viewport position', () => {
+      if (!bubbleFrame) bubbleFrame = window.requestAnimationFrame(placeBubbles);
+    });
 
     // Dragging the draft is how the proposer works out where it fits: the
     // concepts nearest it are offered as connections as it moves.
@@ -1126,6 +1299,7 @@ export default function GraphView({
     cy.on('free', 'node.draft', (e) => {
       if (containerRef.current) containerRef.current.style.cursor = 'grab';
       reportNear((e.target as cytoscape.NodeSingular).id());
+      refreshCovers();
     });
 
     cy.on('tap', (e) => {
@@ -1177,12 +1351,49 @@ export default function GraphView({
     return () => {
       if (fadeFrame) window.cancelAnimationFrame(fadeFrame);
       if (dragFrame) window.cancelAnimationFrame(dragFrame);
+      if (bubbleFrame) window.cancelAnimationFrame(bubbleFrame);
       cancelLayoutSearch();
       applyFadeRef.current = null;
+      placeBubblesRef.current = null;
       cy.destroy();
       cyRef.current = null;
     };
   }, [concepts, theme]);
+
+  // Fun mode's fluff: added after the confirmed layout like the proposals —
+  // placed around what it connects to with every other concept fixed, never in
+  // the layout cache — so turning fun mode on or off leaves the map where it
+  // was. Declared before the proposed layer, which may point at fluff.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.remove('.fluff-layer');
+    placeFluffRef.current = null;
+    if (!fluff || fluff.nodes.length === 0) return;
+    const iconColor = theme === 'light' ? '#1c2333' : '#ffffff';
+    const degree = new Map<string, number>();
+    for (const e of fluff.edges) for (const end of [e.source, e.target]) degree.set(end, (degree.get(end) ?? 0) + 1);
+    cy.add(fluff.nodes.map((n) => conceptNodeElement(n, degree.get(n.id) ?? 0, iconColor, 'fluff-layer')));
+    cy.add(
+      fluff.edges
+        .filter((e) => cy.$id(e.source).nonempty() && cy.$id(e.target).nonempty())
+        .map((e) => conceptEdgeElement(e, 'fluff-layer')),
+    );
+    const ids = fluff.nodes.map((n) => n.id);
+    const segments = fluff.edges.map((e) => [e.source, e.target] as Segment);
+    const boxes = nodeBoxes(cy.nodes());
+    const labels = relationLabels(cy, fluff.edges.map((e) => e.id));
+    const place = (confirmed: Positions) => placeNew(confirmed, ids, segments, boxes, createRng(13), labels);
+    placeFluffRef.current = place;
+    const current: Positions = {};
+    cy.nodes().not('.fluff-layer, .draft').forEach((n) => {
+      current[n.id()] = { ...n.position() };
+    });
+    setPositions(cy, place(current));
+    return () => {
+      placeFluffRef.current = null;
+    };
+  }, [fluff, concepts, theme]);
 
   // Proposed layer: added after the confirmed layout (so it never enters the
   // layout search or its cache), placed around its connections with every
@@ -1203,7 +1414,8 @@ export default function GraphView({
       for (const end of [edge.source, edge.target]) if (!isNew.has(end)) cy.$id(end).addClass('overlay-anchor');
     const segments = overlay.edges.map(({ edge }) => [edge.source, edge.target] as Segment);
     const boxes = nodeBoxes(cy.nodes());
-    const place = (confirmed: Positions) => placeNew(confirmed, newIds, segments, boxes, createRng(11));
+    const labels = relationLabels(cy, overlay.edges.map(({ edge }) => edge.id));
+    const place = (confirmed: Positions) => placeNew(confirmed, newIds, segments, boxes, createRng(11), labels);
     placeOverlayRef.current = place;
     const current: Positions = {};
     cy.nodes().not(NOT_CONFIRMED).forEach((n) => {
@@ -1317,11 +1529,19 @@ export default function GraphView({
       });
       const boxes = nodeBoxes(cy.nodes());
       const pos = anchors.length
-        ? placeNew(fixed, [id], touching.map((e) => [e.source, e.target] as Segment), boxes, createRng(7))[id]
+        ? placeNew(
+            fixed,
+            [id],
+            touching.map((e) => [e.source, e.target] as Segment),
+            boxes,
+            createRng(7),
+            relationLabels(cy, touching.map((e) => e.id)),
+          )[id]
         : removeOverlaps({ ...fixed, [id]: ghost.position() }, boxes, 60, new Set([id]))[id];
       places.set(id, { pos, byHand: false, anchors: key });
       const isActive = s.key === activeDraft;
       const reframe = () => {
+        refreshCovers();
         if (!isActive) return;
         const eles = ghost.union(cy.nodes().filter((n) => anchors.includes(n.id())));
         if (anchors.length && !inView(cy, eles, insets)) fitBeside(cy, eles, insets);
@@ -1387,9 +1607,28 @@ export default function GraphView({
         });
         cy.edges().not(NOT_CONFIRMED).addClass('layer-hidden');
       }
+      // Proposed fluff is fun mode only, like the fluff layer itself.
+      if (!fun) cy.nodes('.overlay[type = "fluff"]').addClass('layer-hidden').connectedEdges().addClass('layer-hidden');
     });
-    applyFadeRef.current?.();
-  }, [showConfirmed, showOverlay, overlay, draftShapes, concepts, theme]);
+    // Runs after the fluff, proposal and draft effects: everything is placed.
+    refreshCovers();
+    // Fun mode: every shown concept without a shown relation gets a speech bubble.
+    const alone = fun
+      ? cy
+          .nodes('.concept-node')
+          .not('.draft, .layer-hidden')
+          .filter((n) => (n as cytoscape.NodeSingular).connectedEdges().not('.layer-hidden').empty())
+          .map((n) => ({ id: n.id(), label: n.data('title') as string, importance: n.data('importance') as number }))
+      : [];
+    setLonely((prev) =>
+      prev.length === alone.length && prev.every((b, i) => b.id === alone[i].id && b.label === alone[i].label) ? prev : alone,
+    );
+  }, [showConfirmed, showOverlay, overlay, draftShapes, concepts, theme, fun, fluff]);
+
+  // New bubbles start hidden; place them once they're in the page.
+  useEffect(() => {
+    placeBubblesRef.current?.();
+  }, [lonely]);
 
   // Apply selection/path highlighting without re-layout
   useEffect(() => {
@@ -1479,8 +1718,9 @@ export default function GraphView({
 
   // Sub-view fit — declared after the focus glide so it wins when both fire.
   // Only a different set re-fits: a re-render that rebuilds the same set (a
-  // display toggle, say) leaves the view where the user put it.
-  const hadFitRef = useRef(false);
+  // display toggle, say) leaves the view where the user put it. Clearing the
+  // set (clicking off a concept, closing the editor) keeps the view too — "⤢"
+  // is the way back to the whole map.
   const fitKeyRef = useRef('');
   useEffect(() => {
     const cy = cyRef.current;
@@ -1489,15 +1729,9 @@ export default function GraphView({
     const key = fitIds ? `${theme}|${[...fitIds].sort().join(' ')}` : '';
     const changed = key !== fitKeyRef.current;
     fitKeyRef.current = key;
-    if (fitIds) {
-      if (!changed) return;
-      hadFitRef.current = true;
-      viewportTouchedRef.current = false;
-      fitBeside(cy, cy.nodes().filter((n) => fitIds.has(n.id())), insets);
-    } else if (hadFitRef.current) {
-      hadFitRef.current = false;
-      fitBeside(cy, cy.elements(), overviewInsets());
-    }
+    if (!fitIds || !changed) return;
+    viewportTouchedRef.current = false;
+    fitBeside(cy, cy.nodes().filter((n) => fitIds.has(n.id())), insets);
   }, [fitIds, theme]);
 
   // Button alternatives to wheel/pinch zoom and drag (WCAG 2.5.7), zooming
@@ -1524,6 +1758,28 @@ export default function GraphView({
   return (
     <>
       <div ref={containerRef} className="graph-canvas" role="img" aria-label={label} />
+      {lonely.length > 0 && (
+        <div className="graph-bubbles" role="group" aria-label="Fun mode: concepts without relations">
+          {lonely.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className="graph-bubble"
+              hidden
+              // Sized like the concept's own name: the same importance, the same voice.
+              style={{ fontSize: `${labelSize(b.importance)}px` }}
+              ref={(el) => {
+                if (el) bubbleRefs.current.set(b.id, el);
+                else bubbleRefs.current.delete(b.id);
+              }}
+              onClick={() => onSelectRef.current(b.id)}
+            >
+              <span className="visually-hidden">{b.label}: </span>
+              {lonelyLine(b.id)}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="graph-controls" role="group" aria-label="Map view">
         <button type="button" className="graph-control" onClick={() => zoomBy(ZOOM_STEP)} aria-label="Zoom in" title="Zoom in">
           <span aria-hidden>+</span>

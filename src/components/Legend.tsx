@@ -15,7 +15,7 @@ const STATUSES = [
 ] as const;
 
 /** Concept-type legend: each type is a button that opens what the type means. */
-function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) {
+function TypeLegend({ statuses, draft, fun }: { statuses: boolean; draft: boolean; fun: boolean }) {
   const [open, setOpen] = useState<NodeType | null>(null);
   const def = open ? NODE_TYPE_DEFINITIONS[open] : undefined;
 
@@ -70,7 +70,7 @@ function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) 
           </button>
         </section>
       )}
-      {TYPE_GROUPS.map((group) => (
+      {TYPE_GROUPS.filter((group) => fun || group.key !== 'fun').map((group) => (
         <div key={group.key} className="legend-type-group" role="group" aria-labelledby={`legend-group-${group.key}`}>
           <span className="legend-type-group-name" id={`legend-group-${group.key}`}>
             {group.label}
@@ -111,11 +111,14 @@ function TypeLegend({ statuses, draft }: { statuses: boolean; draft: boolean }) 
 export default function Legend({
   statuses = false,
   draft = false,
+  fun = false,
 }: {
   /** Also explain the proposal outlines (community preview) */
   statuses?: boolean;
   /** Also explain the draft's outline (while the proposal editor is open) */
   draft?: boolean;
+  /** Also list the Fun group (fun mode) */
+  fun?: boolean;
 }) {
-  return <TypeLegend statuses={statuses} draft={draft} />;
+  return <TypeLegend statuses={statuses} draft={draft} fun={fun} />;
 }

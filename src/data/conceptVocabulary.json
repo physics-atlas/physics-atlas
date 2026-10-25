@@ -15,7 +15,8 @@
     "finding": "Finding/result",
     "learning_goal": "Learning goal",
     "resource": "Educational resource",
-    "misconception": "Misconception"
+    "misconception": "Misconception",
+    "fluff": "Fluff"
   },
   "nodeTypeDefinitions": {
     "physical_system": {
@@ -133,6 +134,12 @@
       "definition": "A documented, recurrent conception or reasoning pattern that conflicts with a specified scientific account, model, or body of evidence.",
       "examples": ["Confusing temperature with heat", "believing seasons are caused by Earth's changing distance from the Sun", "assuming heavier objects fall faster in a vacuum"],
       "distinctions": []
+    },
+    "fluff": {
+      "term": "Fluff",
+      "definition": "A playful node that isn't physics content: a joke, a pun, a famous thought experiment taken literally, or a fun fact about physics or physicists. Fluff only appears in fun mode and never joins a learning path.",
+      "examples": ["Schrödinger's cat, as an actual cat", "the spherical cow", "the coffee break that led to a discovery"],
+      "distinctions": ["Not a misconception: a misconception is a documented, recurring error that learners make; fluff is a deliberate joke and makes no claim."]
     }
   },
   "edgeTemplates": {

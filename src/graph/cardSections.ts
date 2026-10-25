@@ -102,6 +102,7 @@ export const CARD_SECTIONS: Record<NodeType, CardSection[]> = {
     { heading: 'Addressed by', types: ['learning_goal'] },
     { heading: 'About', types: PHYSICS },
   ],
+  fluff: [{ heading: 'Pokes fun at', types: [...PHYSICS, 'claim', 'finding', 'dataset', 'learning_goal', 'misconception'] }],
 };
 
 /** Shown first on the card — what the concept's relations assume. */

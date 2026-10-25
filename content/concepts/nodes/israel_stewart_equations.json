@@ -2,11 +2,11 @@
   "id": "israel_stewart_equations",
   "type": "equation",
   "label": "Israel-Stewart equations",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "Causal and stable relativistic dissipative hydrodynamic equations.",
-    "equation": "τΠ DΠ + Π = −ζθ",
+    "equation": "\\tau_\\Pi D\\Pi + \\Pi = -\\zeta\\theta",
     "variables": [],
     "conditions": [],
     "representations": []

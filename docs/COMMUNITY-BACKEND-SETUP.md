@@ -24,6 +24,7 @@ the settings it needs (organisation → Settings → Developer settings → GitH
 | Webhook → Active | off |
 | Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write**; Metadata: Read-only |
 | Account permissions | none |
+| Visibility (*Advanced → Make public*) | **Public**. A private App only lets the organisation's own members sign in; everyone else gets a GitHub 404 page instead of the authorise page. Public only means other accounts *could* install it on their own repositories — it never gets access to this one, and the backend only uses this repository's installation. |
 
 From the App's page you need: the **App ID**, the **Client ID**, a **client secret**
 (*Generate a new client secret*, shown once) and a **private key** (*Generate a private key*,
@@ -72,9 +73,12 @@ While the repository is private, only invited GitHub handles can submit. Either:
   { "experts": [{ "github": "<handle>", "name": "Display name", "verified": false }] }
   ```
 
-- or, for a first test, put your handle in `ALLOWED_PROPOSERS`.
+- or, for a first test, put your handle in `ALLOWED_PROPOSERS` (comma-separated, e.g.
+  `gdaudt,sophelsa`).
 
-The site re-reads the list within five minutes.
+The backend reads `experts.json` from GitHub (the `main` branch), not from the deployed site,
+and re-reads it within five minutes. The list only decides who may **submit**: anyone can sign
+in, and someone not on it sees "You're not on the invite list yet".
 
 ## 5. Check that it works
 
@@ -91,6 +95,19 @@ The site re-reads the list within five minutes.
 
 If something fails, the Worker's **Logs** tab shows the backend's errors (logging is on in
 `wrangler.jsonc`).
+
+### When someone can't sign in
+
+| What they see | Why | Fix |
+|---|---|---|
+| A **GitHub 404 page** right after *Sign in with GitHub* | The App is private: only the organisation's members may authorise it. The site never hears about this one. | Make the App public (step 1) |
+| Back on the site: *Not signed in. You cancelled…* | They chose *Cancel* on GitHub | Try again |
+| *…took too long, or was started in another tab* | The sign-in state expired (10 minutes) or cookies are blocked | Try again in one tab; allow cookies for the site |
+| *GitHub stopped the sign-in* / *didn't confirm who you are*, with a reason like `redirect_uri_mismatch` or `incorrect_client_credentials` | GitHub's own error code | `redirect_uri_mismatch`: add `https://<your-site>/api/auth/callback` to the App's callback URLs. `incorrect_client_credentials`: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` don't match the App. |
+| Signed in, but *not on the invite list* | Their handle isn't in `experts.json` on `main` (or `ALLOWED_PROPOSERS`) | Add it; wait up to five minutes |
+
+Every failed sign-in also leaves a line in the **Logs** tab (`sign-in failed: <reason> (<code>)`),
+and every successful one `sign-in: @<handle>`.
 
 ## Trying the backend locally (optional)
 

@@ -6,6 +6,86 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-53: Room for every relation name
+
+**Status:** ✅ Implemented <!-- status-line: feature-53 -->
+**Planned:** 2026-10-24 — requested: a permanent fix for relation names covered by concepts (proposal: names in the layout, scored, a safety net, a smaller growth cap)
+**Implemented:** 2026-10-24
+
+### Implemented
+- `layoutOptimize.ts` — `SegmentLabel` (length, thickness, arrowhead); `labelRoom`, `labelCovers` (rotated name box vs circles and concept names); the force layout's link length and push; covered names in `scoreLayout` (×2); `stretchForLabels` after the search and in `placeNew`
+- `GraphView.tsx` — names measured in their font (`relationLabel`), passed to the layout and to proposal/fluff/draft placement; the layout cache key includes name lengths (v9); `label-covered` hides a still-covered name until highlighted
+- `concepts.ts` — `edgeLabelSize`: growth capped at 2.5× (±10% by importance)
+- Tests: name geometry, the link push, the stretch pass; smoke: no shown name under a circle at full zoom
+- Measured: covered names 30 → 0; mean relation length 538 → 700; overview zoom 0.125 → 0.111 (Decision 32)
+
+### Review
+Not run — direct session. build / lint / test (168) clean; smoke passes with no failures.
+
+## feature-52: Relation picker, LaTeX equations, several representations
+
+**Status:** ✅ Implemented <!-- status-line: feature-52 -->
+**Planned:** 2026-10-24 — requested: in the relation dropdown, the concept names greyed and the relation bold; several representations per equation, each with variable names; equations shown in LaTeX like the editor
+**Implemented:** 2026-10-24
+
+### Implemented
+- `RelationPicker.tsx` — WAI-ARIA select-only combobox; each choice its sentence, relation bold, concepts in `--muted` (≥ 8.7:1)
+- `types.ts` — `EquationRepresentation {name, equation?, variables?}`; validator checks the shape and warns when KaTeX can't typeset a formula or symbol
+- `draft.ts` — drafts carry the main form's variables and the representations (version 3); `DraftEditor.tsx` — variable rows and representation blocks with typeset previews
+- `EquationView.tsx` (lazy, KaTeX) — the card typesets the formula, the symbols and each representation
+- Data: the six equations and their symbols transcribed from Unicode text into LaTeX; Einstein's three representation names became objects; the Vlasov edit fixture likewise
+- Tests: representations and variables in drafts (export, problems, edit round trip); smoke: the card is typeset
+
+### Review
+Not run — direct session. build / lint / test (164) clean; smoke passes with no failures.
+
+## feature-51: The view stays, importance 1–10, relation names, the map guide
+
+**Status:** ✅ Implemented <!-- status-line: feature-51 -->
+**Planned:** 2026-10-24 — requested: keep the view when clicking off a node or closing the editor; importance 1–10 with the same proportions; relation names sized with their line; the map guide hidden after 3 s behind a button
+**Implemented:** 2026-10-24
+
+### Implemented
+- `GraphView.tsx` — clearing `fitIds` no longer fits the whole map; relation names take `data(fontSize)` (11 px × the line's generality factor × 0.8–1.2 by importance), highlighted sizes and the wrap width scale with it
+- `concepts.ts` — `IMPORTANCE_MAX` 10, overview at 8, 1.6 points per doubling (every concept at the same depth); content and fixtures ÷ 5; drafts from before migrated (`parseDraft`)
+- `ConceptMapView.tsx` — the guide shows 3 s, then a "How to read this map" button at the top middle (`aria-expanded`)
+- Tests: the new depth curve matches the old one at every value; draft migration; smoke: deselect keeps the view, the guide steps aside
+
+### Review
+Not run — direct session.
+
+## feature-50: Fluff — a node type for fun mode
+
+**Status:** ✅ Implemented <!-- status-line: feature-50 -->
+**Planned:** 2026-10-23 — requested: a fluff/funny category for nodes, disabled by default (scope confirmed: a new type in its own legend group, plus one sample)
+**Implemented:** 2026-10-23
+
+### Implemented
+- `conceptVocabulary.json` — type `fluff` with a definition; `typeColors.ts` — `#919221` (validated against all 16 colours) and a **Fun** group; `typeIcons.ts` — smiley glyph; `cardSections.ts` — "Pokes fun at"
+- `concepts.ts` — `splitFluff()`; GraphView draws fluff as its own layer (placed with `placeNew`, outside the layout cache); fluff proposals hidden while fun mode is off
+- Search, concept list, editor types and legend leave fluff out unless fun mode is on; the card leaves out epistemic status and "Show path to this"
+- Validator: no fluff in `strict prerequisite for` (tested); the epistemic-status advisory skips fluff
+- Sample: `sample_schrodingers_cat` + `e71`
+
+### Review
+Not run — direct session. build / lint / test (160) clean; smoke passes with no failures.
+
+## feature-49: Fun mode — speech bubbles on lonely concepts
+
+**Status:** ✅ Implemented <!-- status-line: feature-49 -->
+**Planned:** 2026-10-23 — requested: an alternate fun view, off by default, with speech bubbles on nodes without connections
+**Implemented:** 2026-10-23
+
+### Implemented
+- `App.tsx` — fun-mode state (off on every visit); `ConceptMapView.tsx` — the **Fun mode** control, a status message, the shown graph with or without fluff
+- `GraphView.tsx` — lonely concepts (no shown relation) get an HTML speech-bubble button that follows the concept, shows with its importance, hides under side panels and on overlap (more important wins); clicking selects the concept
+- `concepts.ts` — `lonelyLine()` (3 lines, stable per concept); `App.css` — the bubble and its tail
+- Unit tests for `splitFluff` / `lonelyLine`; smoke: off by default, 5 bubbles + 1 fluff when on, nothing moves, a bubble opens its concept, off again clears it
+- Docs: Decision 30, AUTHORING (fluff + fun mode), ACCESSIBILITY
+
+### Review
+Not run — direct session.
+
 ## feature-48: One hue family per type group
 
 **Status:** ✅ Implemented <!-- status-line: feature-48 -->

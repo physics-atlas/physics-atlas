@@ -2,7 +2,7 @@
   "id": "curvature",
   "type": "property",
   "label": "Curvature",
-  "importance": 40,
+  "importance": 8,
   "generality": 8,
   "attrs": {
     "description": "A measure of how much a manifold deviates from being flat, captured by how a vector changes when parallel-transported around a closed loop.",

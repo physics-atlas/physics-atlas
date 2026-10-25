@@ -2,7 +2,7 @@
   "id": "bosons",
   "type": "physical_system",
   "label": "Bosons",
-  "importance": 40,
+  "importance": 8,
   "generality": 10,
   "attrs": {
     "description": "Particles with integer spin; they obey Bose–Einstein statistics, so any number of them can occupy the same quantum state.",

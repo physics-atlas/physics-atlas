@@ -40,6 +40,42 @@ export async function fetchMe(): Promise<Me | null> {
   return r && r.status === 200 ? r.data : null;
 }
 
+/**
+ * Why a sign-in didn't complete: the backend sends the browser back with
+ * ?signin=<reason>&detail=<GitHub's code> (server/api.ts). The one failure it
+ * can't report is GitHub showing a 404 instead of the authorise page — that
+ * never comes back here, so the sign-in button explains it up front.
+ */
+export interface SignInProblem {
+  reason: 'denied' | 'expired' | 'github' | 'failed';
+  detail?: string;
+}
+
+export function readSignInProblem(search: string): SignInProblem | null {
+  const params = new URLSearchParams(search);
+  const reason = params.get('signin');
+  if (reason !== 'denied' && reason !== 'expired' && reason !== 'github' && reason !== 'failed') return null;
+  const detail = params.get('detail')?.replace(/[^\w]/g, '').slice(0, 40);
+  return { reason, ...(detail ? { detail } : {}) };
+}
+
+/** Read once at load — the app then rewrites the address, which drops the parameters. */
+export const signInProblemOnLoad = typeof window === 'undefined' ? null : readSignInProblem(window.location.search);
+
+export function signInProblemText({ reason, detail }: SignInProblem): string {
+  const sendIt = detail ? ` If it happens again, send the curators GitHub's reason: “${detail}”.` : '';
+  switch (reason) {
+    case 'denied':
+      return 'You cancelled the sign-in on GitHub, so you are not signed in.';
+    case 'expired':
+      return 'The sign-in took too long, or was started in another tab or browser. Please try again.';
+    case 'github':
+      return `GitHub stopped the sign-in before it reached Physics Atlas. Please try again.${sendIt}`;
+    case 'failed':
+      return `GitHub didn't confirm who you are. Please try again.${sendIt}`;
+  }
+}
+
 /** Signing in leaves the page; GitHub brings the person back to `returnTo`. */
 export const loginHref = (returnTo: string): string => `/api/auth/login?return=${encodeURIComponent(returnTo)}`;
 

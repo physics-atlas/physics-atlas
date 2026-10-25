@@ -1,0 +1,6 @@
+{
+  "id": "fluid_sapm_e1",
+  "source": "fluid_sapm",
+  "target": "euler_equation_n5nu",
+  "relationship": "expressed by"
+}

@@ -74,13 +74,13 @@ sophie_scicom/
   generality and importance of its two ends), `conceptPathFor()` (a goal's learning path,
   built on `dag.ts`). Graph logic belongs here, not in components.
 - **`src/graph/typeColors.ts`** — validated type palette, one hue family per legend group
-  (Knowledge cool, Research violet–pink, Learning warm). No magic hex values in components;
+  (Knowledge cool, Research violet–pink, Learning warm, Fun mustard — fun mode only). No magic hex values in components;
   app-chrome tokens in `App.css :root`.
 - **`GraphView.tsx`** — the only place that touches Cytoscape. Selection/
   highlight via classes (`chosen`, `dimmed`, `onpath`) without re-layout.
 - **Layout convention:** the concept map is direction-free: a force layout scored for
   legibility (`src/graph/layoutOptimize.ts`, Decision 15), every ideal distance scaled by
-  `SPACING` (Decision 28). Bump the layout cache key in GraphView when the layout changes.
+  `SPACING` (Decision 28), and each relation long enough for its own name (Decision 32). Bump the layout cache key in GraphView when the layout changes.
 
 ## Subsystems (scope selection for the live-qa agent)
 

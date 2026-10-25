@@ -13,7 +13,7 @@
       "id": "jeans_mass_s4",
       "type": "property",
       "label": "Jeans mass",
-      "importance": 20,
+      "importance": 4,
       "generality": 4,
       "attrs": {
         "description": "Sample: the mass enclosed in a sphere of one Jeans length.",

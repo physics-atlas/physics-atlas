@@ -34,7 +34,7 @@ content/concepts/
   "id": "parallel_transport",
   "type": "method",
   "label": "Parallel Transport",
-  "importance": 40,
+  "importance": 8,
   "generality": 8,
   "attrs": { "description": "…", "domain": "General relativity" }
 }
@@ -79,7 +79,7 @@ domain, add it to the list first, and `npm run validate` points out any typo.
 
 ## Node types
 
-The 16 types (key → what it means), from `src/data/conceptVocabulary.json`:
+The 17 types (key → what it means), from `src/data/conceptVocabulary.json`:
 
 | Type | Meaning |
 |---|---|
@@ -99,6 +99,32 @@ The 16 types (key → what it means), from `src/data/conceptVocabulary.json`:
 | `learning_goal` | Learning goal — a "can do X" outcome; a small, minimal node (no `domain`). |
 | `resource` | Educational resource — a book/video/quiz (no `description`/`domain`). |
 | `misconception` | Misconception — a common wrong idea, linked to the concept it's about. |
+| `fluff` | Fluff — a joke, pun or fun fact, not physics content. Only shown in **fun mode** (below). |
+
+### Fluff and fun mode
+
+The map's **Fun mode** button (off on every visit) shows a playful side of the atlas:
+every concept without a relation says so in a speech bubble — clicking it opens that
+concept — and `fluff` concepts appear, with their relations. A fluff node is written
+like any other concept, `"type": "fluff"`, with an `attrs.description`:
+
+```json
+{
+  "id": "spherical_cow",
+  "type": "fluff",
+  "label": "Spherical cow",
+  "importance": 5,
+  "generality": 3,
+  "attrs": { "description": "Assume a spherical cow in a vacuum…" }
+}
+```
+
+Connect it with an ordinary relation (`relates`, `concerns`, …) to the concept it pokes fun
+at. Rules: a fluff node can't be part of a `strict prerequisite for` relation (the
+validator refuses it, so a joke never joins a learning path), needs no `epistemicStatus`,
+and is left out of search, the concept list and the proposal editor's types while fun mode
+is off. `content/concepts/nodes/sample_schrodingers_cat.json` is a sample — rename or
+delete it (and its relation `e71`).
 
 **What learners see.** Clicking a type in the concept map's legend opens its
 definition from `conceptVocabulary.json` → `nodeTypeDefinitions`, keyed by the
@@ -124,9 +150,33 @@ it. Every type currently has one.
 | Type | Fields |
 |---|---|
 | Every type except `equation`, `learning_goal`, `resource` | `description` (required), `domain` (optional) |
-| `equation` | `description`, `equation` (the formula, string), `variables` (`{symbol, meaning}[]`), `conditions` (`string[]`), `representations` (`string[]`), `domain` (optional) |
+| `equation` | `description`, `equation` (the main formula, LaTeX), `variables` (`{symbol, meaning}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
 | `learning_goal` | `description` only — **no `domain`** |
 | `resource` | `link` (http/https), `mediaType`, `estimatedMinutes` (number), `rating` (0–5), `reviewCount` (integer) — **no `description`/`domain`** |
+
+### Equations: LaTeX, and more than one way to write them
+
+`equation` and every variable's `symbol` are **LaTeX**, typeset on the card exactly as
+in the proposal editor's preview (`G_{\mu\nu}`, `\frac{8\pi G}{c^4}` — in the JSON file
+every backslash is doubled: `"G_{\\mu\\nu}"`). `npm run validate`
+warns about any that KaTeX can't typeset. `representations` lists other ways of writing
+the same equation (for, say, `F = ma`) — each with a `name`, and optionally its own `equation` and
+`variables` as they're named in that form:
+
+```json
+"representations": [
+  {
+    "name": "In terms of momentum",
+    "equation": "F = \\frac{dp}{dt}",
+    "variables": [{ "symbol": "p", "meaning": "Momentum" }]
+  },
+  { "name": "In a rotating frame" }
+]
+```
+
+A name alone is fine while the formula is still to come (the three on Einstein Field
+Equations are names only). The six equations were written as Unicode text before
+2026-10 (`Gμν + Λgμν = …`); they're now the same formulas in LaTeX.
 
 ## Writing an edge
 
@@ -264,22 +314,26 @@ other concepts got a **placeholder** generality from Claude's old importance
 value (also doubled). Change them freely. A missing value falls back to a
 connection-count estimate (learning goals 1).
 
-## `importance` (1–50): how close you have to zoom to see it
+## `importance` (1–10): how close you have to zoom to see it
 
-An optional integer, 1 (minor detail) to 50 (landmark). The map works like a
-street map: zoomed out you see only the landmarks, and zooming in reveals more
-and more specific concepts, with the relations between them. Every value is its
-own depth — each 8 points lower needs a zoom twice as close:
+An optional integer, 1 (minor detail) to 10 (landmark) — the same range as
+generality. The map works like a street map: zoomed out you see only the
+landmarks, and zooming in reveals more and more specific concepts, with the
+relations between them. Every value is its own depth — each step lower needs a
+zoom about 1.5× closer:
 
 | Importance | Appears at |
 |---|---|
-| 50 | always |
-| 40 | the whole-map view |
-| 32 | 2× closer |
-| 24 | 4× closer |
-| 16 | 8× closer |
-| 8 | 16× closer |
-| 1 | about 30× closer |
+| 10 | always |
+| 9 | before the whole-map view |
+| 8 | the whole-map view |
+| 6 | 2.4× closer |
+| 4 | 5.7× closer |
+| 2 | 13× closer |
+| 1 | about 21× closer |
+
+(Until 2026-10 the scale ran 1–50. Every value was divided by 5 — 50 → 10, 40 →
+8, 30 → 6, 20 → 4, 10 → 2 — so each concept stayed at exactly the depth it had.)
 
 So to have very specific concepts around *Dark Matter* show only when you're
 right next to it, give them a low importance; they sit next to it because
@@ -288,8 +342,8 @@ every step of an active goal path always stay visible, whatever their
 importance. Hovering a concept also shows its hidden neighbours. **Show all
 concepts** in the map controls turns the depth off.
 
-Every concept has a **placeholder** importance assigned by Claude (old 1–5 scale
-× 10: landmark theories and frameworks 50, learning goals and resources 10–20).
+Every concept has a **placeholder** importance assigned by Claude (landmark
+theories and frameworks 10, learning goals and resources 2–4).
 Change them freely. A missing value falls back to a connection-count estimate
 (learning goals 1).
 
@@ -358,7 +412,7 @@ exactly the files a merge adds:
 3. The proposer's **pull-request text** (title, claim, what it adds, evidence) is the
    description for the commit or pull request. The claim and evidence are for reviewers and
    stay out of the concept files.
-4. Check `generality` (circle size, 1–10) and `importance` (zoom visibility, 1–50). The
+4. Check `generality` (circle size, 1–10) and `importance` (zoom visibility, 1–10). The
    proposer may have suggested them; if a field is missing, set it yourself, or the concept
    falls back to a size and visibility estimated from its connections.
 

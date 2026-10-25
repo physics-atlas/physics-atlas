@@ -2,7 +2,7 @@
   "id": "experiment_eddington",
   "type": "experiment",
   "label": "1919 Eddington eclipse expedition",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "Solar eclipse expeditions led by Arthur Eddington that measured the deflection of starlight by the Sun, providing early observational support for general relativity.",

@@ -2,7 +2,7 @@
   "id": "particle_charge_current",
   "type": "property",
   "label": "Particle Charge current",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "A current describing the transport of particles or conserved charge through the fluid.",
