@@ -16,12 +16,12 @@ import {
 import type { DraftContext, DraftShape } from '../community/draft';
 import { badgeText, mergedGraph, overlayFor, proposalByNode, proposalsAbout } from '../community/proposals';
 import { FixtureStore } from '../community/store';
-import { GitHubStore, fetchMe, loginHref, logout, submitProposal } from '../community/api';
-import type { Me, SubmitResult } from '../community/api';
+import { GitHubStore, fetchMe, loginHref, logout, signInProblemOnLoad, signInProblemText, submitProposal } from '../community/api';
+import type { Me, SignInProblem, SubmitResult } from '../community/api';
 import type { Proposal } from '../community/types';
 import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
-import { buildConceptIndex, conceptPathFor, neighborsOf } from '../graph/concepts';
+import { buildConceptIndex, conceptPathFor, neighborsOf, splitFluff } from '../graph/concepts';
 import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
@@ -36,6 +36,8 @@ import TypeBadge from './TypeBadge';
 // The proposal card brings KaTeX — load both only when a proposal is opened.
 const ProposalCard = lazy(() => import('./ProposalCard'));
 const DraftEditor = lazy(() => import('./DraftEditor'));
+// KaTeX is large: the typeset equation loads when an equation's card first opens.
+const EquationView = lazy(() => import('./EquationView'));
 
 const NO_PROPOSALS: Proposal[] = [];
 const NO_NEAR = { ids: [] as string[], byHand: false, ghost: '' };
@@ -48,6 +50,9 @@ const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCo
 // path open on the left, the map card on the right, the type legend along the
 // bottom — mirrored in App.css.
 const PATH_PANEL_INSET = 304;
+/** How long the map guide shows before it steps aside to its button. */
+const HINT_SECONDS = 3;
+const MAP_HINT_ID = 'map-hint';
 const LEGEND_INSET = 110;
 const CARD_MIN_WIDTH = 380;
 const CARD_MARGIN = 16;
@@ -71,10 +76,13 @@ interface ConceptMapViewProps {
   theme?: 'dark' | 'light';
   /** Community-review preview (`?community=1`): the proposed layer and its toggles. */
   community?: boolean;
+  /** Fun mode: lonely concepts speak up, and fluff concepts appear. */
+  fun?: boolean;
+  onFunChange?: (on: boolean) => void;
 }
 
 export default function ConceptMapView({
-  graph,
+  graph: fullGraph,
   progress,
   goalId,
   onGoalChange,
@@ -84,7 +92,14 @@ export default function ConceptMapView({
   focus,
   theme,
   community = false,
+  fun = false,
+  onFunChange,
 }: ConceptMapViewProps) {
+  // Fluff is fun mode only. The map always lays out `base` and draws the
+  // fluff as a layer on top; everything this view lists, searches and checks
+  // against uses `graph` — the base, plus the fluff while fun mode is on.
+  const { base, fluff } = useMemo(() => splitFluff(fullGraph), [fullGraph]);
+  const graph = fun ? fullGraph : base;
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
   const path = useMemo(() => (goalId ? conceptPathFor(goalId, index) : null), [goalId, index]);
 
@@ -101,6 +116,14 @@ export default function ConceptMapView({
   const [listTick, setListTick] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [lastSubmitted, setLastSubmitted] = useState<{ number: number; url: string; title: string } | null>(null);
+  const [signInProblem, setSignInProblem] = useState<SignInProblem | null>(signInProblemOnLoad);
+  // The map guide greets a visitor, steps aside after a few seconds, and stays
+  // one click away ("How to read this map"). Opened again, it stays open.
+  const [hintOpen, setHintOpen] = useState(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => setHintOpen(false), HINT_SECONDS * 1000);
+    return () => window.clearTimeout(t);
+  }, []);
   useEffect(() => {
     if (!community) return;
     let alive = true;
@@ -443,6 +466,8 @@ export default function ConceptMapView({
               loadError={loadError}
               lastSubmitted={lastSubmitted}
               onSignOut={signOut}
+              signInProblem={signInProblem}
+              onDismissProblem={() => setSignInProblem(null)}
             />
           )}
           {community && !drafting && (
@@ -591,14 +616,25 @@ export default function ConceptMapView({
         </div>
 
         {!cardOpen && !drafting && !goal && (
-          <p className="map-hint">
-            Colour = kind of concept, size = how general it is — zoom in to reveal less
-            important concepts. Each line names its relation —
-            hover one to highlight the two concepts it joins. Click a concept to see its direct
-            connections — <span className="ink-pre">silver</span> leads into it,{' '}
-            <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
-            it means.
-          </p>
+          <div className="map-hint-area">
+            <button
+              type="button"
+              className="map-hint-toggle"
+              aria-expanded={hintOpen}
+              aria-controls={MAP_HINT_ID}
+              onClick={() => setHintOpen((o) => !o)}
+            >
+              {hintOpen ? 'Hide the map guide' : 'How to read this map'}
+            </button>
+            <p className="map-hint" id={MAP_HINT_ID} hidden={!hintOpen}>
+              Colour = kind of concept, size = how general it is — zoom in to reveal less
+              important concepts. Each line names its relation —
+              hover one to highlight the two concepts it joins. Click a concept to see its direct
+              connections — <span className="ink-pre">silver</span> leads into it,{' '}
+              <span className="ink-post">gold</span> leads out of it. Click a type in the legend to see what
+              it means.
+            </p>
+          </div>
         )}
 
         {drafting && draft && (
@@ -621,6 +657,7 @@ export default function ConceptMapView({
                 similar={similar}
                 suggestions={suggestions}
                 searchEntries={searchEntries}
+                fun={fun}
                 onConnect={connect}
                 onRecall={() => {
                   setDraftRecall((n) => n + 1);
@@ -678,42 +715,15 @@ export default function ConceptMapView({
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
               {selected.type === 'equation' && (
-                <div className="rel-block concept-equation">
-                  <p className="concept-equation-formula">{selected.attrs.equation}</p>
-                  {selected.attrs.variables.length > 0 && (
-                    <>
-                      <h3 className="block-heading">Variables</h3>
-                      <dl className="concept-variables">
-                        {selected.attrs.variables.map((v) => (
-                          <div key={v.symbol} className="concept-variable">
-                            <dt>{v.symbol}</dt>
-                            <dd>{v.meaning}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </>
-                  )}
-                  {selected.attrs.conditions.length > 0 && (
-                    <>
-                      <h3 className="block-heading">Conditions</h3>
-                      <ul className="concept-list">
-                        {selected.attrs.conditions.map((c) => (
-                          <li key={c}>{c}</li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  {selected.attrs.representations.length > 0 && (
-                    <>
-                      <h3 className="block-heading">Representations</h3>
-                      <ul className="concept-list">
-                        {selected.attrs.representations.map((r) => (
-                          <li key={r}>{r}</li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
+                <Suspense
+                  fallback={
+                    <div className="rel-block concept-equation">
+                      <p className="concept-equation-formula concept-equation-source">{selected.attrs.equation}</p>
+                    </div>
+                  }
+                >
+                  <EquationView attrs={selected.attrs} />
+                </Suspense>
               )}
 
               {selected.type === 'resource' && (
@@ -794,9 +804,10 @@ export default function ConceptMapView({
               </section>
             )}
 
-            {(selected.id !== goalId || (community && selected.type !== 'resource')) && (
+            {((selected.id !== goalId && selected.type !== 'fluff') || (community && selected.type !== 'resource')) && (
               <div className="map-card-cta">
-                {selected.id !== goalId && (
+                {/* Fluff never joins a learning path (the validator keeps it out). */}
+                {selected.id !== goalId && selected.type !== 'fluff' && (
                   <button className="map-card-goal" onClick={() => onGoalChange(selected.id)}>
                     ★ Show path to this
                   </button>
@@ -821,7 +832,9 @@ export default function ConceptMapView({
             users reach the concept list, path and card first; CSS keeps the
             canvas underneath. */}
         <GraphView
-          concepts={graph}
+          concepts={base}
+          fluff={fun ? fluff : null}
+          fun={fun}
           selectedId={selectedId}
           highlightIds={highlightIds}
           doneIds={doneIds}
@@ -845,31 +858,47 @@ export default function ConceptMapView({
           onDraftNear={onDraftNear}
           draftRecall={draftRecall}
           extraControls={
-            community && (
-              <>
-                <button
-                  type="button"
-                  className="graph-control graph-control-text"
-                  aria-pressed={showConfirmed}
-                  onClick={() => setShowConfirmed((s) => !s)}
-                  title="Show or hide the confirmed graph"
-                >
-                  Show confirmed
-                </button>
-                <button
-                  type="button"
-                  className="graph-control graph-control-text"
-                  aria-pressed={showProposed}
-                  onClick={() => setShowProposed((s) => !s)}
-                  title="Show or hide proposals that aren't confirmed yet"
-                >
-                  Show proposed
-                </button>
-              </>
-            )
+            <>
+              {community && (
+                <>
+                  <button
+                    type="button"
+                    className="graph-control graph-control-text"
+                    aria-pressed={showConfirmed}
+                    onClick={() => setShowConfirmed((s) => !s)}
+                    title="Show or hide the confirmed graph"
+                  >
+                    Show confirmed
+                  </button>
+                  <button
+                    type="button"
+                    className="graph-control graph-control-text"
+                    aria-pressed={showProposed}
+                    onClick={() => setShowProposed((s) => !s)}
+                    title="Show or hide proposals that aren't confirmed yet"
+                  >
+                    Show proposed
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="graph-control graph-control-text"
+                aria-pressed={fun}
+                onClick={() => onFunChange?.(!fun)}
+                title="A playful view: concepts without relations speak up, and fluff concepts appear"
+              >
+                Fun mode
+              </button>
+            </>
           }
         />
-        <Legend statuses={Boolean(overlay) || drafting} draft={drafting} />
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {fun
+            ? 'Fun mode on: concepts without relations say so in a speech bubble after the map, and fluff concepts appear.'
+            : ''}
+        </p>
+        <Legend statuses={Boolean(overlay) || drafting} draft={drafting} fun={fun} />
       </div>
     </div>
   );
@@ -885,17 +914,33 @@ function CommunityAccount({
   loadError,
   lastSubmitted,
   onSignOut,
+  signInProblem,
+  onDismissProblem,
 }: {
   checked: boolean;
   me: Me | null;
   loadError: string;
   lastSubmitted: { number: number; url: string; title: string } | null;
   onSignOut: () => void;
+  /** Why the last sign-in didn't complete, until dismissed */
+  signInProblem: SignInProblem | null;
+  onDismissProblem: () => void;
 }) {
   if (!checked) return null;
   const here = `${window.location.pathname}${window.location.search}`;
   return (
     <section className="community-account" aria-label="Community account">
+      {signInProblem && (
+        <div className="draft-warning" role="alert">
+          <p>
+            <span aria-hidden>⚠ </span>
+            <strong>Not signed in.</strong> {signInProblemText(signInProblem)}
+          </p>
+          <button type="button" className="draft-link" onClick={onDismissProblem}>
+            Dismiss
+          </button>
+        </div>
+      )}
       {!me?.configured ? (
         <p className="community-account-note">
           Showing <strong>sample</strong> proposals — this site isn't connected to GitHub yet. You can still draft and
@@ -926,6 +971,10 @@ function CommunityAccount({
           </a>
           <p className="community-account-note">
             Only needed to submit a proposal. Physics Atlas reads your public GitHub profile — nothing else.
+          </p>
+          <p className="community-account-note">
+            If GitHub shows a 404 page instead of asking you to authorise Physics Atlas, its GitHub App isn't open to
+            your account yet — tell the curators.
           </p>
         </>
       )}

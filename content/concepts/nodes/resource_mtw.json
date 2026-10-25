@@ -2,7 +2,7 @@
   "id": "resource_mtw",
   "type": "resource",
   "label": "Intro to the Einstein Field Equations (sample resource)",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "link": "https://example.com/learn/einstein-field-equations",

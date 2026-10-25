@@ -2,7 +2,7 @@
   "id": "kinetic_theory",
   "type": "formalism",
   "label": "Kinetic theory",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "A microscopic description of matter in terms of distribution functions and particle interactions.",

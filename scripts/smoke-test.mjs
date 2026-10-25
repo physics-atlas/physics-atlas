@@ -123,6 +123,31 @@ const lines = await page.evaluate(() => {
 console.log('overview lines (on-screen px):', lines);
 if (lines.count === 0 || lines.min < 0.99 || lines.max <= lines.min)
   errors.push(`overview lines aren't weighted as expected: ${JSON.stringify(lines)}`);
+// Zoomed in until every relation name shows, no circle covers a shown name: the
+// layout gives each relation room for its name, and the safety net hides the rest.
+await page.evaluate(() => window.__cy.zoom(1.5));
+await new Promise((r) => setTimeout(r, 500));
+const coveredNames = await page.evaluate(() => {
+  const cy = window.__cy;
+  cy.edges().forEach((e) => e.numericStyle('font-size'));
+  cy.forceRender();
+  return cy
+    .edges()
+    .filter((e) => {
+      const rs = e._private.rscratch, st = e._private.rstyle;
+      if (!st.labelWidth || e.hasClass('label-covered')) return false;
+      const ux = Math.cos(rs.labelAngle ?? 0), uy = Math.sin(rs.labelAngle ?? 0);
+      return cy.nodes().some((n) => {
+        const dx = n.position().x - rs.labelX, dy = n.position().y - rs.labelY, r = n.width() / 2;
+        const along = Math.max(Math.abs(dx * ux + dy * uy) - st.labelWidth / 2, 0);
+        const across = Math.max(Math.abs(-dx * uy + dy * ux) - st.labelHeight / 2, 0);
+        return along * along + across * across < r * r;
+      });
+    })
+    .map((e) => e.id());
+});
+console.log('relation names under a circle:', coveredNames.length);
+if (coveredNames.length) errors.push(`relation names covered by a circle: ${coveredNames.join(', ')}`);
 await page.evaluate(() => window.__cy.$id('einstein_eq').emit('tap'));
 await page.waitForSelector('.map-card');
 const conceptCard = await page.$eval('.map-card', (el) => el.textContent ?? '');
@@ -130,6 +155,69 @@ console.log('concept card has "leads to Newtonian Gravity":', conceptCard.includ
 if (!conceptCard.includes('leads to Newtonian Gravity'))
   errors.push('concept card is missing the einstein_eq → newtonian gravity relation sentence');
 await page.screenshot({ path: `${OUT}/concepts.png` });
+
+// The equation is typeset (KaTeX), and clicking off the concept keeps the view.
+await page.waitForSelector('.map-card .katex', { timeout: 10000 });
+const typeset = await page.$$eval('.map-card .katex', (els) => els.length);
+await new Promise((r) => setTimeout(r, 1000));
+const viewOn = await page.evaluate(() => ({ zoom: window.__cy.zoom(), pan: { ...window.__cy.pan() } }));
+await page.evaluate(() => window.__cy.emit('tap'));
+await new Promise((r) => setTimeout(r, 1000));
+const viewOff = await page.evaluate(() => ({ zoom: window.__cy.zoom(), pan: { ...window.__cy.pan() } }));
+const guide = await page.evaluate(() => ({
+  hidden: document.getElementById('map-hint')?.hidden,
+  button: document.querySelector('.map-hint-toggle')?.textContent,
+}));
+console.log('equation typeset:', typeset, '· view kept on deselect:', viewOn.zoom === viewOff.zoom, '· guide:', guide);
+if (typeset < 2) errors.push('the Einstein equations card shows no typeset formula');
+if (viewOn.zoom !== viewOff.zoom || Math.abs(viewOn.pan.x - viewOff.pan.x) > 0.5)
+  errors.push('clicking off a concept moved the view');
+if (!guide.hidden || guide.button !== 'How to read this map') errors.push(`the map guide didn't step aside: ${JSON.stringify(guide)}`);
+
+// --- Fun mode: off by default; lonely concepts get speech bubbles, fluff appears,
+//     and nothing on the map moves ---
+await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+await new Promise((r) => setTimeout(r, 600));
+const funControl = (text) =>
+  page.evaluate((t) => [...document.querySelectorAll('.graph-control')].find((b) => b.textContent.trim() === t).click(), text);
+const basePositions = () =>
+  page.evaluate(() => Object.fromEntries(window.__cy.nodes().not('.fluff-layer').map((n) => [n.id(), { ...n.position() }])));
+const funState = () =>
+  page.evaluate(() => ({
+    fluff: window.__cy.nodes('.fluff-layer').length,
+    bubbles: document.querySelectorAll('.graph-bubble').length,
+    legendFun: [...document.querySelectorAll('.legend-type-group-name')].some((e) => e.textContent === 'Fun'),
+  }));
+const funOff = await funState();
+const funBefore = await basePositions();
+await funControl('Fun mode');
+await new Promise((r) => setTimeout(r, 500));
+const funOn = await funState();
+const funAfter = await basePositions();
+const funMoved = Object.keys(funBefore).filter(
+  (id) => Math.hypot(funAfter[id].x - funBefore[id].x, funAfter[id].y - funBefore[id].y) > 0.5,
+);
+await funControl('Show all concepts');
+await new Promise((r) => setTimeout(r, 400));
+const bubbleClicked = await page.evaluate(() => {
+  const b = [...document.querySelectorAll('.graph-bubble')].find((x) => !x.hidden);
+  b?.click();
+  return b?.textContent ?? '';
+});
+await page.waitForSelector('.map-card');
+const bubbleCard = await page.$eval('.map-card-title', (el) => el.textContent?.trim());
+await page.screenshot({ path: `${OUT}/fun-mode.png` });
+await funControl('Show all concepts');
+await funControl('Fun mode');
+await new Promise((r) => setTimeout(r, 400));
+const funOffAgain = await funState();
+console.log('fun mode:', { funOff, funOn, moved: funMoved.length, bubbleClicked, bubbleCard, funOffAgain });
+if (funOff.fluff || funOff.bubbles || funOff.legendFun) errors.push(`fun mode is not off by default: ${JSON.stringify(funOff)}`);
+if (funOn.fluff !== 1 || funOn.bubbles !== 5 || !funOn.legendFun)
+  errors.push(`fun mode should show 1 fluff concept, 5 lonely bubbles and the Fun legend: ${JSON.stringify(funOn)}`);
+if (funMoved.length) errors.push(`fun mode moved ${funMoved.length} confirmed concepts`);
+if (!bubbleClicked.startsWith(`${bubbleCard}:`)) errors.push(`a bubble ("${bubbleClicked}") opened "${bubbleCard}"`);
+if (funOffAgain.fluff || funOffAgain.bubbles) errors.push(`turning fun mode off left ${JSON.stringify(funOffAgain)}`);
 
 // --- Concept learning flow: goal path over strict prerequisites + progress ---
 await page.goto(`${URL}/?mode=concepts&goal=lg_pt_3`, { waitUntil: 'networkidle0' });
@@ -164,7 +252,7 @@ const clickControl = (text) =>
 
 // The confirmed layout first settles and is cached; then the same map with proposals.
 await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
-await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v8')), { timeout: 60000 });
+await page.waitForFunction(() => Boolean(localStorage.getItem('physics-atlas-concept-layout-v9')), { timeout: 60000 });
 await page.reload({ waitUntil: 'networkidle0' });
 await wait(500);
 const layoutBefore = await confirmedPositions();

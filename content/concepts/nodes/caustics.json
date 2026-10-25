@@ -2,7 +2,7 @@
   "id": "caustics",
   "type": "phenomenon",
   "label": "Caustics",
-  "importance": 20,
+  "importance": 4,
   "generality": 4,
   "attrs": {
     "description": "Surfaces where rays or particle streams cross and focus, producing sharp peaks in intensity or density."

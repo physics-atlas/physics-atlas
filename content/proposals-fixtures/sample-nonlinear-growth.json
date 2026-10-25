@@ -21,7 +21,7 @@
       "id": "nonlinear_growth_s2",
       "type": "process",
       "label": "Non-linear structure growth",
-      "importance": 30,
+      "importance": 6,
       "generality": 6,
       "attrs": {
         "description": "Sample: growth of density perturbations once they are no longer small.",

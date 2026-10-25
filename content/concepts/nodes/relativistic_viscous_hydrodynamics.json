@@ -2,7 +2,7 @@
   "id": "relativistic_viscous_hydrodynamics",
   "type": "method",
   "label": "Relativistic Viscous Hydrodynamics",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "A continuum description of relativistic fluids that includes dissipative effects such as viscosity.",

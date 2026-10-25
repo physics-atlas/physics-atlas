@@ -18,6 +18,15 @@ export class GitHubError extends Error {
   }
 }
 
+/** GitHub turned down the sign-in code; `code` is GitHub's own reason, e.g. "bad_verification_code". */
+export class SignInError extends Error {
+  readonly code: string;
+  constructor(code: string) {
+    super(`GitHub sign-in failed: ${code}`);
+    this.code = code;
+  }
+}
+
 export interface GitHubUser {
   login: string;
   id: number;
@@ -95,7 +104,7 @@ export class GitHub {
       }),
     });
     const t = (await res.json()) as { access_token?: string; error?: string };
-    if (!t.access_token) throw new GitHubError(401, `GitHub sign-in failed: ${t.error ?? res.status}`);
+    if (!t.access_token) throw new SignInError(t.error ?? `http_${res.status}`);
     return this.call<GitHubUser>('/user', { token: t.access_token });
   }
 

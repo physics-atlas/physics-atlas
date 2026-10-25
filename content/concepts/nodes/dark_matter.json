@@ -2,7 +2,7 @@
   "id": "dark_matter",
   "type": "physical_system",
   "label": "Dark Matter",
-  "importance": 50,
+  "importance": 10,
   "generality": 10,
   "attrs": {
     "description": "Non-luminous matter inferred from its gravitational effects, making up most of the matter in the universe.",

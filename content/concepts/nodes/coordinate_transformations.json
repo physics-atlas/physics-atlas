@@ -2,7 +2,7 @@
   "id": "coordinate_transformations",
   "type": "formalism",
   "label": "Coordinate Transformations",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "Changes between coordinate descriptions used to express physical quantities without changing the underlying physics.",

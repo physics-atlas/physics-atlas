@@ -37,16 +37,31 @@ interface ConceptAttrs {
 }
 
 export interface EquationVariable {
+  /** LaTeX, like the equation: `G_{\mu\nu}` */
   symbol: string;
   meaning: string;
 }
 
+/**
+ * Another way of writing the same equation — a component form, a weak-field
+ * limit — with the variables as they're named there.
+ */
+export interface EquationRepresentation {
+  /** What this form is called: "Linearized weak-field approximation" */
+  name: string;
+  /** LaTeX; left out while only the name is known */
+  equation?: string;
+  variables?: EquationVariable[];
+}
+
 export interface EquationAttrs {
   description: string;
+  /** The main form, in LaTeX */
   equation: string;
+  /** The main form's variables */
   variables: EquationVariable[];
   conditions: string[];
-  representations: string[];
+  representations: EquationRepresentation[];
   domain?: string;
 }
 
@@ -67,7 +82,7 @@ interface GraphNodeBase {
   id: string;
   label: string;
   /**
-   * 1 (minor detail) – 50 (landmark): how far out the node stays visible when
+   * 1 (minor detail) – 10 (landmark): how far out the node stays visible when
    * zooming out, and the size of its name
    */
   importance?: number;

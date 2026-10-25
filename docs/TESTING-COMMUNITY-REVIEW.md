@@ -109,7 +109,7 @@ git check-ignore -v src/data/concepts.json  # names the .gitignore line that ign
      "id": "test_concept",
      "type": "property",
      "label": "Test concept",
-     "importance": 50,
+     "importance": 10,
      "generality": 10,
      "attrs": {
        "description": "A temporary concept for checking Phase 0.",
@@ -148,7 +148,7 @@ terminal. The page keeps showing the **last good** data until the file is fixed.
 - **A one-time fresh layout:** because of the overlap fix, the map computes a new
   arrangement on first load (about 1–4 seconds of glide). In Chrome DevTools → *Application*
   → *Local Storage* → `http://localhost:5173`, the saved layout key is now
-  `physics-atlas-concept-layout-v8`.
+  `physics-atlas-concept-layout-v9`.
 - **Everything else unchanged:** clicking a concept, its card, the goal path ("★ Show path
   to this"), the legend definitions and zooming all behave as before.
 
@@ -426,7 +426,7 @@ on the map**.
 1. Fill in **Description** and tick a **Field** (e.g. Cosmology).
 2. Type `10` in **Generality**: the ghost grows to the largest circle. Type `1`: it shrinks to
    the smallest. Type `12`: **Check and export** lists *Generality is a whole number from 1 to
-   10.* Set it back to something in range. **Importance** (1–50) works the same way. It
+   10.* Set it back to something in range. **Importance** (1–10) works the same way. It
    changes how far out the concept stays visible, which the ghost doesn't show, because a
    draft is always visible. Both fields are optional.
 3. The **claim** is optional too. Leave it empty and the export is still *Ready*, and the
@@ -666,8 +666,8 @@ Not part of the community-review phases, but tested the same way. Open
    takes over.
 4. **Show all concepts** (map controls) turns the depth off: everything shows at any zoom.
 5. Change a concept's `importance` in `content/concepts/nodes/<id>.json` (the dev server
-   reloads): lower it and the concept appears later as you zoom in (each 8 points lower,
-   twice as close); `50` makes it always visible. Change `generality` and its circle grows or
+   reloads): lower it and the concept appears later as you zoom in (each step lower,
+   about 1.5× closer); `10` makes it always visible. Change `generality` and its circle grows or
    shrinks by 1.5× per step. Undo with `git restore content/concepts`.
 
 `npm test` covers the rules (radius per generality, label sizes, every importance its own

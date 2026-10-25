@@ -2,7 +2,7 @@
   "id": "rhic",
   "type": "experiment",
   "label": "RHIC",
-  "importance": 30,
+  "importance": 6,
   "generality": 6,
   "attrs": {
     "description": "The Relativistic Heavy Ion Collider, used to study matter under extreme temperatures and densities.",

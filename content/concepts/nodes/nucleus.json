@@ -2,7 +2,7 @@
   "id": "nucleus",
   "type": "physical_system",
   "label": "Nucleus",
-  "importance": 40,
+  "importance": 8,
   "generality": 8,
   "attrs": {
     "description": "The compact, positively charged core of an atom containing protons and neutrons.",

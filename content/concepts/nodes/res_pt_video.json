@@ -2,7 +2,7 @@
   "id": "res_pt_video",
   "type": "resource",
   "label": "Video: visualising parallel transport",
-  "importance": 10,
+  "importance": 2,
   "generality": 2,
   "attrs": {
     "link": "https://example.com/videos/visualising-parallel-transport",

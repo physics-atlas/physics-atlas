@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
-import type { EdgeType, GraphEdge, NodeType } from '../data/types';
+import type { EdgeType, EquationVariable, GraphEdge, NodeType } from '../data/types';
 import {
   EVIDENCE_LABELS,
   PROPOSABLE_TYPES,
@@ -17,14 +17,16 @@ import {
   pullRequestText,
   removedFiles,
 } from '../community/draft';
-import type { Draft, DraftContext, DraftField, DraftRelation, ExportFile } from '../community/draft';
+import type { Draft, DraftContext, DraftField, DraftRelation, DraftRepresentation, ExportFile } from '../community/draft';
 import type { Evidence, EvidenceKind } from '../community/types';
 import type { SignedInUser, SubmitResult } from '../community/api';
 import { edgeConflicts } from '../graph/conflicts';
 import type { EdgeConflict, LabelMatch } from '../graph/conflicts';
 import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts } from '../graph/concepts';
 import type { ConceptIndex, ConceptMap } from '../graph/concepts';
+import { FUN_TYPES } from '../graph/typeColors';
 import { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
+import RelationPicker from './RelationPicker';
 import RelationSentence from './RelationSentence';
 import RichText, { MathText } from './RichText';
 import SearchBox from './SearchBox';
@@ -48,6 +50,8 @@ interface DraftEditorProps {
   /** Concepts offered as connections, and whether they're the ones nearest the ghost on the map */
   suggestions: { ids: string[]; from: 'map' | 'connections' };
   searchEntries: SearchEntry[];
+  /** Fun mode: the Fluff type is on offer too */
+  fun?: boolean;
   /** Adds a relation from the draft's concept to another one */
   onConnect: (id: string) => void;
   /** Moves the ghost into the middle of the map view */
@@ -125,6 +129,7 @@ export default function DraftEditor({
   similar,
   suggestions,
   searchEntries,
+  fun = false,
   onConnect,
   onRecall,
   onShow,
@@ -319,7 +324,7 @@ export default function DraftEditor({
             aria-describedby={definition ? fieldId('definition') : undefined}
           >
             <option value="">Choose…</option>
-            {PROPOSABLE_TYPES.map((t) => (
+            {PROPOSABLE_TYPES.filter((t) => fun || !FUN_TYPES.includes(t) || t === draft.type).map((t) => (
               <option key={t} value={t}>
                 {NODE_TYPE_LABELS[t]}
               </option>
@@ -467,18 +472,14 @@ export default function DraftEditor({
                   </p>
                 )}
                 <Field id={fieldId(`rel-${r.key}`)} label="Relation">
-                  <select
+                  <RelationPicker
                     id={fieldId(`rel-${r.key}`)}
-                    className="draft-input"
                     value={type}
-                    onChange={(e) => setRelation(r.key, (x) => ({ ...x, relationship: e.target.value }))}
-                  >
-                    {RELATION_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {EDGE_SENTENCE_TEMPLATES[t].replace('{s}', from).replace('{t}', to)}
-                      </option>
-                    ))}
-                  </select>
+                    types={RELATION_TYPES}
+                    from={from}
+                    to={to}
+                    onChange={(t) => setRelation(r.key, (x) => ({ ...x, relationship: t }))}
+                  />
                 </Field>
                 {r.conditions.map((c, j) => (
                   <div key={j} className="draft-condition">
@@ -580,23 +581,7 @@ export default function DraftEditor({
           />
         </Field>
 
-        {draft.type === 'equation' && (
-          <Field id={fieldId('equation')} label="Equation (LaTeX)">
-            <input
-              id={fieldId('equation')}
-              className="draft-input draft-mono"
-              value={draft.equation}
-              onChange={(e) => set('equation', e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {draft.equation.trim() && (
-              <div className="draft-preview" aria-label="Preview">
-                <MathText tex={draft.equation} display />
-              </div>
-            )}
-          </Field>
-        )}
+        {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
 
         <fieldset className="draft-domains">
           <legend className="draft-label">
@@ -643,7 +628,7 @@ export default function DraftEditor({
         <Field
           id={fieldId('importance')}
           label={`Importance, 1–${IMPORTANCE_MAX}`}
-          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 40 shows on the whole map, and every 8 points lower needs twice as close a look, so 1 only appears when you're right next to it.`}
+          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 8 shows on the whole map, and each step lower needs about a 1.5× closer look, so 1 only appears when you're right next to it.`}
           optional
         >
           <input
@@ -946,6 +931,192 @@ export default function DraftEditor({
         )}
       </div>
     </div>
+  );
+}
+
+/** A formula input with its typeset preview underneath. */
+function LatexInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <>
+      <input
+        id={id}
+        className="draft-input draft-mono"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {value.trim() && (
+        <div className="draft-preview" aria-label="Preview">
+          <MathText tex={value} display />
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * A formula's variables: one row each, symbol (LaTeX, previewed) and what it
+ * stands for. `focusId` goes on the first input — or on "Add a variable" while
+ * there are none — so a problem in the list can be jumped to.
+ */
+function VariableRows({
+  variables,
+  onChange,
+  idBase,
+  focusId,
+  title,
+}: {
+  variables: EquationVariable[];
+  onChange: (vs: EquationVariable[]) => void;
+  idBase: string;
+  focusId: string;
+  title: string;
+}) {
+  const setRow = (i: number, change: Partial<EquationVariable>) =>
+    onChange(variables.map((v, j) => (j === i ? { ...v, ...change } : v)));
+  return (
+    <fieldset className="draft-variables">
+      <legend className="draft-label">
+        {title} <span className="draft-optional">optional</span>
+      </legend>
+      {variables.length > 0 && (
+        <ol className="draft-variable-list">
+          {variables.map((v, i) => (
+            <li key={i} className="draft-variable">
+              <div className="draft-variable-field">
+                <label className="draft-variable-label" htmlFor={i === 0 ? focusId : `${idBase}-${i}-symbol`}>
+                  Symbol {i + 1} (LaTeX)
+                </label>
+                <input
+                  id={i === 0 ? focusId : `${idBase}-${i}-symbol`}
+                  className="draft-input draft-mono"
+                  value={v.symbol}
+                  placeholder="G_{\mu\nu}"
+                  onChange={(e) => setRow(i, { symbol: e.target.value })}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
+              <span className="draft-variable-preview" aria-hidden>
+                {v.symbol.trim() && <MathText tex={v.symbol} />}
+              </span>
+              <div className="draft-variable-field draft-variable-meaning">
+                <label className="draft-variable-label" htmlFor={`${idBase}-${i}-meaning`}>
+                  Stands for
+                </label>
+                <input
+                  id={`${idBase}-${i}-meaning`}
+                  className="draft-input"
+                  value={v.meaning}
+                  placeholder="Einstein tensor (spacetime curvature)"
+                  onChange={(e) => setRow(i, { meaning: e.target.value })}
+                />
+              </div>
+              <button
+                type="button"
+                className="draft-link draft-variable-remove"
+                onClick={() => onChange(variables.filter((_, j) => j !== i))}
+              >
+                Remove<span className="visually-hidden"> symbol {i + 1}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <button
+        type="button"
+        className="draft-button"
+        id={variables.length ? undefined : focusId}
+        onClick={() => onChange([...variables, { symbol: '', meaning: '' }])}
+      >
+        Add a variable
+      </button>
+    </fieldset>
+  );
+}
+
+/** An equation's main form and its variables, then any other representations, each with its own. */
+function EquationFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  const setRep = (i: number, change: Partial<DraftRepresentation>) =>
+    update((d) => ({ ...d, representations: d.representations.map((r, j) => (j === i ? { ...r, ...change } : r)) }));
+  return (
+    <>
+      <Field id={fieldId('equation')} label="Equation (LaTeX)">
+        <LatexInput
+          id={fieldId('equation')}
+          value={draft.equation}
+          onChange={(equation) => update((d) => ({ ...d, equation }))}
+        />
+      </Field>
+      <VariableRows
+        title="Its variables"
+        variables={draft.variables}
+        onChange={(variables) => update((d) => ({ ...d, variables }))}
+        idBase={fieldId('var')}
+        focusId={fieldId('variables')}
+      />
+
+      <fieldset className="draft-representations">
+        <legend className="draft-label">
+          Other representations <span className="draft-optional">optional</span>
+        </legend>
+        <p className="draft-hint">
+          Other ways of writing the same equation — a component form, a limit — each with its variables as they're named
+          there. A name alone is fine while the formula is still to come.
+        </p>
+        {draft.representations.map((r, i) => (
+          <div key={i} className="draft-relation draft-representation">
+            <Field id={fieldId(`representations-${i}`)} label={`Representation ${i + 1}: name`}>
+              <input
+                id={fieldId(`representations-${i}`)}
+                className="draft-input"
+                value={r.name}
+                placeholder="Linearized weak-field approximation"
+                onChange={(e) => setRep(i, { name: e.target.value })}
+              />
+            </Field>
+            <Field id={fieldId(`representation-eq-${i}`)} label="Equation (LaTeX)" optional>
+              <LatexInput id={fieldId(`representation-eq-${i}`)} value={r.equation} onChange={(equation) => setRep(i, { equation })} />
+            </Field>
+            <VariableRows
+              title="Its variables"
+              variables={r.variables}
+              onChange={(variables) => setRep(i, { variables })}
+              idBase={fieldId(`rep-${i}-var`)}
+              focusId={fieldId(`rep-${i}-variables`)}
+            />
+            <div className="draft-row-actions">
+              <button
+                type="button"
+                className="draft-button"
+                onClick={() => update((d) => ({ ...d, representations: d.representations.filter((_, j) => j !== i) }))}
+              >
+                Remove representation {i + 1}
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="draft-button"
+          onClick={() =>
+            update((d) => ({ ...d, representations: [...d.representations, { name: '', equation: '', variables: [] }] }))
+          }
+        >
+          Add a representation
+        </button>
+      </fieldset>
+    </>
   );
 }
 
