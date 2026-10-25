@@ -1,0 +1,11 @@
+{
+  "id": "wave_function_xdmx",
+  "label": "Wave function",
+  "type": "formalism",
+  "importance": 8,
+  "generality": 8,
+  "attrs": {
+    "description": "Describes quantum objects, as they are de-localised they do not have a location but a probability for being at a certain location, and a probability for having a certain momentum.",
+    "domain": "Quantum mechanics"
+  }
+}
