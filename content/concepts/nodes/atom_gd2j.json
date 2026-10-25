@@ -1,0 +1,10 @@
+{
+  "id": "atom_gd2j",
+  "label": "Atom",
+  "type": "physical_system",
+  "importance": 10,
+  "generality": 7,
+  "attrs": {
+    "description": "Famous as the fundamental building block of matter. Formed by nucleus of protons and neutrons with \"orbiting\" electrons"
+  }
+}
