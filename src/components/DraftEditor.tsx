@@ -1,7 +1,8 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
-import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
+import type { EdgeType, EquationVariable, GraphEdge, GraphNode, MathNotation, NodeType } from '../data/types';
+import pageIndex from '../data/pageIndex.json';
 import {
   EVIDENCE_LABELS,
   PROPOSABLE_TYPES,
@@ -40,6 +41,8 @@ import RichText, { MathText } from './RichText';
 import SearchBox from './SearchBox';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
+import MathSource from './MathSource';
+import TypstPreview from './TypstPreview';
 
 interface DraftEditorProps {
   /** The draft the form shows */
@@ -513,7 +516,7 @@ export default function DraftEditor({
                     />
                   </Field>
                   {r.description?.trim() && (
-                    <div className="draft-preview" aria-label="Preview">
+                    <div className="draft-preview" role="group" aria-label="Preview">
                       <RichText source={r.description} />
                     </div>
                   )}
@@ -534,7 +537,7 @@ export default function DraftEditor({
                     />
                   </Field>
                   {r.derivation?.trim() && (
-                    <div className="draft-preview" aria-label="Preview">
+                    <div className="draft-preview" role="group" aria-label="Preview">
                       <RichText source={r.derivation} />
                     </div>
                   )}
@@ -612,6 +615,8 @@ export default function DraftEditor({
           concepts={ctx.confirmed.nodes}
           entries={assumableEntries}
         />
+
+        <PageFields draft={draft} update={update} fieldId={fieldId} />
 
         <fieldset className="draft-domains">
           <legend className="draft-label">
@@ -737,7 +742,7 @@ export default function DraftEditor({
                 />
               </Field>
               {e.kind === 'equation' && e.ref.trim() && (
-                <div className="draft-preview" aria-label="Preview">
+                <div className="draft-preview" role="group" aria-label="Preview">
                   <MathText tex={e.ref} display />
                 </div>
               )}
@@ -965,7 +970,23 @@ export default function DraftEditor({
 }
 
 /** A formula input with its typeset preview underneath. */
-function LatexInput({ id, value, onChange, placeholder }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+/** What each notation is called in a label, and a sample to show its style. */
+const NOTATION_NAME: Record<MathNotation, string> = { latex: 'LaTeX', typst: 'Typst' };
+const TYPST_EQUATION_SAMPLE = 'F = m a';
+
+function LatexInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+  notation = 'latex',
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  notation?: MathNotation;
+}) {
   return (
     <>
       <input
@@ -978,8 +999,8 @@ function LatexInput({ id, value, onChange, placeholder }: { id: string; value: s
         spellCheck={false}
       />
       {value.trim() && (
-        <div className="draft-preview" aria-label="Preview">
-          <MathText tex={value} display />
+        <div className="draft-preview" role="group" aria-label={notation === 'typst' ? 'Preview (approximate)' : 'Preview'}>
+          <MathSource source={value} notation={notation} display />
         </div>
       )}
     </>
@@ -997,12 +1018,14 @@ function VariableRows({
   idBase,
   focusId,
   title,
+  notation = 'latex',
 }: {
   variables: EquationVariable[];
   onChange: (vs: EquationVariable[]) => void;
   idBase: string;
   focusId: string;
   title: string;
+  notation?: MathNotation;
 }) {
   const setRow = (i: number, change: Partial<EquationVariable>) =>
     onChange(variables.map((v, j) => (j === i ? { ...v, ...change } : v)));
@@ -1017,20 +1040,20 @@ function VariableRows({
             <li key={i} className="draft-variable">
               <div className="draft-variable-field">
                 <label className="draft-variable-label" htmlFor={i === 0 ? focusId : `${idBase}-${i}-symbol`}>
-                  Symbol {i + 1} (LaTeX)
+                  Symbol {i + 1} ({NOTATION_NAME[notation]})
                 </label>
                 <input
                   id={i === 0 ? focusId : `${idBase}-${i}-symbol`}
                   className="draft-input draft-mono"
                   value={v.symbol}
-                  placeholder="G_{\mu\nu}"
+                  placeholder={notation === 'typst' ? 'G_(mu nu)' : 'G_{\\mu\\nu}'}
                   onChange={(e) => setRow(i, { symbol: e.target.value })}
                   autoComplete="off"
                   spellCheck={false}
                 />
               </div>
               <span className="draft-variable-preview" aria-hidden>
-                {v.symbol.trim() && <MathText tex={v.symbol} />}
+                {v.symbol.trim() && <MathSource source={v.symbol} notation={notation} />}
               </span>
               <div className="draft-variable-field draft-variable-meaning">
                 <label className="draft-variable-label" htmlFor={`${idBase}-${i}-meaning`}>
@@ -1068,6 +1091,159 @@ function VariableRows({
 }
 
 /** A mathematical formalism's formulas: how it works, each typeset, named and with its variables. */
+/** LaTeX or Typst, for all of the concept's equations and symbols. */
+function NotationField({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  return (
+    <fieldset className="draft-notation">
+      <legend className="draft-label">Its maths is written in</legend>
+      {(['latex', 'typst'] as const).map((n) => (
+        <label key={n} className="draft-radio">
+          <input
+            type="radio"
+            name={fieldId('notation')}
+            checked={draft.notation === n}
+            onChange={() => update((d) => ({ ...d, notation: n }))}
+            aria-describedby={fieldId('notation-hint')}
+          />
+          {NOTATION_NAME[n]}
+        </label>
+      ))}
+      <p className="draft-hint" id={fieldId('notation-hint')}>
+        {draft.notation === 'typst'
+          ? 'Typst math, e.g. G_(mu nu) = (8 pi G)/c^4 T_(mu nu). The preview here is approximate; the published equation is typeset by Typst.'
+          : 'LaTeX, e.g. G_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}. One notation for all of this concept\'s equations and symbols.'}
+      </p>
+    </fieldset>
+  );
+}
+
+/** Each concept's compiled page, loaded when an edit opens it (its Typst sources). */
+const PAGE_FILES = import.meta.glob<{ default: { depths: { source: string }[] } }>('../data/pages/*.json');
+const PAGE_DEPTHS = pageIndex as Record<string, number>;
+
+/**
+ * The concept's atlas page, in Typst: one text per depth, as many as the
+ * author wants, each going further. An edit leaves the page alone until the
+ * author chooses to edit it (its sources are loaded then).
+ */
+function PageFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const existing = draft.editOf ? (PAGE_DEPTHS[draft.editOf] ?? 0) : 0;
+  const startEditing = async () => {
+    const load = draft.editOf ? PAGE_FILES[`../data/pages/${draft.editOf}.json`] : undefined;
+    if (!load) {
+      update((d) => ({ ...d, page: [''], pageBefore: 0 }));
+      return;
+    }
+    setLoading(true);
+    const m = await load();
+    setLoading(false);
+    const sources = m.default.depths.map((x) => x.source);
+    update((d) => ({ ...d, page: sources, pageBefore: sources.length }));
+  };
+  const setDepth = (i: number, source: string) =>
+    update((d) => ({ ...d, page: (d.page ?? []).map((x, j) => (j === i ? source : x)) }));
+  return (
+    <fieldset className="draft-page">
+      <legend className="draft-label">
+        Its page <span className="draft-optional">optional</span>
+      </legend>
+      <p className="draft-hint" id={fieldId('page-hint')}>
+        The concept's page in the atlas pages, written in Typst. Write it at as many depths as you like — depth 1 first,
+        each deeper one going further; readers choose how deep to read. The page also shows what the map knows (the
+        definition, the equation, how it connects).
+      </p>
+      <details className="draft-page-help">
+        <summary>Typst for pages, in short</summary>
+        <ul>
+          <li>
+            <code>= Heading</code>, <code>*bold*</code>, <code>_emphasis_</code>, <code>- a list item</code>, a blank
+            line between paragraphs.
+          </li>
+          <li>
+            Maths: <code>$E = m c^2$</code> in a sentence, <code>$ E = m c^2 $</code> (with spaces) on its own line.
+          </li>
+          <li>
+            Blocks, numbered on the page: <code>#definition[…]</code>, <code>#theorem[…]</code>, <code>#lemma[…]</code>,{' '}
+            <code>#example[…]</code>, <code>#remark[…]</code>, <code>#checkpoint[…]</code>; also <code>#proof[…]</code> and{' '}
+            <code>#objectives[…]</code>. A title: <code>#definition(title: "…")[…]</code>.
+          </li>
+          <li>
+            Links: <code>#concept("concept_id")[its name]</code>, <code>#link("https://…")[text]</code>.
+          </li>
+        </ul>
+      </details>
+      {draft.page === null ? (
+        <p className="draft-page-start">
+          {existing > 0
+            ? `This concept's page is written at ${existing} ${existing === 1 ? 'depth' : 'depths'}. `
+            : "This concept's page has nothing written yet. "}
+          <button type="button" className="draft-button" id={fieldId('page')} onClick={startEditing} disabled={loading}>
+            {loading ? 'Loading the page…' : existing > 0 ? 'Edit the page' : 'Write the page'}
+          </button>
+        </p>
+      ) : (
+        <>
+          {draft.page.map((source, i) => (
+            <div key={i} className="draft-relation draft-page-depth">
+              <Field id={fieldId(`page-${i}`)} label={`Depth ${i + 1} (Typst)`}>
+                <textarea
+                  id={fieldId(`page-${i}`)}
+                  className="draft-input draft-textarea draft-mono"
+                  rows={i === 0 ? 8 : 6}
+                  value={source}
+                  onChange={(e) => setDepth(i, e.target.value)}
+                  aria-describedby={fieldId('page-hint')}
+                  spellCheck
+                />
+              </Field>
+              {source.trim() && (
+                <details className="draft-page-preview">
+                  <summary>Preview depth {i + 1} (approximate)</summary>
+                  <TypstPreview source={source} />
+                </details>
+              )}
+              <div className="draft-row-actions">
+                <button
+                  type="button"
+                  className="draft-button"
+                  onClick={() => update((d) => ({ ...d, page: (d.page ?? []).filter((_, j) => j !== i) }))}
+                >
+                  Remove depth {i + 1}
+                </button>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="draft-button"
+            id={draft.page.length ? undefined : fieldId('page')}
+            onClick={() => update((d) => ({ ...d, page: [...(d.page ?? []), ''] }))}
+          >
+            {draft.page.length ? `Add a deeper level (depth ${draft.page.length + 1})` : 'Write depth 1'}
+          </button>
+        </>
+      )}
+    </fieldset>
+  );
+}
+
 /**
  * What the concept takes for granted, one row each: a name, more detail if it
  * helps, and — optionally — the concept on the map it is.
@@ -1179,13 +1355,15 @@ function FormulaFields({
         Formulas and equations that show how the formalism works — a definition, a rule, a worked identity — each with
         its variables.
       </p>
+      <NotationField draft={draft} update={update} fieldId={fieldId} />
       {draft.formulas.map((f, i) => (
         <div key={i} className="draft-relation draft-representation">
-          <Field id={fieldId(`formulas-${i}`)} label={`Formula ${i + 1} (LaTeX)`}>
+          <Field id={fieldId(`formulas-${i}`)} label={`Formula ${i + 1} (${NOTATION_NAME[draft.notation]})`}>
             <LatexInput
               id={fieldId(`formulas-${i}`)}
               value={f.equation}
-              placeholder="\vec v = \sum_i v^i \, \hat e_i"
+              notation={draft.notation}
+              placeholder={draft.notation === 'typst' ? 'arrow(v) = sum_i v^i hat(e)_i' : '\\vec v = \\sum_i v^i \\, \\hat e_i'}
               onChange={(equation) => setFormula(i, { equation })}
             />
           </Field>
@@ -1200,6 +1378,7 @@ function FormulaFields({
           </Field>
           <VariableRows
             title="Its variables"
+            notation={draft.notation}
             variables={f.variables}
             onChange={(variables) => setFormula(i, { variables })}
             idBase={fieldId(`formula-${i}-var`)}
@@ -1242,15 +1421,19 @@ function EquationFields({
     update((d) => ({ ...d, representations: d.representations.map((r, j) => (j === i ? { ...r, ...change } : r)) }));
   return (
     <>
-      <Field id={fieldId('equation')} label="Equation (LaTeX)">
+      <NotationField draft={draft} update={update} fieldId={fieldId} />
+      <Field id={fieldId('equation')} label={`Equation (${NOTATION_NAME[draft.notation]})`}>
         <LatexInput
           id={fieldId('equation')}
+          notation={draft.notation}
+          placeholder={draft.notation === 'typst' ? TYPST_EQUATION_SAMPLE : undefined}
           value={draft.equation}
           onChange={(equation) => update((d) => ({ ...d, equation }))}
         />
       </Field>
       <VariableRows
         title="Its variables"
+        notation={draft.notation}
         variables={draft.variables}
         onChange={(variables) => update((d) => ({ ...d, variables }))}
         idBase={fieldId('var')}
@@ -1276,11 +1459,17 @@ function EquationFields({
                 onChange={(e) => setRep(i, { name: e.target.value })}
               />
             </Field>
-            <Field id={fieldId(`representation-eq-${i}`)} label="Equation (LaTeX)" optional>
-              <LatexInput id={fieldId(`representation-eq-${i}`)} value={r.equation} onChange={(equation) => setRep(i, { equation })} />
+            <Field id={fieldId(`representation-eq-${i}`)} label={`Equation (${NOTATION_NAME[draft.notation]})`} optional>
+              <LatexInput
+                id={fieldId(`representation-eq-${i}`)}
+                notation={draft.notation}
+                value={r.equation}
+                onChange={(equation) => setRep(i, { equation })}
+              />
             </Field>
             <VariableRows
               title="Its variables"
+              notation={draft.notation}
               variables={r.variables}
               onChange={(variables) => setRep(i, { variables })}
               idBase={fieldId(`rep-${i}-var`)}

@@ -178,3 +178,46 @@ export function typeGroups(index: ConceptIndex, f: PageFilter) {
       .filter((t) => t.nodes.length > 0),
   })).filter((g) => g.types.length > 0);
 }
+
+/** One concept reached from a page, and the relations that reach it. */
+export interface Reached {
+  node: GraphNode;
+  /** The relations between it and the concept it was reached from */
+  edges: GraphEdge[];
+}
+
+/** A concept one step further out, through `via` (a first-order neighbour). */
+export interface FurtherReached extends Reached {
+  via: GraphNode;
+}
+
+const edgesBetween = (a: string, b: string, index: ConceptIndex): GraphEdge[] => [
+  ...(index.outgoing.get(a) ?? []).filter((e) => e.target === b),
+  ...(index.incoming.get(a) ?? []).filter((e) => e.source === b),
+];
+
+/**
+ * A page's first and second-order connections: the concepts next to it, and
+ * the ones next to those (not the page, not already first-order). A concept
+ * reached two ways keeps the first first-order neighbour that reaches it, in
+ * the first-order list's order (bigger first, like the contents).
+ */
+export function connectionsOf(id: string, index: ConceptIndex) {
+  const order = byStanding(index);
+  const first = neighbourIds(id, index).sort(order);
+  const firstSet = new Set(first);
+  const second: FurtherReached[] = [];
+  const seen = new Set([id, ...first]);
+  for (const f of first)
+    for (const s of neighbourIds(f, index).sort(order)) {
+      if (seen.has(s)) continue;
+      seen.add(s);
+      second.push({ node: index.byId.get(s)!, via: index.byId.get(f)!, edges: edgesBetween(f, s, index) });
+    }
+  return {
+    first: first.map((f): Reached => ({ node: index.byId.get(f)!, edges: edgesBetween(id, f, index) })),
+    second,
+    /** For each first-order neighbour, what it adds further out */
+    furtherVia: (f: string) => second.filter((s) => s.via.id === f && firstSet.has(f)),
+  };
+}

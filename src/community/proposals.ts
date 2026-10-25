@@ -30,6 +30,10 @@ function nodeProblems(where: string, n: GraphNode): string[] {
  * renders. A relation into a dependency that's no longer open isn't a problem
  * here: resolveDependencies() drops it.
  */
+/** A page has at most this many depths, each at most this long — the editor says so first. */
+const MAX_DEPTHS = 20;
+const MAX_DEPTH_LENGTH = 100_000;
+
 export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: Proposal[] = []): string[] {
   const problems: string[] = [];
   const where = `proposal "${p.id}"`;
@@ -55,6 +59,23 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   }
   for (const id of p.removals ?? [])
     if (!confirmedEdges.has(id)) problems.push(`${where}: removes relation "${id}", which isn't on the map`);
+  // A page belongs to the proposal's own concept: depths of Typst, none empty.
+  const pageOwners = new Set([...p.nodes, ...(p.edits ?? [])].map((n) => n.id));
+  for (const page of p.pages ?? []) {
+    if (!pageOwners.has(page.concept))
+      problems.push(`${where}: has a page for "${page.concept}", which isn't the concept it proposes or edits`);
+    if (!Array.isArray(page.depths) || page.depths.length > MAX_DEPTHS)
+      problems.push(`${where}: the page for "${page.concept}" needs a list of at most ${MAX_DEPTHS} depths`);
+    else
+      page.depths.forEach((s, i) => {
+        if (typeof s !== 'string' || !s.trim()) problems.push(`${where}: depth ${i + 1} of the page for "${page.concept}" is empty`);
+        else if (s.length > MAX_DEPTH_LENGTH)
+          problems.push(`${where}: depth ${i + 1} of the page for "${page.concept}" is longer than ${MAX_DEPTH_LENGTH / 1000}k characters`);
+      });
+    if (page.replaces !== undefined && (!Number.isInteger(page.replaces) || page.replaces < 0 || page.replaces > MAX_DEPTHS))
+      problems.push(`${where}: the page for "${page.concept}" replaces an impossible number of depths`);
+  }
+
   // An assumption that points to a concept needs it on the map (no line is drawn, so no dependency).
   for (const n of [...p.nodes, ...(p.edits ?? [])])
     for (const a of assumedConceptIds(n))

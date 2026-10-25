@@ -7,6 +7,7 @@ import {
   draftDependencies,
   draftEdges,
   draftNode,
+  draftPage,
   draftProblems,
   draftProposal,
   draftRef,
@@ -466,5 +467,63 @@ describe('storage', () => {
     expect(hasContent(newDraft())).toBe(false);
     expect(hasContent({ ...newDraft(), label: 'x' })).toBe(true);
     expect(hasContent(newEditDraft(vlasov()))).toBe(true);
+  });
+});
+
+describe('Typst in drafts', () => {
+  it('writes an equation in Typst when asked, and says so on the concept', () => {
+    const d: Draft = { ...jeans(), type: 'equation', equation: ' F = m a ', notation: 'typst' };
+    const attrs = draftNode(d, concepts).attrs as { notation?: string; equation: string };
+    expect(attrs.notation).toBe('typst');
+    expect(attrs.equation).toBe('F = m a');
+    expect('notation' in draftNode({ ...d, notation: 'latex' }, concepts).attrs).toBe(false);
+  });
+  it("exports a new concept's page, one Typst file per depth, in the same proposal", () => {
+    const d: Draft = { ...jeans(), page: ['= Sample\n\nSample: depth 1.', ' Sample: depth 2. '] };
+    const id = conceptId(d);
+    expect(draftPage(d)).toEqual({ concept: id, depths: ['= Sample\n\nSample: depth 1.', 'Sample: depth 2.'] });
+    expect(draftProposal(d, alone(d)).pages).toEqual([draftPage(d)]);
+    const files = exportFiles(d, alone(d)).map((f) => f.path);
+    expect(files).toContain(`content/pages/${id}/depth-1.typ`);
+    expect(files).toContain(`content/pages/${id}/depth-2.typ`);
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    // No page, no files.
+    expect(draftProposal(jeans(), alone(jeans())).pages).toBeUndefined();
+  });
+  it("leaves an edited concept's page alone until it's loaded, then replaces it — dropping depths it removed", () => {
+    const z = newEditDraft(concepts.nodes.find((n) => n.id === 'zeldovich_approximation')!, fixed, at);
+    expect(z.page).toBeNull();
+    expect(draftProposal(z, alone(z)).pages).toBeUndefined();
+    const shorter: Draft = { ...z, page: ['Sample: one depth.'], pageBefore: 3 };
+    expect(draftPage(shorter)).toEqual({ concept: 'zeldovich_approximation', depths: ['Sample: one depth.'], replaces: 3 });
+    expect(removedFiles(shorter)).toEqual([
+      'content/pages/zeldovich_approximation/depth-2.typ',
+      'content/pages/zeldovich_approximation/depth-3.typ',
+    ]);
+  });
+  it('flags an empty depth, pointing at it', () => {
+    const d: Draft = { ...jeans(), page: ['Sample.', '  '] };
+    expect(draftProblems(d, alone(d)).map((p) => [p.field, p.index])).toEqual([['page', 1]]);
+  });
+  it('reads drafts saved before pages and notation existed', () => {
+    const { notation: _n, page: _p, pageBefore: _b, ...old } = jeans();
+    void _n;
+    void _p;
+    void _b;
+    const back = parseDraft(old);
+    expect(back?.notation).toBe('latex');
+    expect(back?.page).toEqual([]);
+    const edit = parseDraft({ ...old, editOf: 'vlasov_equation' });
+    expect(edit?.page).toBeNull();
+  });
+  it("refuses a page for a concept that isn't the proposal's", () => {
+    const d: Draft = { ...jeans(), page: ['Sample.'] };
+    const p = draftProposal(d, alone(d));
+    expect(proposalProblems({ ...p, pages: [{ concept: 'vlasov_equation', depths: ['Sample.'] }] }, concepts)).toEqual([
+      expect.stringContaining("isn't the concept it proposes or edits"),
+    ]);
+    expect(proposalProblems({ ...p, pages: [{ concept: p.nodes[0].id, depths: [''] }] }, concepts)).toEqual([
+      expect.stringContaining('is empty'),
+    ]);
   });
 });

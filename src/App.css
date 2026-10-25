@@ -2693,10 +2693,6 @@ a.mode-tab {
   border: none;
 }
 
-.atlas-filter-family-name {
-  margin: 8px 0 4px;
-  font-style: italic;
-}
 
 .atlas-filter-note {
   margin: 0 0 4px;
@@ -2742,7 +2738,8 @@ a.mode-tab {
 }
 
 .atlas-row > a,
-.atlas-flat a {
+.atlas-flat li > a,
+.atlas-flat li > span > a:last-child {
   flex: 1;
   padding: 3px 6px;
   border-left: 3px solid transparent;
@@ -2752,7 +2749,8 @@ a.mode-tab {
 }
 
 .atlas-row > a:hover,
-.atlas-flat a:hover {
+.atlas-flat li > a:hover,
+.atlas-flat li > span > a:last-child:hover {
   text-decoration: underline;
 }
 
@@ -3037,4 +3035,235 @@ a.mode-tab {
   .atlas-relations details {
     display: block;
   }
+}
+
+/* Filter groups fold: a family of kinds, a category of relations. */
+.atlas-filter-family {
+  margin: 4px 0;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+
+.atlas-filter-family > summary {
+  min-height: 26px;
+  padding: 2px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.atlas-filter-count {
+  font-weight: 400;
+  font-style: italic;
+}
+
+.atlas-check-all {
+  font-weight: 600;
+}
+
+.atlas-check-item {
+  padding-left: 12px;
+}
+
+/* A relation named in the Neighbours view links to its page. */
+.atlas-how .atlas-how-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* How deep to read a page. */
+.atlas-depths {
+  margin: 20px 0 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.atlas-depths legend {
+  padding: 0 4px;
+}
+
+.atlas-depth-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* What the page's authors wrote (Typst → HTML): blocks like lecture notes. */
+.atlas-written {
+  margin: 16px 0;
+}
+
+.atlas-written h2 {
+  margin-top: 28px;
+}
+
+.atlas-tblock {
+  margin: 18px 0;
+  padding: 8px 0 8px 16px;
+  border-left: 4px solid var(--border);
+}
+
+.atlas-tblock-label {
+  margin: 0 0 4px;
+}
+
+.atlas-tblock-definition,
+.atlas-tblock-theorem {
+  border-left-color: var(--accent-ink);
+}
+
+.atlas-tblock-example,
+.atlas-tblock-checkpoint {
+  border-left-style: dashed;
+  border-left-color: var(--accent-ink);
+}
+
+.atlas-tblock-objectives {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.atlas-tblock-proof {
+  border-left-style: dotted;
+}
+
+/* A display equation: MathML's own layout, in a box that scrolls sideways when the
+   equation is wider than the column (made focusable then — lib/scrollableMath.ts). */
+.atlas-math-block {
+  margin: 12px 0;
+  padding: 6px 0;
+  overflow-x: auto;
+  /* sideways only: a tall fraction mustn't turn it into a vertical scroller too */
+  overflow-y: hidden;
+}
+
+.atlas-math-block > math {
+  font-size: 1.15em;
+}
+
+/* The neighbourhood drawing and the lists under it. */
+.atlas-diagram-figure {
+  margin: 12px 0 20px;
+}
+
+.atlas-diagram {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-solid);
+}
+
+.atlas-diagram-line1 {
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+.atlas-diagram-line2 {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.4;
+}
+
+.atlas-diagram-center {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.atlas-diagram text {
+  fill: var(--ink);
+  font-family: inherit;
+}
+
+.atlas-diagram-label0 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.atlas-diagram-label1 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.atlas-diagram-label2 {
+  font-size: 11px;
+}
+
+.atlas-diagram a:hover text {
+  text-decoration: underline;
+}
+
+.atlas-diagram-figure figcaption {
+  margin-top: 6px;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.atlas-page .atlas-about {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.atlas-further {
+  margin: 6px 0 0;
+}
+
+.atlas-further ul {
+  margin: 6px 0 4px;
+  padding-left: 4px;
+  list-style: none;
+}
+
+.atlas-further li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 15px;
+}
+
+/* A relation's page: its two ends. */
+.atlas-ends {
+  margin: 0;
+}
+
+.atlas-ends > div {
+  margin: 0 0 14px;
+}
+
+.atlas-ends dd {
+  margin: 4px 0 0;
+}
+
+.atlas-ends p {
+  margin: 0 0 4px;
+}
+
+.atlas-end-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* The Neighbours view: a relation's name and the concept beside it are two links —
+   each a full 24px target, with room between them (WCAG 2.5.8). */
+.atlas-neighbours li > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+
+.atlas-neighbours li > span a {
+  display: inline-block;
+  min-height: 24px;
+  line-height: 24px;
 }

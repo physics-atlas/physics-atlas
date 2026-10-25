@@ -5,6 +5,7 @@ import { EDGE_CARD_TITLE_ID } from './ConceptCard';
 import RelationSentence from './RelationSentence';
 import RichText from './RichText';
 import TypeBadge from './TypeBadge';
+import { isPlainClick, relationHref } from '../lib/pageLinks';
 
 /**
  * A relation's card, opened by clicking its line (or "Details" in a concept's
@@ -17,6 +18,7 @@ export default function EdgeCard({
   byId,
   onPick,
   proposedIn,
+  onOpenPage,
 }: {
   edge: GraphEdge;
   byId: ConceptMap;
@@ -24,6 +26,8 @@ export default function EdgeCard({
   onPick: (id: string) => void;
   /** The proposal it belongs to, when it isn't confirmed yet */
   proposedIn?: string;
+  /** Open the relation's atlas page (confirmed relations have one) */
+  onOpenPage?: (id: string) => void;
 }) {
   const type = normalizeRelationship(edge.relationship) ?? edge.relationship.trim();
   const ends = [
@@ -69,6 +73,23 @@ export default function EdgeCard({
         <h3 className="block-heading">Derivation</h3>
         {edge.derivation ? <RichText source={edge.derivation} /> : <p className="concept-empty">No derivation yet.</p>}
       </section>
+
+      {onOpenPage && (
+        <div className="map-card-cta">
+          <a
+            className="map-card-page"
+            href={relationHref(edge.id)}
+            onClick={(e) => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              onOpenPage(edge.id);
+            }}
+          >
+            Open its page<span className="visually-hidden">: {type}</span>
+            <span aria-hidden> →</span>
+          </a>
+        </div>
+      )}
 
       {edge.review && (
         <section className="rel-block">

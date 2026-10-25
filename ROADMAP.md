@@ -6,6 +6,23 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-65: Atlas pages corrections — Typst at many depths, relation pages, connections, relation categories
+
+**Status:** ✅ Implemented <!-- status-line: feature-65 -->
+**Planned:** 2026-10-25 — requested: collapsible concept families when filtering; pages with unnamed depth levels, created when adding content; pages in Typst only, and Typst for equations; a page per relation (card information for now); first and second-order connections in "How it connects"; broader relation categories to group the filters, which new types must fit
+**Implemented:** 2026-10-25
+
+### Implemented
+- `scripts/compile-pages.mjs` + `scripts/lib/typst.mjs` + `scripts/lib/atlas-preamble.typ` — Typst 0.15 → HTML/MathML at build time (sandboxed, output checked), `src/data/pages/*.json`, `pageIndex.json`, `typstMath.json`; in `build:content` and the dev watcher; `content/pages/README.md`
+- `src/lib/typstHtml.ts` (allowlist sanitizer), `lib/scrollableMath.ts`, `lib/typstPreview.ts` (approximate preview), `components/MathSource.tsx`, `TypstPreview.tsx`; `EquationView` in either notation
+- `components/pages/` — `ConceptPage` (depths, connections diagram, relations by category with second-order lists), `RelationPage`, `Sidebar`, `FilterGroups` (folding, mixed state), `ConnectionsDiagram`, `TypstContent`; `lib/pageLinks.ts` (`PageRef`, relation addresses); `EdgeCard` **Open its page**
+- `conceptVocabulary.json` `relationCategories` (+ validator), `types.ts` `RELATION_CATEGORIES`, `relationCategory`, `MathNotation`; `contents.ts` `connectionsOf`
+- Proposals: `Draft.notation` / `page` / `pageBefore`, `draftPage`, page files and deletions in the export, `Proposal.pages`, checks in `proposals.ts`, `server/proposalPr.ts` writes `content/pages/…`; editor **Its maths is written in** and **Page**
+- Tests: Typst build (compile, numbering, errors, sandbox, refusals), preview parser, categories, connections, drafts with pages and notation; axe clean on pages with depths, relation pages, filters, editor
+
+### Review
+Not run — direct session.
+
 ## feature-60: Atlas pages, step 1 — a page per concept from the data
 
 **Status:** ✅ Implemented <!-- status-line: feature-60 -->

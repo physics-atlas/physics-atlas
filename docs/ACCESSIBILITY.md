@@ -168,9 +168,28 @@ long reading needs:
   surfaces; relation details fold out with `details`. Reflows to 320px with no sideways
   scrolling; on a phone the contents are a drawer behind a "Contents" button
   (`aria-expanded`), and Escape folds it back to the button.
+- **Depths:** a page written at several depths has a "Depth" radio group (fieldset and
+  legend, a hint tied to each choice); the chosen depth carries to the next page.
+- **Written content (Typst):** compiled to real HTML — headings, paragraphs, lists — with
+  equations as MathML, so they're read out, zoom and reflow; numbered blocks carry their
+  label ("Definition 3.1.2") as text. A display equation wider than the column scrolls
+  sideways in a box that becomes focusable (and named "Equation (scrolls sideways)") only
+  then, so equations that fit add no Tab stops.
+- **How it connects:** the diagram of first and second-order connections is a picture
+  (`aria-hidden`, its links out of the Tab order); its caption says so, and every
+  connection is in the lists under it, grouped by kind of relation, each second-order
+  list folded behind a `details` ("Further, through Curvature: 3 concepts").
+- **Relation pages:** an `h1` with the relation as a sentence, its kind, the two concepts,
+  how they connect; reached from "About this relation" (its accessible name says which)
+  and from the relation's card.
+- **Filter groups:** each family of kinds and each category of relations folds (`details`);
+  its "All of …" checkbox is checked, unchecked or mixed (`indeterminate` and
+  `aria-checked="mixed"`), and the summary says how many are on ("Learning (2 of 3)").
 - **Print:** the header, contents and page navigation are left out.
 - **Checked:** axe-core (WCAG 2.0–2.2 A/AA + best practice) reports nothing on the front
-  page, a concept page in each sidebar view, both themes, and a phone with the contents open.
+  page, a concept page in each sidebar view, both themes, a phone with the contents open,
+  a page with written depths and Typst maths, a relation page, the open filter groups, and
+  the proposal editor with an equation in Typst and a page at two depths.
 
 ## Known gaps
 

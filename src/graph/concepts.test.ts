@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EDGE_SENTENCE_TEMPLATES, RELATION_CATEGORIES, relationCategory } from '../data/types';
 import type { GraphEdge, GraphNode } from '../data/types';
 import {
   buildConceptIndex,
@@ -182,5 +183,19 @@ describe('neighborsOf', () => {
       edges: [rel('e1', 'a', 'b', 'relates'), rel('e2', 'c', 'a', 'relates'), rel('e3', 'c', 'd', 'relates')],
     });
     expect(neighborsOf('a', index).sort()).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('relation categories', () => {
+  it('put every relation type in exactly one broader category', () => {
+    const placed = RELATION_CATEGORIES.flatMap((c) => c.types);
+    expect([...placed].sort()).toEqual(Object.keys(EDGE_SENTENCE_TEMPLATES).sort());
+    expect(new Set(placed).size).toBe(placed.length);
+  });
+  it('group the two directions of a relation together', () => {
+    expect(relationCategory('is derived from').key).toBe(relationCategory('is derived by').key);
+    expect(relationCategory('describes').key).toBe(relationCategory('described by').key);
+    expect(relationCategory('relates').key).toBe(relationCategory('links').key);
+    expect(relationCategory('no such relation').key).toBe('association');
   });
 });

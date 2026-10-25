@@ -53,6 +53,23 @@ if (!Array.isArray(DOMAINS) || DOMAINS.some((d) => typeof d !== 'string' || !d.t
   errors.push('conceptVocabulary.json "domains" must be a list of non-empty names without "/"');
 else if (new Set(DOMAINS).size !== DOMAINS.length) errors.push('conceptVocabulary.json "domains" lists a domain twice');
 
+// Every relation type sits in exactly one broader category — a new type has to fit one.
+const CATEGORIES = vocab.relationCategories;
+if (!Array.isArray(CATEGORIES) || CATEGORIES.some((c) => !c?.key || !c.label || !Array.isArray(c.types)))
+  errors.push('conceptVocabulary.json "relationCategories" must be a list of { key, label, description, types }');
+else {
+  const placed = new Map();
+  for (const c of CATEGORIES)
+    for (const t of c.types) {
+      if (!(t in EDGE_TEMPLATES)) errors.push(`conceptVocabulary.json relationCategories.${c.key}: "${t}" isn't a relation type in edgeTemplates`);
+      if (placed.has(t)) errors.push(`conceptVocabulary.json: relation type "${t}" is in two categories (${placed.get(t)}, ${c.key})`);
+      placed.set(t, c.key);
+    }
+  for (const t of Object.keys(EDGE_TEMPLATES))
+    if (!placed.has(t))
+      errors.push(`conceptVocabulary.json: relation type "${t}" has no category — add it to one of relationCategories (docs/AUTHORING.md)`);
+}
+
 const TYPE_DEFINITIONS = vocab.nodeTypeDefinitions ?? {};
 for (const [type, def] of Object.entries(TYPE_DEFINITIONS)) {
   const where = `conceptVocabulary.json nodeTypeDefinitions.${type}`;
@@ -83,8 +100,8 @@ if (!Array.isArray(data.edges)) {
 if (typeof data.version !== 'number') errors.push('top-level "version" must be a number');
 
 const ALLOWED_ATTRS = {
-  equation: ['description', 'equation', 'variables', 'conditions', 'representations', 'domain'],
-  formalism: ['description', 'formulas', 'domain'],
+  equation: ['description', 'notation', 'equation', 'variables', 'conditions', 'representations', 'domain'],
+  formalism: ['description', 'notation', 'formulas', 'domain'],
   learning_goal: ['description'],
   resource: ['link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
 };
@@ -137,6 +154,10 @@ function checkNodeAttrs(where, node) {
       if (!DOMAINS.includes(d))
         errors.push(`${where}: unknown domain "${d}" — use one from conceptVocabulary.json "domains" (several: "A / B"), or add it there first`);
 
+  // LaTeX unless the concept says Typst; Typst maths is compiled (and checked) by compile-pages.mjs.
+  mathNotation = attrs.notation ?? 'latex';
+  if (!['latex', 'typst'].includes(mathNotation)) errors.push(`${where}: attrs.notation must be "latex" or "typst"`);
+
   if (node.type === 'equation') {
     if (typeof attrs.equation !== 'string' || !attrs.equation.trim())
       errors.push(`${where}: attrs.equation is required`);
@@ -182,8 +203,12 @@ function checkVariables(where, at, variables) {
   variables.forEach((v, i) => checkLatex(where, `${at}[${i}].symbol`, v.symbol));
 }
 
+/** The notation of the node being checked: LaTeX is checked here, Typst by compile-pages.mjs. */
+let mathNotation = 'latex';
+
 /** Equations and symbols are LaTeX, typeset by KaTeX on the card — say so when one won't typeset. */
 function checkLatex(where, at, tex) {
+  if (mathNotation === 'typst') return;
   try {
     katex.renderToString(tex, { throwOnError: true });
   } catch (e) {

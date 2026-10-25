@@ -174,6 +174,18 @@
     "approximates": "{s} approximates {t}.",
     "is a class of": "{s} is a class of {t}."
   },
+  "relationCategories": [
+    { "key": "learning", "label": "Learning order", "description": "One concept comes before another in learning, or helps someone understand it.", "types": ["strict prerequisite for", "helps understand"] },
+    { "key": "dependence", "label": "Dependence", "description": "One concept needs, relies on or makes use of another.", "types": ["depends on", "requires", "uses"] },
+    { "key": "derivation", "label": "Derivation", "description": "One concept follows from another: derived, approximated, or led to.", "types": ["is derived from", "is derived by", "approximates", "leads to"] },
+    { "key": "description", "label": "Description", "description": "One concept is described or expressed by another — a model, an equation, a formalism.", "types": ["describes", "described by", "expressed by"] },
+    { "key": "explanation", "label": "Explanation and prediction", "description": "One concept accounts for another, or says what will happen.", "types": ["explains", "predicts"] },
+    { "key": "evidence", "label": "Evidence", "description": "Claims, findings and data: what tests, supports or concerns what.", "types": ["tested by", "supported by", "addresses", "concerns"] },
+    { "key": "classification", "label": "Classification and parts", "description": "What a concept is a kind of, what it has, and what it is a property of.", "types": ["is a", "is a class of", "has a", "is one property of"] },
+    { "key": "occurrence", "label": "Occurrence", "description": "Where a concept shows up: what exhibits it, where it happens, what it applies to.", "types": ["exhibits", "happens in", "applies to"] },
+    { "key": "conditions", "label": "Conditions", "description": "What must hold for a concept to apply.", "types": ["is a condition of", "valid under", "under"] },
+    { "key": "association", "label": "Association", "description": "A connection without a more specific kind — use one of the other categories when one fits.", "types": ["relates", "links"] }
+  ],
   "mediaTypes": ["text", "video", "quiz"],
   "epistemicStatuses": ["Candidate"],
   "domains": [

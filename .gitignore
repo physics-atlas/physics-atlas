@@ -37,3 +37,8 @@ src/data/concepts.json
 
 # Generated from concepts.json by scripts/build-layout.mjs (npm run build:content)
 src/data/conceptLayout.json
+
+# Generated from content/pages/ and Typst equations by scripts/compile-pages.mjs
+src/data/pages/
+src/data/pageIndex.json
+src/data/typstMath.json

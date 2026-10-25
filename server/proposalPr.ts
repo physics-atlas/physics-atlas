@@ -58,6 +58,15 @@ export function filesFor(p: Proposal): FileChange[] | { problem: string } {
     if (!SAFE_ID.test(id)) return { problem: `relation id "${id}" can't be a file name` };
     out.push({ path: `content/concepts/edges/${id}.json`, content: null });
   }
+  // A page: one Typst file per depth; depths an edit drops are deleted.
+  for (const page of p.pages ?? []) {
+    if (!SAFE_ID.test(page.concept)) return { problem: `concept id "${page.concept}" can't be a folder name` };
+    page.depths.forEach((source, i) =>
+      out.push({ path: `content/pages/${page.concept}/depth-${i + 1}.typ`, content: `${source.trim()}\n` }),
+    );
+    for (let d = page.depths.length + 1; d <= (page.replaces ?? 0); d++)
+      out.push({ path: `content/pages/${page.concept}/depth-${d}.typ`, content: null });
+  }
   return out;
 }
 

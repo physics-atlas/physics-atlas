@@ -3,6 +3,7 @@ import type { ConceptGraph, GraphNode, NodeType } from '../data/types';
 import { buildConceptIndex } from './concepts';
 import {
   buildContents,
+  connectionsOf,
   filterContents,
   neighbourGroups,
   pageNeighbours,
@@ -108,5 +109,19 @@ describe('typeGroups', () => {
     const names = property.nodes.map((n) => n.label);
     expect(names).toEqual([...names].sort((x, y) => x.localeCompare(y)));
     expect(property.nodes.map((n) => n.id).sort()).toEqual(['A', 'a', 'c', 'd', 'lone']);
+  });
+});
+
+describe('connectionsOf', () => {
+  it("lists a page's neighbours, and theirs one step further — each once, not the page itself", () => {
+    const { first, second, furtherVia } = connectionsOf('a', index);
+    // a: A (a relation) and d (an assumption that points to a).
+    expect(first.map((r) => r.node.id).sort()).toEqual(['A', 'd']);
+    expect(first.find((r) => r.node.id === 'A')!.edges.map((e) => e.id)).toEqual(['e1']);
+    // Through A: B, b, c (never a again).
+    expect(second.map((s) => s.node.id).sort()).toEqual(['B', 'b', 'c']);
+    expect(second.every((s) => s.via.id === 'A')).toBe(true);
+    expect(furtherVia('A').length).toBe(3);
+    expect(furtherVia('d')).toEqual([]);
   });
 });

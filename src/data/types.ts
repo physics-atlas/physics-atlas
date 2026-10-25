@@ -31,6 +31,23 @@ export const NODE_TYPE_DEFINITIONS: Partial<Record<NodeType, NodeTypeDefinition>
 export const EDGE_SENTENCE_TEMPLATES = vocab.edgeTemplates;
 export type EdgeType = keyof typeof EDGE_SENTENCE_TEMPLATES;
 
+/**
+ * Broader kinds of relation — every relation type is in exactly one (the
+ * validator checks), so a new type has to fit one of them. Groups the
+ * relation filters, and the relations on a page.
+ */
+export interface RelationCategory {
+  key: string;
+  label: string;
+  description: string;
+  types: string[];
+}
+export const RELATION_CATEGORIES: RelationCategory[] = vocab.relationCategories;
+const CATEGORY_OF = new Map(RELATION_CATEGORIES.flatMap((c) => c.types.map((t) => [t, c] as const)));
+/** The category of a (normalised) relation type; association for anything unknown. */
+export const relationCategory = (type: string): RelationCategory =>
+  CATEGORY_OF.get(type) ?? RELATION_CATEGORIES.find((c) => c.key === 'association')!;
+
 interface ConceptAttrs {
   description: string;
   domain?: string;
@@ -54,9 +71,18 @@ export interface EquationRepresentation {
   variables?: EquationVariable[];
 }
 
+/**
+ * How a concept's equations and symbols are written: LaTeX (the default, typeset
+ * by KaTeX) or Typst math (compiled to MathML at build time). One notation for
+ * all of a concept's maths.
+ */
+export type MathNotation = 'latex' | 'typst';
+
 export interface EquationAttrs {
   description: string;
-  /** The main form, in LaTeX */
+  /** LaTeX unless notation is "typst" */
+  notation?: MathNotation;
+  /** The main form, in LaTeX (or Typst, with notation "typst") */
   equation: string;
   /** The main form's variables */
   variables: EquationVariable[];
@@ -75,6 +101,8 @@ export interface Formula {
 }
 
 export interface FormalismAttrs extends ConceptAttrs {
+  /** How its formulas are written (LaTeX unless "typst") */
+  notation?: MathNotation;
   /** Formulas and equations that show how the formalism works, each with its variables */
   formulas?: Formula[];
 }

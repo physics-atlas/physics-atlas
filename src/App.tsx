@@ -11,7 +11,8 @@ import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
 import { useMotion } from './lib/motion';
-import { isPlainClick, pageHref } from './lib/pageLinks';
+import { hrefOf, isPlainClick, refFromSearch } from './lib/pageLinks';
+import type { PageRef } from './lib/pageLinks';
 import './App.css';
 
 // The atlas pages typeset maths and carry their own sidebar: loaded on first visit.
@@ -54,10 +55,10 @@ function initialConceptGoal(): string | null {
   return concepts.nodes.some((n) => n.id === g) ? g : null;
 }
 
-/** The page in the address (`?mode=page&concept=…`); null is the front page. */
-function initialPage(): string | null {
+/** The page in the address (`?mode=page&concept=…` or `&relation=…`); neither is the front page. */
+function initialPage(): PageRef {
   const params = new URLSearchParams(window.location.search);
-  return params.get('mode') === 'page' ? params.get('concept') : null;
+  return params.get('mode') === 'page' ? refFromSearch(window.location.search) : {};
 }
 
 // Alphabetical: the source files are ordered by id, which means nothing to a reader.
@@ -86,7 +87,7 @@ export default function App() {
   // Fun mode: off on every visit; kept while switching between the map's two tabs.
   const [fun, setFun] = useState(false);
   // The atlas page shown, and a tick that moves focus to its heading on each navigation.
-  const [pageId, setPageId] = useState(initialPage);
+  const [pageRef, setPageRef] = useState<PageRef>(initialPage);
   const [pageFocus, setPageFocus] = useState(0);
   // The map guide greets a visitor on the map, steps aside after a few seconds,
   // and stays one click away ("How to read this map"). Opened again, it stays.
@@ -157,7 +158,7 @@ export default function App() {
       mode === 'home'
         ? ''
         : mode === 'page'
-          ? pageHref(pageId)
+          ? hrefOf(pageRef)
           : conceptGoal
           ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
           : `?mode=${mode}`;
@@ -171,14 +172,14 @@ export default function App() {
     if (firstUrlSync.current) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
     firstUrlSync.current = false;
-  }, [mode, conceptGoal, pageId]);
+  }, [mode, conceptGoal, pageRef]);
 
   useEffect(() => {
     const onPop = () => {
       setMode(initialMode());
       setConceptGoal(initialConceptGoal());
       setSelectedId(null);
-      setPageId(initialPage());
+      setPageRef(initialPage());
       setPageFocus((t) => t + 1);
     };
     window.addEventListener('popstate', onPop);
@@ -190,12 +191,14 @@ export default function App() {
     setFocus((f) => ({ id, tick: f.tick + 1 }));
   }, []);
 
-  /** Open an atlas page (null: the chapters) — from the card, the tab, search or another page. */
-  const openPage = useCallback((id: string | null) => {
+  /** Open an atlas page — a concept's, a relation's, or the chapters — from a card, the tab, search or another page. */
+  const openPage = useCallback((ref: PageRef) => {
     setMode('page');
-    setPageId(id);
+    setPageRef(ref);
     setPageFocus((t) => t + 1);
   }, []);
+  const openConceptPage = useCallback((id: string) => openPage({ concept: id }), [openPage]);
+  const openRelationPage = useCallback((id: string) => openPage({ relation: id }), [openPage]);
   // From a page back to the map, centred on its concept.
   const showOnMap = useCallback(
     (id: string) => {
@@ -233,7 +236,7 @@ export default function App() {
           {/* On the pages, a search opens the concept's page; on the map, it centres the map on it. */}
           <SearchBox
             entries={mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
-            onPick={mode === 'page' ? openPage : focusOn}
+            onPick={mode === 'page' ? openConceptPage : focusOn}
           />
           {mode !== 'page' && (
             <button
@@ -255,13 +258,13 @@ export default function App() {
               Concept map
             </button>
             <a
-              href={pageHref(pageId)}
+              href={hrefOf(pageRef)}
               className={`mode-tab ${mode === 'page' ? 'mode-tab-active' : ''}`}
               aria-current={mode === 'page' ? 'page' : undefined}
               onClick={(e) => {
                 if (!isPlainClick(e)) return;
                 e.preventDefault();
-                openPage(pageId);
+                openPage(pageRef);
               }}
             >
               Atlas pages
@@ -291,7 +294,7 @@ export default function App() {
             onPick={homePick}
             onExplore={() => setMode('concepts')}
             onCommunity={() => setMode('community')}
-            onPages={() => openPage(null)}
+            onPages={() => openPage({})}
             motionButton={motionButton}
             still={motion.reduced}
           />
@@ -311,15 +314,16 @@ export default function App() {
             fun={fun}
             onFunChange={setFun}
             hintOpen={hintOpen}
-            onOpenPage={openPage}
+            onOpenPage={openConceptPage}
+            onOpenRelationPage={openRelationPage}
           />
         )}
         {mode === 'page' && (
           <Suspense fallback={<p className="atlas-loading">Loading the atlas pages…</p>}>
             <PageView
               graph={pageGraph}
-              pageId={pageId}
-              onOpenPage={openPage}
+              target={pageRef}
+              onOpen={openPage}
               onShowOnMap={showOnMap}
               focusTick={pageFocus}
             />

@@ -31,6 +31,14 @@ export interface VoteTally {
   clarify: number;
 }
 
+/** content/pages/<concept>/depth-<n>.typ, as a proposal carries them. */
+export interface ProposedPage {
+  concept: string;
+  depths: string[];
+  /** How many depths the page had before (an edit), so the extra ones are deleted */
+  replaces?: number;
+}
+
 export interface Proposal {
   id: string;
   title: string;
@@ -55,6 +63,11 @@ export interface Proposal {
   edits?: GraphNode[];
   /** Ids of confirmed relations this proposal would remove */
   removals?: string[];
+  /**
+   * A concept's page, in Typst, one source per depth (depth 1 first). Replaces
+   * the page: depths past the last one, up to `replaces`, are deleted.
+   */
+  pages?: ProposedPage[];
   /**
    * Proposals whose concepts this one's relations point at. They have to be
    * accepted first; if one is rejected or withdrawn, the relations pointing

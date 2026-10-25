@@ -86,6 +86,8 @@ interface ConceptMapViewProps {
   onFunChange?: (on: boolean) => void;
   /** Open a concept's atlas page */
   onOpenPage?: (id: string) => void;
+  /** Open a relation's atlas page */
+  onOpenRelationPage?: (id: string) => void;
 }
 
 export default function ConceptMapView({
@@ -103,6 +105,7 @@ export default function ConceptMapView({
   onFunChange,
   hintOpen = false,
   onOpenPage,
+  onOpenRelationPage,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -755,7 +758,7 @@ export default function ConceptMapView({
 
               {selected.type === 'formalism' && (
                 <Suspense fallback={<p className="concept-empty">Loading the formulas…</p>}>
-                  <FormulaView formulas={selected.attrs.formulas ?? []} />
+                  <FormulaView formulas={selected.attrs.formulas ?? []} notation={selected.attrs.notation} />
                 </Suspense>
               )}
 
@@ -893,6 +896,7 @@ export default function ConceptMapView({
                 byId={mergedIndex.byId}
                 onPick={onFocus}
                 proposedIn={selectedEdge.proposal}
+                onOpenPage={selectedEdge.proposal ? undefined : onOpenRelationPage}
               />
             </Suspense>
             <button className="map-card-close" onClick={closeEdgeCard} aria-label="Close relation card">
