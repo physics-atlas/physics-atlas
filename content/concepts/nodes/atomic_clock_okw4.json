@@ -1,0 +1,10 @@
+{
+  "id": "atomic_clock_okw4",
+  "label": "Atomic clock",
+  "type": "experiment",
+  "importance": 2,
+  "generality": 2,
+  "attrs": {
+    "description": "The most precise clocks in existence"
+  }
+}
