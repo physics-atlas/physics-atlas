@@ -1,0 +1,6 @@
+{
+  "id": "spin_yacm_e2",
+  "source": "spin_yacm",
+  "target": "electron_xyfm",
+  "relationship": "is one property of"
+}
