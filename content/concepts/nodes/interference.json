@@ -3,7 +3,7 @@
   "type": "phenomenon",
   "label": "Interference",
   "importance": 8,
-  "generality": 10,
+  "generality": 8,
   "attrs": {
     "description": "The superposition of waves, producing a pattern of reinforcement where they are in phase and cancellation where they are out of phase.",
     "domain": "Wave physics"
