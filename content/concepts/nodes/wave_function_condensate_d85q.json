@@ -1,0 +1,10 @@
+{
+  "id": "wave_function_condensate_d85q",
+  "label": "\"Wave function\" - condensate",
+  "type": "formalism",
+  "importance": 3,
+  "generality": 3,
+  "attrs": {
+    "description": "\"Classical limit\" of wavefunction. Used for substances like Bose-Einstein Condensates as they start of as individual objects described by wave functions but in the ground state all share the same one and it becomes a \"classical\" density rather than a probability. But maintaining the wave dispersion properties of the wave function and is described by the schrodinger equation."
+  }
+}
