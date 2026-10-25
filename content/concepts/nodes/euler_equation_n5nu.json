@@ -1,0 +1,14 @@
+{
+  "id": "euler_equation_n5nu",
+  "label": "Euler equation",
+  "type": "equation",
+  "importance": 25,
+  "generality": 5,
+  "attrs": {
+    "variables": [],
+    "conditions": [],
+    "representations": [],
+    "description": "The defining equation for describing the behaviour of a classical fluid",
+    "equation": "\\frac{\\partial \\mathbf{v}}{\\partial t} + (\\mathbf{v}\\cdot\\nabla)\\mathbf{v} = -\\frac{1}{\\rho}\\nabla P - \\nabla\\Phi"
+  }
+}

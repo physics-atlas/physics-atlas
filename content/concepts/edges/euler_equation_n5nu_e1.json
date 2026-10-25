@@ -1,0 +1,11 @@
+{
+  "id": "euler_equation_n5nu_e1",
+  "source": "euler_equation_n5nu",
+  "target": "vlasov_equation",
+  "relationship": "is derived from",
+  "conditions": [
+    {
+      "label": "A single valued velocity field"
+    }
+  ]
+}
