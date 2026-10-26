@@ -1,0 +1,23 @@
+{
+  "id": "photoelectric_equation_uluf",
+  "label": "Photoelectric equation",
+  "type": "equation",
+  "importance": 3,
+  "generality": 1,
+  "attrs": {
+    "description": "How the maximum kinetic energy of measured electrons varies with respect to the frequency of the radiation and properties of the metal(encapsulated by the work function",
+    "equation": "hf = \\phi + K_{\\max}",
+    "variables": [
+      {
+        "symbol": "K_{\\max}",
+        "meaning": "Maximum kinetic energy measured"
+      },
+      {
+        "symbol": "\\phi",
+        "meaning": "Work function (minimum energy needed for an electron to escape the surface of the metal)"
+      }
+    ],
+    "conditions": [],
+    "representations": []
+  }
+}
