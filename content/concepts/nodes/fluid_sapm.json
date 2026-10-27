@@ -2,8 +2,8 @@
   "id": "fluid_sapm",
   "label": "Fluid",
   "type": "model_regime",
-  "importance": 4,
-  "generality": 7,
+  "importance": 5,
+  "generality": 8,
   "attrs": {
     "description": "Model describing behaviour and evolution of objects on scales where a density and velocity field can meaningfully describe it."
   }
