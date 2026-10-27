@@ -47,26 +47,37 @@ export interface ParsedPage {
 
 const LINK = /\[\[(?:(relation):)?([A-Za-z0-9_-]+)(?:\|([^\]\n]+))?\]\]|\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 
+/** A LaTeX command (\frac, \mathbf, \begin…) — in running text, it was meant as maths. */
+const LATEX_COMMAND = /\\[A-Za-z]{2,}/;
+
 /** One line of a page: the card's Markdown + LaTeX, and links. */
 export function parsePageInline(text: string, problems: string[] = [], where = ''): PageInline[] {
   const out: PageInline[] = [];
   let at = 0;
+  const prose = (s: string) => {
+    const parts = parseInline(s);
+    for (const p of parts) {
+      const command = p.kind === 'text' ? LATEX_COMMAND.exec(p.value) : null;
+      if (command) problems.push(`${where}"${command[0]}" is LaTeX outside maths — put it between $…$, or $$…$$ on its own lines`);
+    }
+    return parts;
+  };
   for (const m of text.matchAll(LINK)) {
-    out.push(...parseInline(text.slice(at, m.index)));
+    out.push(...prose(text.slice(at, m.index)));
     at = m.index + m[0].length;
     if (m[4] !== undefined) {
       // Only web links leave the atlas; anything else (javascript:, data:, a path) stays text.
       if (/^https?:\/\//.test(m[5])) out.push({ kind: 'link', to: { url: m[5] }, text: m[4] });
       else {
         problems.push(`${where}"${m[0]}" — a link outside the atlas starts with https://`);
-        out.push(...parseInline(m[4]));
+        out.push(...prose(m[4]));
       }
     } else {
       const to = m[1] ? { relation: m[2] } : { concept: m[2] };
       out.push({ kind: 'link', to, text: m[3]?.trim() ?? '' });
     }
   }
-  out.push(...parseInline(text.slice(at)));
+  out.push(...prose(text.slice(at)));
   return out;
 }
 

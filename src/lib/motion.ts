@@ -1,21 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 
-// One motion switch for the whole app: the OS "reduce motion" setting, or the
-// in-app toggle (WCAG 2.2.2 — the backdrop animates indefinitely, so it must
-// be stoppable). The toggle writes `data-motion` on <html>, which App.css and
-// every JS animation (canvas backdrops, graph glides) read.
+// One motion switch for the whole app: the in-app "Reduce motion" toggle
+// (WCAG 2.2.2 — the backdrop animates indefinitely, so it must be stoppable;
+// 2.3.3 — the map's glides can be turned off). Motion is on until a reader
+// turns it off, whatever the OS setting (Decision 40); the choice is kept.
+// The toggle writes `data-motion` on <html>, which App.css and every JS
+// animation (the home galaxy, graph glides) read.
 
 const STORAGE_KEY = 'physics-atlas-motion';
 
-const systemReduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/**
- * True when animations should be skipped — call at animation time, not once.
- * The in-app choice wins; it starts from the OS setting.
- */
+/** True when animations should be skipped — call at animation time, not once. */
 export function reducedMotion(): boolean {
-  const choice = document.documentElement.dataset.motion;
-  return choice === 'reduce' || (choice !== 'full' && systemReduced());
+  return document.documentElement.dataset.motion === 'reduce';
 }
 
 export function useMotion(): { reduced: boolean; toggle: () => void } {
@@ -25,9 +21,9 @@ export function useMotion(): { reduced: boolean; toggle: () => void } {
       if (stored === 'reduce') return true;
       if (stored === 'full') return false;
     } catch {
-      // storage blocked — fall back to the system setting
+      // storage blocked — motion stays on
     }
-    return systemReduced();
+    return false;
   });
 
   useEffect(() => {

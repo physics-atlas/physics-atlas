@@ -64,6 +64,30 @@ export default function EdgeCard({
         </ul>
       </section>
 
+      {edge.assumes && edge.assumes.length > 0 && (
+        <section className="rel-block">
+          <h3 className="block-heading">Under the assumption of</h3>
+          <ul className="concept-list">
+            {edge.assumes.map((a, i) => {
+              const node = a.concept ? byId.get(a.concept) : undefined;
+              const name = a.label ?? node?.label ?? a.concept;
+              return (
+                <li key={a.concept ?? `${a.label}-${i}`}>
+                  {a.concept ? (
+                    <button className="concept-relation-link" onClick={() => onPick(a.concept!)}>
+                      {name}
+                    </button>
+                  ) : (
+                    <strong>{name}</strong>
+                  )}
+                  {a.description && <> — {a.description}</>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section className="rel-block">
         <h3 className="block-heading">How they connect</h3>
         {edge.description ? <RichText source={edge.description} /> : <p className="concept-empty">Not described yet.</p>}

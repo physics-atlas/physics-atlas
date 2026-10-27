@@ -65,7 +65,7 @@ premium, constant subtle motion):
   display face + system body, gradient title.
 - Background: canvas starfield (drift + twinkle, `Starfield.tsx`) + three
   CSS nebula blobs (60–95s drift cycles). All motion respects
-  `prefers-reduced-motion`.
+  `prefers-reduced-motion`. *(The starfield was removed in 2026-10, Decision 40; the nebulae stay.)*
 - Node palette re-validated for the dark surface (`#0d1220`, dataviz
   six-checks, worst adjacent CVD ΔE 13.4): foundation `#199e70`, core
   `#3987e5`, advanced `#d55181` (violet failed protan vs blue — magenta
@@ -760,7 +760,7 @@ exercises, a PDF. Step 1 is done:
 
 | Piece | Rule |
 |---|---|
-| Chapters | Like the map reads (Decision 34): a concept's parent is its most general neighbour that's more general than itself (relations, and assumptions that point to a concept); one with none is a chapter. Chapters and sections go bigger first, then more important, then A→Z, and are numbered like a book (3, 3.1, 3.1.1); reading order walks the tree depth-first. `src/graph/contents.ts`, pure. |
+| Chapters | Like the map reads (Decision 34): a concept's parent is its most general neighbour that's more general than itself (relations, and assumptions that point to a concept); one with none is a chapter. Chapters and sections go bigger first, then more important, then A→Z, and are numbered like a book (3, 3.1, 3.1.1); reading order walks the tree depth-first. `src/graph/contents.ts`, pure. *Replaced by Decision 39: the closest more general concept along the map, not only a neighbour.* |
 | The page | Section number, the concept with its kind, field and status, **Show on the map**; Definition (a ruled block); the equation or formulas typeset; what it assumes (type's heading); **How it connects** — every relation as a sentence, out and in, with its description and derivation folded; the type's own sections (Explains, Applies to…); Assumed by; **In this chapter/section**. Previous / Up / Next above and below, and the trail of chapters. |
 | Sidebar views | **Contents** (the tree, sections folded except around the current page), **Neighbours** (the current page's relations, out and in, and linked assumptions), **By kind** (type families → kinds → A→Z). One filter for all: a name, kinds of concept, and kinds of relation (the Neighbours view). Filtering keeps the tree's shape — a section above a match shows as context. The chosen view is remembered in this browser. |
 | Ways in | **Open its page** on every concept's card; an **Atlas pages** tab; search opens the page while on the pages; **Read the atlas as pages** on the home page; **Show on the map** back. |
@@ -801,6 +801,51 @@ rules in BACKLOG feature-66 first).
 | Legend | Folds to one **Legend** button (`aria-expanded`); folded at first on a phone-sized screen, unfolded on a larger one, then as the reader last left it (localStorage, a convenience). On a phone the map controls sit above the folded legend, the concept list keeps the top. |
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
+
+## Decision 41 — Crossings first in the layout (2026-10)
+
+The layout's score was one count of every problem — crossings, lines through circles,
+crowding, stretched lines, covered names (×2). Now crossings come first: a layout with
+fewer crossings beats any other, whatever else it has; the rest only decide between
+layouts that cross as often (`LayoutScore.crossings`, `better`).
+
+| Piece | Rule |
+|---|---|
+| Ranking | Crossings, then the other tangles, then length — in the seed search and the swap pass. |
+| Untangling | `untangle`: each concept at an end of a crossing is tried around each neighbour (at the relation's length, 24 angles) and at their centre, and moved where the score is best. A spot is taken only if the concept overlaps and crowds nothing there and no more lines pass through circles. The 4 best arrangements of the search are untangled, then the best is shipped. Build time ~50 s → ~70 s. |
+| Today | 6 → 3 crossings; lines through circles 5 → 4; covered names 5 → 3; lines longer than they should be 14 → 17. |
+| Not done | Over 40 seeds the fewest found was 1 crossing — at the price of 10 covered names (from 3), 24 stretched lines and 7 lines through circles. That isn't shipped, as a line through a circle or a hidden name reads worse than a crossing. The map is sparse (74 concepts, 89 relations) and likely drawable with none at all; getting there means laying it out from a planar embedding rather than forces — a larger change. |
+
+## Decision 40 — The editor's order, relation assumptions, new relation types, pictures; motion and the background (2026-10)
+
+| Piece | Rule |
+|---|---|
+| The form's order | What the concept is comes first — name, kind, description, its maths, field, generality, importance — then what it assumes, its pictures and its page, and only then its connections, the claim, the evidence and the export. |
+| A relation's assumptions | A relation can hold only under an assumption again ("under the assumption of small velocities"): `assumes` on the relation, the same `{ label, description?, concept? }` as a concept's. It's about that relation; a concept's own `assumes` (Decision 35) stays for what the concept always takes for granted. Shown on the relation's card and page and beside the relation on a concept's page; edited under each relation (**Under the assumption of…**). |
+| Other… | The relation list ends with **Other…**: the proposer writes the new relation as it reads ("is a limit of") and picks its category, since every type has to fit one (Decision 37). The proposal lists it (`relationTypes`); its pull request adds the template and the category entry to `conceptVocabulary.json` as two inserted lines (`community/relationTypes.ts`), so the type ships with the request that needs it. Until merged it reads as its own words wherever the relation is shown. |
+| Pictures | Up to four per concept (`figures`: file, alt, caption?, credit), files in `content/media/<concept-id>/`, PNG/JPEG/WebP/GIF up to 1 MB — no SVG (it can carry scripts). Alt text and a credit with the licence are required. The editor resizes a large picture to 1600 px and keeps new pictures in IndexedDB (localStorage is too small for them); a submission sends them beside the proposal, never in the pull-request description, and the backend writes each as a git blob after checking it's a picture the proposal names, of the kind its name says (its first bytes), and not too large. An edit that drops a picture deletes its file. Built into the site through `import.meta.glob` (`src/data/media.ts`). |
+| Motion | The map glides by default, and **Reduce motion** stays (header and home page). Motion is on until a reader turns it off, whatever the operating system's setting; the choice is kept in the browser. The glides are short and follow what the reader does, so WCAG 2.2 AA asks nothing of them; 2.3.3 Animation from Interactions (AAA) asks that they can be turned off, which the button does. The backdrop that moves on its own — the home galaxy, the nebulae — has to be stoppable at any level (2.2.2, A): the same button. The stars in the app's background (`Starfield.tsx`) are gone. (For a moment the site was kept still with no button; that was undone.) |
+| LaTeX outside maths | A page whose text has a LaTeX command outside `$…$` / `$$…$$` ("\\mathbf" written bare) is flagged, in the editor and by the build: it would show as plain text. |
+
+## Decision 39 — The contents nest by closeness along the map (2026-10)
+
+The first rule (Decision 36) only looked at direct neighbours, and only at strictly bigger
+ones: two concepts just as general never nested, so 30 of 79 pages were chapters — Wave
+function among them, its one equal neighbour (Schrödinger Equation) unable to hold it,
+though Dark Matter is three concepts away.
+
+| Piece | Rule |
+|---|---|
+| Chapters | The concepts of the greatest generality (10). Also the top of a part of the map no such concept is connected to (an isolated concept, say). |
+| Everything else | Goes under the **closest more general concept**, wherever it is on the map — not only a neighbour. Closeness is counted along the relations, either direction: a relation of a **nesting kind** (`"nests": true` on its category in conceptVocabulary.json — Classification and parts, Description, Derivation) is one step; any other relation, or an assumption pointing to a concept, two. So the kinds that say one topic belongs in another decide where nothing else does, and a direct "relates" still beats a long detour. |
+| Between two as close | The one that ranks higher: more general, then more important, then more relations, then A→Z (the same order sections come in). |
+| The tie-break | Only when nothing more general can be reached: the concept goes under the closest one just as general that ranks above it, so two equals don't both become chapters. |
+| Why it's there | Each page says it under its kind: "In Dark Matter, its closest more general concept: connected through “Wave function” - condensate and Wave Dark Matter." — or "the two are directly related", or why it's a chapter. |
+
+Today: 15 chapters (12 at generality 10, plus three concepts with no relations), down to
+five levels deep. Seven generality-10 chapters have no sections, as every neighbour they
+have is also a 10 — a curated contents file (BACKLOG feature-64) or a tie-break among the
+10s would gather them. A parent always ranks above its child, so the tree can't loop.
 
 ## Multi-agent workflow (web-dev-agent-system)
 

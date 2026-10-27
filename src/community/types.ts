@@ -31,6 +31,14 @@ export interface VoteTally {
   clarify: number;
 }
 
+/** A relation type a proposal adds to the vocabulary, in one of the broader categories. */
+export interface ProposedRelationType {
+  /** How it reads between the two concepts, lower case: "is a limit of" */
+  type: string;
+  /** The key of its category in conceptVocabulary.json relationCategories */
+  category: string;
+}
+
 /** content/pages/<concept>/depth-<n>.md, as a proposal carries them. */
 export interface ProposedPage {
   concept: string;
@@ -68,6 +76,11 @@ export interface Proposal {
    * the page: depths past the last one, up to `replaces`, are deleted.
    */
   pages?: ProposedPage[];
+  /**
+   * Relation types its relations use that the vocabulary doesn't have yet —
+   * added to conceptVocabulary.json in the same pull request, each in a category.
+   */
+  relationTypes?: ProposedRelationType[];
   /**
    * Proposals whose concepts this one's relations point at. They have to be
    * accepted first; if one is rejected or withdrawn, the relations pointing

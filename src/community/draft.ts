@@ -1,20 +1,24 @@
-import { NODE_TYPE_LABELS } from '../data/types';
+import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
 import { pageLinkTargets, parsePage } from '../lib/pageText';
 import type {
   Assumption,
   ConceptGraph,
   EquationRepresentation,
   EquationVariable,
+  Figure,
   Formula,
   GraphEdge,
   GraphNode,
   NodeType,
 } from '../data/types';
+import { FIGURE_MAX_BYTES, FIGURE_TYPES, MAX_FIGURES, figurePath, figureSlug } from './figures';
+import type { FigureExt, FigureUpload } from './figures';
+import { relationPhrase, relationTypeProblems, withRelationTypes } from './relationTypes';
 import { GENERALITY_MAX, IMPORTANCE_MAX, sentenceParts } from '../graph/concepts';
 import type { ConceptMap } from '../graph/concepts';
 import { TYPE_ORDER } from '../graph/typeColors';
 import { evidenceHref, nodeChanges, proposalProblems } from './proposals';
-import type { Evidence, Proposal, ProposedPage } from './types';
+import type { Evidence, Proposal, ProposedPage, ProposedRelationType } from './types';
 
 // Proposals being written in the editor. Each draft is one proposal — one new
 // concept, or an edit of one confirmed concept — with its relations, and is
@@ -48,6 +52,29 @@ export interface DraftRelation {
   description?: string;
   /** A derivation of one from the other (Markdown + LaTeX) */
   derivation?: string;
+  /** What the relation holds under, when it doesn't always — words, each may point to a confirmed concept */
+  assumes?: DraftAssumption[];
+  /**
+   * Set when the relation is a new kind ("Other…"): `relationship` is then
+   * its phrase, and this the category it goes in (relationTypes.ts).
+   */
+  newCategory?: string;
+}
+
+/**
+ * A picture as the form edits it: one already in the repository (`file`), or
+ * a new one (`data`, a data: URL, kept in this browser until it's proposed).
+ */
+export interface DraftFigure {
+  /** Stable while editing (list keys, the picture's place in browser storage) */
+  key: string;
+  file?: string;
+  data?: string;
+  /** What the new picture was called, for its file name */
+  name?: string;
+  alt: string;
+  caption: string;
+  credit: string;
 }
 
 /** A representation as the form edits it: every field there, empty until filled in. */
@@ -84,6 +111,8 @@ export interface Draft {
   formulas: DraftRepresentation[];
   /** What it takes for granted, in words — each may point to a confirmed concept; no line on the map */
   assumes: DraftAssumption[];
+  /** Pictures of it, on its card and page */
+  figures: DraftFigure[];
   /**
    * Its atlas page, in Markdown + LaTeX (lib/pageText.ts) — one text per depth, depth 1 first. null: the
    * page is left as it is (an edit that doesn't touch it, until it's loaded).
@@ -132,6 +161,7 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     representations: [],
     formulas: [],
     assumes: [],
+    figures: [],
     page: [],
     pageBefore: 0,
     relations: [],
@@ -166,6 +196,13 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
       label: a.label ?? '',
       description: a.description ?? '',
       ...(a.concept ? { concept: a.concept } : {}),
+    })),
+    figures: (node.figures ?? []).map((f, i) => ({
+      key: `f${i + 1}`,
+      file: f.file,
+      alt: f.alt,
+      caption: f.caption ?? '',
+      credit: f.credit,
     })),
     // The page stays as it is until the editor loads it (DraftEditor's "Edit the page").
     page: null,
@@ -280,10 +317,11 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const type = d.type || 'property';
   if (type === 'resource') throw new Error('resources are not proposed through the editor');
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
-  const { importance: _i, generality: _g, assumes: _a, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
+  const { importance: _i, generality: _g, assumes: _a, figures: _f, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
   void _i;
   void _g;
   void _a;
+  void _f;
   const kept = Object.fromEntries(
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, review notes) is kept.
@@ -298,7 +336,8 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
     ...(d.generality !== undefined ? { generality: d.generality } : {}),
   };
   const assumes = cleanAssumptions(d.assumes);
-  const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}) };
+  const figures = draftFigures(d, id).map((x) => x.figure);
+  const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}), ...(figures.length ? { figures } : {}) };
   const attrs =
     type === 'equation'
       ? {
@@ -333,13 +372,15 @@ function edgesWith(d: Draft, end: (ref: string) => string | null, prefix: string
     if (!source || !target) return;
     const description = r.description?.trim();
     const derivation = r.derivation?.trim();
+    const assumes = cleanAssumptions(r.assumes ?? []);
     out.push({
       id: `${prefix}_e${i + 1}`,
       source,
       target,
-      relationship: r.relationship,
+      relationship: r.newCategory !== undefined ? relationPhrase(r.relationship) : r.relationship,
       ...(description ? { description } : {}),
       ...(derivation ? { derivation } : {}),
+      ...(assumes.length ? { assumes } : {}),
     });
   });
   return out;
@@ -443,11 +484,51 @@ export function draftPage(d: Draft, id = conceptId(d)): ProposedPage | null {
 /** A depth's file. */
 export const pageFile = (concept: string, depth: number) => `content/pages/${concept}/depth-${depth}.md`;
 
+/** The relation types the draft's "Other…" relations add, each once. */
+export function draftRelationTypes(d: Draft): ProposedRelationType[] {
+  const out = new Map<string, ProposedRelationType>();
+  for (const r of d.relations)
+    if (r.newCategory !== undefined && relationPhrase(r.relationship) && !out.has(relationPhrase(r.relationship)))
+      out.set(relationPhrase(r.relationship), { type: relationPhrase(r.relationship), category: r.newCategory });
+  return [...out.values()];
+}
+
+/** The extension a picture's data: URL holds, if it's one the atlas takes. */
+const dataExt = (data: string): FigureExt | null => {
+  const mime = /^data:([^;,]+)/.exec(data)?.[1];
+  return (Object.entries(FIGURE_TYPES).find(([, m]) => m === mime)?.[0] as FigureExt | undefined) ?? null;
+};
+
+/**
+ * The draft's pictures as the concept will carry them: a kept one keeps its
+ * file; a new one gets a file in the concept's folder, named after what it was
+ * called (made unique), and its bytes to upload.
+ */
+export function draftFigures(d: Draft, id = conceptId(d)): { figure: Figure; upload?: FigureUpload }[] {
+  const taken = new Set(d.figures.flatMap((f) => (f.file ? [f.file] : [])));
+  return d.figures.flatMap((f) => {
+    const caption = f.caption.trim();
+    const text = { alt: f.alt.trim(), ...(caption ? { caption } : {}), credit: f.credit.trim() };
+    if (f.file) return [{ figure: { file: f.file, ...text } }];
+    const ext = f.data ? dataExt(f.data) : null;
+    if (!f.data || !ext) return [];
+    const slug = figureSlug(f.name ?? '');
+    let file = `${id}/${slug}.${ext}`;
+    for (let n = 2; taken.has(file); n++) file = `${id}/${slug}-${n}.${ext}`;
+    taken.add(file);
+    return [{ figure: { file, ...text }, upload: { path: figurePath(file), data: f.data.slice(f.data.indexOf(',') + 1) } }];
+  });
+}
+
+/** The new pictures the proposal brings, to write into its pull request. */
+export const draftUploads = (d: Draft): FigureUpload[] => draftFigures(d).flatMap((x) => (x.upload ? [x.upload] : []));
+
 export function draftProposal(d: Draft, ctx: DraftContext): Proposal {
   const id = conceptId(d);
   const node = draftNode(d, ctx.confirmed, id);
   const deps = draftDependencies(d, ctx).map((x) => x.id);
   const page = draftPage(d, id);
+  const relationTypes = draftRelationTypes(d);
   return {
     id: proposalId(d),
     title: proposalTitle(d),
@@ -461,6 +542,7 @@ export function draftProposal(d: Draft, ctx: DraftContext): Proposal {
     edges: draftEdges(d, ctx),
     ...(d.removals.length ? { removals: [...d.removals] } : {}),
     ...(page ? { pages: [page] } : {}),
+    ...(relationTypes.length ? { relationTypes } : {}),
     ...(deps.length ? { dependsOn: deps } : {}),
     tally: { verify: 0, dispute: 0, clarify: 0 },
   };
@@ -481,6 +563,7 @@ export type DraftField =
   | 'representations'
   | 'formulas'
   | 'assumes'
+  | 'figures'
   | 'page'
   | 'generality'
   | 'importance'
@@ -564,6 +647,19 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
         message: `Assumption ${index + 1} points to “${a.concept}”, which isn't on the map any more — unlink it.`,
       });
   });
+  d.figures.forEach((f, index) => {
+    const n = index + 1;
+    if (!f.file && (!f.data || !dataExt(f.data)))
+      out.push({ field: 'figures', index, message: `Picture ${n} isn't a PNG, JPEG, WebP or GIF — remove it and add another.` });
+    else if (f.data && (f.data.length - f.data.indexOf(',') - 1) * 0.75 > FIGURE_MAX_BYTES)
+      out.push({ field: 'figures', index, message: `Picture ${n} is larger than ${FIGURE_MAX_BYTES / 1_000_000} MB.` });
+    if (!f.alt.trim())
+      out.push({ field: 'figures', index, message: `Describe what picture ${n} shows, for people who can't see it.` });
+    if (!f.credit.trim())
+      out.push({ field: 'figures', index, message: `Say where picture ${n} is from and under what licence.` });
+  });
+  if (d.figures.length > MAX_FIGURES)
+    out.push({ field: 'figures', message: `A concept carries at most ${MAX_FIGURES} pictures.` });
   if (d.generality !== undefined && !inRange(d.generality, GENERALITY_MAX))
     out.push({ field: 'generality', message: `Generality is a whole number from 1 to ${GENERALITY_MAX}.` });
   if (d.importance !== undefined && !inRange(d.importance, IMPORTANCE_MAX))
@@ -578,13 +674,30 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
     ...ctx.proposals.flatMap((p) => p.nodes.map((n) => n.id)),
     ...ctx.drafts.filter((x) => x.suffix !== d.suffix && !x.editOf).map((x) => draftRef(x.suffix)),
   ]);
+  const categories = RELATION_CATEGORIES.map((c) => c.key);
+  const newTypes = new Map<string, string>();
   d.relations.forEach((r, index) => {
+    const n = index + 1;
     if (!known.has(r.source) || !known.has(r.target))
       out.push({
         field: 'relations',
         index,
-        message: `Relation ${index + 1} points at a concept that's no longer proposed — remove it.`,
+        message: `Relation ${n} points at a concept that's no longer proposed — remove it.`,
       });
+    if (r.newCategory !== undefined) {
+      for (const message of relationTypeProblems({ type: r.relationship, category: r.newCategory }, Object.keys(EDGE_SENTENCE_TEMPLATES), categories))
+        out.push({ field: 'relations', index, message: `Relation ${n}: ${message}` });
+      const phrase = relationPhrase(r.relationship);
+      if (phrase && newTypes.has(phrase) && newTypes.get(phrase) !== r.newCategory)
+        out.push({ field: 'relations', index, message: `Relation ${n}: "${phrase}" is in another kind on an earlier relation — give it one kind.` });
+      newTypes.set(phrase, r.newCategory);
+    }
+    (r.assumes ?? []).forEach((a) => {
+      if (!a.label.trim() && !a.concept && a.description.trim())
+        out.push({ field: 'relations', index, message: `Relation ${n}: give what it assumes a name — a few words.` });
+      if (a.concept && !confirmedIds.has(a.concept))
+        out.push({ field: 'relations', index, message: `Relation ${n} assumes “${a.concept}”, which isn't on the map any more — unlink it.` });
+    });
   });
   d.evidence.forEach((e, index) => {
     if (!e.ref.trim()) out.push({ field: 'evidence', index, message: `Evidence ${index + 1} is empty.` });
@@ -617,6 +730,8 @@ export const EVIDENCE_LABELS: Record<Evidence['kind'], string> = {
 export interface ExportFile {
   path: string;
   content: string;
+  /** A picture: `content` is its bytes in base64 */
+  encoding?: 'base64';
 }
 
 /** The canonical text of a content file — matches formatEntity() in scripts/lib/concept-files.mjs. */
@@ -626,20 +741,35 @@ const formatEntity = (entity: unknown) => JSON.stringify(entity, null, 2) + '\n'
  * The files the proposal adds or replaces in content/concepts/, exactly as a
  * merge would. An edit replaces the concept's own file.
  */
-export function exportFiles(d: Draft, ctx: DraftContext): ExportFile[] {
+export function exportFiles(d: Draft, ctx: DraftContext, vocabulary?: string): ExportFile[] {
   const id = conceptId(d);
+  const relationTypes = draftRelationTypes(d);
   return [
     { path: `content/concepts/nodes/${id}.json`, content: formatEntity(draftNode(d, ctx.confirmed, id)) },
     ...draftEdges(d, ctx).map((e) => ({ path: `content/concepts/edges/${e.id}.json`, content: formatEntity(e) })),
     ...(draftPage(d, id)?.depths ?? []).map((source, i) => ({ path: pageFile(id, i + 1), content: `${source}\n` })),
+    ...draftUploads(d).map((u) => ({ path: u.path, content: u.data, encoding: 'base64' as const })),
+    ...(relationTypes.length && vocabulary !== undefined
+      ? [{ path: VOCABULARY_FILE, content: withRelationTypes(vocabulary, relationTypes) }]
+      : []),
   ];
 }
 
-/** The files the proposal deletes: the relations an edit removes, and page depths it drops. */
-export const removedFiles = (d: Draft): string[] => {
+/** Where the relation types live — a proposal with a new one changes it. */
+export const VOCABULARY_FILE = 'src/data/conceptVocabulary.json';
+
+/** The pictures an edit drops: the edited concept's figures the draft no longer keeps. */
+export const droppedFigures = (d: Draft, confirmed?: ConceptGraph): string[] => {
+  const before = d.editOf ? confirmed?.nodes.find((n) => n.id === d.editOf)?.figures ?? [] : [];
+  const kept = new Set(d.figures.flatMap((f) => (f.file ? [f.file] : [])));
+  return before.filter((f) => !kept.has(f.file)).map((f) => figurePath(f.file));
+};
+
+/** The files the proposal deletes: the relations an edit removes, page depths and pictures it drops. */
+export const removedFiles = (d: Draft, confirmed?: ConceptGraph): string[] => {
   const page = draftPage(d);
   const dropped = page ? Array.from({ length: Math.max(0, (page.replaces ?? 0) - page.depths.length) }, (_, i) => pageFile(page.concept, page.depths.length + i + 1)) : [];
-  return [...d.removals.map((id) => `content/concepts/edges/${id}.json`), ...dropped];
+  return [...d.removals.map((id) => `content/concepts/edges/${id}.json`), ...dropped, ...droppedFigures(d, confirmed)];
 };
 
 /** The whole proposal as one file, readable by the proposed layer (content/proposals-fixtures/). */
@@ -710,7 +840,8 @@ export function pullRequestText(d: Draft, ctx: DraftContext): string {
     '## Files',
     '',
     ...exportFiles(d, ctx).map((f) => `- \`${f.path}\``),
-    ...removedFiles(d).map((f) => `- Delete \`${f}\``),
+    ...(draftRelationTypes(d).length ? [`- \`${VOCABULARY_FILE}\` — adds ${draftRelationTypes(d).map((t) => `“${t.type}”`).join(', ')}`] : []),
+    ...removedFiles(d, ctx.confirmed).map((f) => `- Delete \`${f}\``),
     '',
     `Proposed by ${p.author.name}.`,
     '',
@@ -726,6 +857,7 @@ export function hasContent(d: Draft): boolean {
       d.claim.trim() ||
       d.equation.trim() ||
       (d.page ?? []).some((s) => s.trim()) ||
+      d.figures.length ||
       d.relations.length ||
       d.evidence.length,
   );
@@ -786,6 +918,10 @@ export function parseDraft(raw: unknown): Draft | null {
   if (!Array.isArray(d.domains) || !d.domains.every(isString)) return null;
   for (const key of ['generality', 'importance'] as const)
     if (d[key] !== undefined && typeof d[key] !== 'number') return null;
+  const assumptionRowOk = (a: unknown) => {
+    const x = a as Record<string, unknown>;
+    return Boolean(x) && isString(x.label) && isString(x.description) && (x.concept === undefined || isString(x.concept));
+  };
   const relationOk = (r: unknown) => {
     const x = r as Record<string, unknown>;
     return (
@@ -795,7 +931,9 @@ export function parseDraft(raw: unknown): Draft | null {
       isString(x.target) &&
       isString(x.relationship) &&
       (x.description === undefined || isString(x.description)) &&
-      (x.derivation === undefined || isString(x.derivation))
+      (x.derivation === undefined || isString(x.derivation)) &&
+      (x.newCategory === undefined || isString(x.newCategory)) &&
+      (x.assumes === undefined || (Array.isArray(x.assumes) && x.assumes.every(assumptionRowOk)))
     );
   };
   if (!Array.isArray(d.relations) || !d.relations.every(relationOk)) return null;
@@ -833,6 +971,18 @@ export function parseDraft(raw: unknown): Draft | null {
   const page = d.page === undefined ? (d.editOf ? null : []) : d.page;
   if (page !== null && (!Array.isArray(page) || !page.every(isString))) return null;
   const pageBefore = typeof d.pageBefore === 'number' ? d.pageBefore : 0;
+  // Added 2026-10: pictures. Their data is kept in IndexedDB and joined back in by useDrafts.
+  const figures = d.figures ?? [];
+  const figureOk = (f: unknown) => {
+    const x = f as Record<string, unknown>;
+    return (
+      Boolean(x) &&
+      isString(x.key) &&
+      [x.file, x.data, x.name].every((v) => v === undefined || isString(v)) &&
+      [x.alt, x.caption, x.credit].every(isString)
+    );
+  };
+  if (!Array.isArray(figures) || !figures.every(figureOk)) return null;
   // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
   const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
     void _c;
@@ -849,6 +999,7 @@ export function parseDraft(raw: unknown): Draft | null {
     representations: representations as DraftRepresentation[],
     formulas: formulas as DraftRepresentation[],
     assumes,
+    figures: figures as DraftFigure[],
     page: page as string[] | null,
     pageBefore,
     relations,

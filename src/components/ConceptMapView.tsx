@@ -4,6 +4,7 @@ import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import {
   NEW_CONCEPT,
   draftProposal,
+  draftUploads,
   draftRef,
   draftShape,
   hasContent,
@@ -42,6 +43,8 @@ const EquationView = lazy(() => import('./EquationView'));
 const FormulaView = lazy(() => import('./EquationView').then((m) => ({ default: m.FormulaView })));
 // A relation's card typesets its description and derivation: loaded on demand too.
 const EdgeCard = lazy(() => import('./EdgeCard'));
+// Captions may hold maths (KaTeX), so the pictures load with it.
+const Figures = lazy(() => import('./Figures'));
 
 const NO_PROPOSALS: Proposal[] = [];
 const NO_NEAR = { ids: [] as string[], byHand: false, ghost: '' };
@@ -353,7 +356,7 @@ export default function ConceptMapView({
   const submitDraft = async (): Promise<SubmitResult> => {
     if (!draft || !me?.user) return { ok: false, error: 'Sign in with GitHub first.' };
     const signed = { ...draft, author: me.user.name || me.user.login };
-    const result = await submitProposal(draftProposal(signed, draftCtx), pullRequestText(signed, draftCtx));
+    const result = await submitProposal(draftProposal(signed, draftCtx), pullRequestText(signed, draftCtx), draftUploads(signed));
     if (result.ok) {
       setLastSubmitted({ number: result.number, url: result.url, title: proposalTitle(draft) });
       setNear(NO_NEAR);
@@ -744,6 +747,12 @@ export default function ConceptMapView({
             {selected && !listedProposal && (
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
+              {selected.figures && selected.figures.length > 0 && (
+                <Suspense fallback={<p className="concept-empty">Loading the pictures…</p>}>
+                  <Figures figures={selected.figures} />
+                </Suspense>
+              )}
+
               {selected.type === 'equation' && (
                 <Suspense
                   fallback={

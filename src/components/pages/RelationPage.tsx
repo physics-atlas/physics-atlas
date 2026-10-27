@@ -107,6 +107,25 @@ export default function RelationPage({
         </dl>
       </section>
 
+      {edge.assumes && edge.assumes.length > 0 && (
+        <section aria-labelledby="atlas-relation-assumes">
+          <h2 id="atlas-relation-assumes">Under the assumption of</h2>
+          <p>The relation holds only when this does:</p>
+          <ul className="atlas-assumptions">
+            {edge.assumes.map((a, i) => {
+              const node = a.concept ? index.byId.get(a.concept) : undefined;
+              const name = a.label ?? node?.label ?? a.concept ?? '';
+              return (
+                <li key={a.concept ?? `${a.label}-${i}`}>
+                  <p className="atlas-assumption-name">{node ? links.concept(node.id, name) : name}</p>
+                  {a.description && <p>{a.description}</p>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section aria-labelledby="atlas-relation-how">
         <h2 id="atlas-relation-how">How they connect</h2>
         {edge.description ? <RichText source={edge.description} /> : <p className="atlas-empty">Not described yet.</p>}

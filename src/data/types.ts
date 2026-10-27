@@ -41,6 +41,11 @@ export interface RelationCategory {
   label: string;
   description: string;
   types: string[];
+  /**
+   * Relations of this kind place a topic inside another in the atlas
+   * contents: they count as one step there, any other kind as two (graph/contents.ts).
+   */
+  nests?: boolean;
 }
 export const RELATION_CATEGORIES: RelationCategory[] = vocab.relationCategories;
 const CATEGORY_OF = new Map(RELATION_CATEGORIES.flatMap((c) => c.types.map((t) => [t, c] as const)));
@@ -128,6 +133,20 @@ interface GraphNodeBase {
    * linear potential"). Not a relation: no line is drawn; the card lists them.
    */
   assumes?: Assumption[];
+  /** Pictures of it, shown on its card and page (files in content/media/) */
+  figures?: Figure[];
+}
+
+/** A picture of a concept: content/media/<file>, described for people who can't see it. */
+export interface Figure {
+  /** "<concept-id>/<name>.<png|jpg|webp|gif>", under content/media/ */
+  file: string;
+  /** What the picture shows, in words — read out in its place */
+  alt: string;
+  /** Shown under it (Markdown + LaTeX) */
+  caption?: string;
+  /** Where it's from and under what licence, e.g. "Own work, CC BY 4.0" */
+  credit: string;
 }
 
 /**
@@ -164,6 +183,12 @@ export interface GraphEdge {
   description?: string;
   /** A derivation of one from the other (Markdown + LaTeX, `$$…$$` for display maths) */
   derivation?: string;
+  /**
+   * What the relation holds under, when it doesn't always ("approximates …
+   * under the assumption of small velocities"). Words, each may point to a
+   * concept; what a concept itself assumes is on the concept.
+   */
+  assumes?: Assumption[];
   /** An open question for Sophie — cleared by deleting the field */
   review?: string;
 }

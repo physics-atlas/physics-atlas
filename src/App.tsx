@@ -4,7 +4,6 @@ import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
-import Starfield from './components/Starfield';
 import { NODE_TYPE_LABELS } from './data/types';
 import { IMPORTANCE_MAX, splitFluff } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
@@ -232,7 +231,6 @@ export default function App() {
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
-      <Starfield still={motion.reduced} />
       <div className="nebula nebula-a" aria-hidden />
       <div className="nebula nebula-b" aria-hidden />
       <div className="nebula nebula-c" aria-hidden />

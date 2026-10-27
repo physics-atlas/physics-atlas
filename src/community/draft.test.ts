@@ -11,6 +11,7 @@ import {
   draftProblems,
   draftProposal,
   draftRef,
+  draftUploads,
   draftShape,
   exportFiles,
   hasContent,
@@ -27,6 +28,7 @@ import {
 import type { Draft, DraftContext } from './draft';
 import { proposalProblems, resolveDependencies } from './proposals';
 import { fixtureProposals } from './store';
+import vocabulary from '../data/conceptVocabulary.json?raw';
 
 const fixed = () => 0.5;
 const at = new Date('2026-10-15T12:00:00Z');
@@ -523,5 +525,82 @@ describe('pages in drafts', () => {
     expect(proposalProblems({ ...p, pages: [{ concept: p.nodes[0].id, depths: [''] }] }, concepts)).toEqual([
       expect.stringContaining('is empty'),
     ]);
+  });
+});
+
+describe('what a relation holds under', () => {
+  it("exports each relation's assumptions on the relation, not on the concept", () => {
+    const d = jeans();
+    d.relations[0] = { ...d.relations[0], assumes: [{ label: ' Sample: small velocities ', description: '' }, { label: '', description: '', concept: 'spacetime' }] };
+    const [edge] = draftEdges(d, alone(d));
+    expect(edge.assumes).toEqual([{ label: 'Sample: small velocities' }, { concept: 'spacetime' }]);
+    expect(draftNode(d, concepts).assumes).toBeUndefined();
+    expect(draftProblems(d, alone(d))).toEqual([]);
+  });
+  it('points at a relation whose assumption names nothing, or a concept that is gone', () => {
+    const d = jeans();
+    d.relations[1] = { ...d.relations[1], assumes: [{ label: '', description: 'Sample detail', concept: undefined }, { label: '', description: '', concept: 'no_such_concept' }] };
+    expect(draftProblems(d, alone(d)).map((p) => [p.field, p.index])).toEqual([
+      ['relations', 1],
+      ['relations', 1],
+    ]);
+  });
+});
+
+describe('a new kind of relation ("Other…")', () => {
+  const withNew = (relationship: string, newCategory: string): Draft => {
+    const d = jeans();
+    d.relations[0] = { ...d.relations[0], relationship, newCategory };
+    return d;
+  };
+  it('travels with the proposal and adds itself to the vocabulary in the same pull request', () => {
+    const d = withNew(' Is A Sample Limit Of ', 'derivation');
+    const p = draftProposal(d, alone(d));
+    expect(p.relationTypes).toEqual([{ type: 'is a sample limit of', category: 'derivation' }]);
+    expect(p.edges[0].relationship).toBe('is a sample limit of');
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const vocab = exportFiles(d, alone(d), vocabulary).find((f) => f.path === 'src/data/conceptVocabulary.json');
+    expect(JSON.parse(vocab!.content).edgeTemplates['is a sample limit of']).toBe('{s} is a sample limit of {t}.');
+    expect(pullRequestText(d, alone(d))).toContain('adds “is a sample limit of”');
+  });
+  it('needs words and a kind, and refuses one that already exists', () => {
+    expect(draftProblems(withNew('', ''), alone()).filter((p) => p.field === 'relations')).toHaveLength(2);
+    expect(draftProblems(withNew('relates', 'association'), alone())[0].message).toMatch(/already a relation/);
+  });
+});
+
+describe('pictures in drafts', () => {
+  const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0))}`;
+  const withPicture = (): Draft => ({
+    ...jeans(),
+    figures: [{ key: 'f1', data: PNG, name: 'Sample Plot.png', alt: ' Sample: a rising line. ', caption: '', credit: 'Sample, CC BY 4.0' }],
+  });
+  it('names a new picture in the concept’s folder and sends its bytes with the proposal, not in it', () => {
+    const d = withPicture();
+    const id = conceptId(d);
+    expect(draftNode(d, concepts).figures).toEqual([{ file: `${id}/sample-plot.png`, alt: 'Sample: a rising line.', credit: 'Sample, CC BY 4.0' }]);
+    expect(draftUploads(d)).toEqual([{ path: `content/media/${id}/sample-plot.png`, data: PNG.slice(PNG.indexOf(',') + 1) }]);
+    expect(JSON.stringify(draftProposal(d, alone(d)))).not.toContain('base64');
+    expect(exportFiles(d, alone(d)).find((f) => f.encoding === 'base64')?.path).toBe(`content/media/${id}/sample-plot.png`);
+    expect(draftProblems(d, alone(d))).toEqual([]);
+  });
+  it('asks for a description and a credit for each picture', () => {
+    const d = { ...withPicture(), figures: [{ ...withPicture().figures[0], alt: '', credit: '' }] };
+    expect(draftProblems(d, alone(d)).map((p) => [p.field, p.index])).toEqual([
+      ['figures', 0],
+      ['figures', 0],
+    ]);
+  });
+  it("deletes the pictures an edit drops", () => {
+    const node = { ...concepts.nodes.find((n) => n.id === 'zeldovich_approximation')!, figures: [{ file: 'zeldovich_approximation/sample.png', alt: 'Sample', credit: 'Sample' }] };
+    const graph = { ...concepts, nodes: concepts.nodes.map((n) => (n.id === node.id ? node : n)) };
+    const d = newEditDraft(node, fixed, at);
+    expect(d.figures.map((f) => f.file)).toEqual(['zeldovich_approximation/sample.png']);
+    expect(removedFiles({ ...d, figures: [] }, graph)).toContain('content/media/zeldovich_approximation/sample.png');
+  });
+  it('reads drafts saved before pictures existed', () => {
+    const { figures: _f, ...old } = jeans();
+    void _f;
+    expect(parseDraft(old)?.figures).toEqual([]);
   });
 });

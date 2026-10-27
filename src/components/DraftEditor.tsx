@@ -1,8 +1,13 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
+import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
 import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
 import { loadPage, PAGE_DEPTHS } from '../data/pageSources';
+import { figureUrl } from '../data/media';
+import vocabularyText from '../data/conceptVocabulary.json?raw';
+import { FIGURE_MAX_SIDE, FIGURE_TYPES, MAX_FIGURES } from '../community/figures';
+import { OTHER_RELATION } from '../community/relationTypes';
+import { prepareImage } from '../lib/prepareImage';
 import {
   EVIDENCE_LABELS,
   PROPOSABLE_TYPES,
@@ -21,6 +26,7 @@ import {
 import type {
   Draft,
   DraftAssumption,
+  DraftFigure,
   DraftContext,
   DraftField,
   DraftRelation,
@@ -118,7 +124,9 @@ function conflictText(c: EdgeConflict, byId: ConceptMap): string {
 }
 
 function download(file: ExportFile) {
-  const url = URL.createObjectURL(new Blob([file.content], { type: 'application/json' }));
+  const body =
+    file.encoding === 'base64' ? Uint8Array.from(atob(file.content), (c) => c.charCodeAt(0)) : file.content;
+  const url = URL.createObjectURL(new Blob([body], { type: file.encoding === 'base64' ? 'application/octet-stream' : 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = file.path.slice(file.path.lastIndexOf('/') + 1);
@@ -170,6 +178,10 @@ export default function DraftEditor({
     [draft.editOf, ctx.confirmed],
   );
   // What an assumption can point to: confirmed concepts, not itself, not ones already pointed to.
+  const confirmedEntries = useMemo(() => {
+    const confirmed = new Set(ctx.confirmed.nodes.map((n) => n.id));
+    return searchEntries.filter((e) => confirmed.has(e.ref));
+  }, [searchEntries, ctx.confirmed]);
   const assumableEntries = useMemo(() => {
     const confirmed = new Set(ctx.confirmed.nodes.map((n) => n.id));
     const linked = new Set(draft.assumes.flatMap((a) => (a.concept ? [a.concept] : [])));
@@ -245,8 +257,8 @@ export default function DraftEditor({
       setNote(`Couldn't copy — select the ${what} under “Show the files” instead.`);
     }
   };
-  const files = problems.length ? [] : exportFiles(draft, ctx);
-  const deletions = problems.length ? [] : removedFiles(draft);
+  const files = problems.length ? [] : exportFiles(draft, ctx, vocabularyText);
+  const deletions = problems.length ? [] : removedFiles(draft, ctx.confirmed);
   const prText = problems.length ? '' : pullRequestText(draft, ctx);
   const bundle = problems.length ? null : proposalFile(draft, ctx);
 
@@ -368,6 +380,99 @@ export default function DraftEditor({
           </div>
         )}
 
+        <Field id={fieldId('description')} label="Description" hint="A sentence or two in plain words.">
+          <textarea
+            id={fieldId('description')}
+            className="draft-input"
+            rows={3}
+            value={draft.description}
+            onChange={(e) => set('description', e.target.value)}
+            aria-describedby={fieldId('description-hint')}
+          />
+        </Field>
+
+        {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
+
+        <fieldset className="draft-domains">
+          <legend className="draft-label">
+            Field <span className="draft-optional">optional</span>
+          </legend>
+          {CONCEPT_DOMAINS.map((domain) => (
+            <label key={domain} className="draft-check">
+              <input
+                type="checkbox"
+                checked={draft.domains.includes(domain)}
+                onChange={(e) =>
+                  set(
+                    'domains',
+                    e.target.checked
+                      ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
+                      : draft.domains.filter((d) => d !== domain),
+                  )
+                }
+              />
+              {domain}
+            </label>
+          ))}
+        </fieldset>
+
+        <Field
+          id={fieldId('generality')}
+          label={`Generality, 1–${GENERALITY_MAX}`}
+          hint={`How broad the idea is: 1 is very specific, ${GENERALITY_MAX} very general. On the map it sets the size of the circle, from small (1) to 40 times larger (${GENERALITY_MAX}) — watch your draft grow or shrink.`}
+          optional
+        >
+          <input
+            id={fieldId('generality')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={GENERALITY_MAX}
+            step={1}
+            value={draft.generality ?? ''}
+            onChange={(e) => set('generality', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('generality-hint')}
+          />
+        </Field>
+        <Field
+          id={fieldId('importance')}
+          label={`Importance, 1–${IMPORTANCE_MAX}`}
+          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 8 shows on the whole map, and each step lower needs about a 1.5× closer look, so 1 only appears when you're right next to it.`}
+          optional
+        >
+          <input
+            id={fieldId('importance')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={IMPORTANCE_MAX}
+            step={1}
+            value={draft.importance ?? ''}
+            onChange={(e) => set('importance', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('importance-hint')}
+          />
+        </Field>
+        <p className="draft-hint">Leave either empty and the curator sets it.</p>
+      </section>
+
+      <section className="rel-block draft-section" aria-labelledby={fieldId('h-details')}>
+        <h3 className="block-heading" id={fieldId('h-details')}>
+          What it assumes, pictures and its page
+        </h3>
+        <AssumptionFields
+          draft={draft}
+          update={update}
+          fieldId={fieldId}
+          concepts={ctx.confirmed.nodes}
+          entries={assumableEntries}
+        />
+
+        <FigureFields draft={draft} update={update} fieldId={fieldId} />
+
+        <PageFields draft={draft} update={update} fieldId={fieldId} sectionOf={pageSection} />
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-relations')}>
@@ -495,16 +600,75 @@ export default function DraftEditor({
                     dropped.
                   </p>
                 )}
-                <Field id={fieldId(`rel-${r.key}`)} label="Relation">
+                <Field id={fieldId(`relations-${i}`)} label="Relation">
                   <RelationPicker
-                    id={fieldId(`rel-${r.key}`)}
-                    value={type}
+                    id={fieldId(`relations-${i}`)}
+                    value={r.newCategory !== undefined ? OTHER_RELATION : type}
                     types={RELATION_TYPES}
                     from={from}
                     to={to}
-                    onChange={(t) => setRelation(r.key, (x) => ({ ...x, relationship: t }))}
+                    onChange={(t) =>
+                      setRelation(r.key, (x) =>
+                        t === OTHER_RELATION
+                          ? { ...x, relationship: '', newCategory: '' }
+                          : { ...x, relationship: t, newCategory: undefined },
+                      )
+                    }
                   />
                 </Field>
+                {r.newCategory !== undefined && (
+                  <div className="draft-new-type">
+                    <Field
+                      id={fieldId(`rel-${r.key}-new`)}
+                      label="The new relation"
+                      hint={`How it reads between the two — “${from} … ${to}” — in lower case, e.g. “is a limit of”. It's proposed with this relation and joins the list once accepted.`}
+                    >
+                      <input
+                        id={fieldId(`rel-${r.key}-new`)}
+                        className="draft-input"
+                        value={r.relationship}
+                        onChange={(e) => setRelation(r.key, (x) => ({ ...x, relationship: e.target.value }))}
+                        aria-describedby={fieldId(`rel-${r.key}-new-hint`)}
+                        autoComplete="off"
+                      />
+                    </Field>
+                    <Field
+                      id={fieldId(`rel-${r.key}-kind`)}
+                      label="Which kind of relation it is"
+                      hint="Every relation belongs to one of these broader kinds; they group the filters and the relations on a page."
+                    >
+                      <select
+                        id={fieldId(`rel-${r.key}-kind`)}
+                        className="draft-input"
+                        value={r.newCategory}
+                        onChange={(e) => setRelation(r.key, (x) => ({ ...x, newCategory: e.target.value }))}
+                        aria-describedby={fieldId(`rel-${r.key}-kind-hint`)}
+                      >
+                        <option value="">Choose…</option>
+                        {RELATION_CATEGORIES.map((c) => (
+                          <option key={c.key} value={c.key}>
+                            {c.label} — {c.description}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+                <details className="draft-relation-more" open={Boolean(r.assumes?.length)}>
+                  <summary>Under the assumption of… — when the relation holds only then (optional)</summary>
+                  <AssumptionRows
+                    rows={r.assumes ?? []}
+                    onChange={(assumes) => setRelation(r.key, (x) => ({ ...x, assumes }))}
+                    idBase={fieldId(`rel-${r.key}-assumes`)}
+                    legend="Under the assumption of"
+                    hint={`What has to hold for “${from}” and “${to}” to be related this way — a limit, an approximation, a regime. It's about this relation only: what a concept always takes for granted goes in its own Assumes.`}
+                    placeholder="Small velocities (v ≪ c)"
+                    addLabel="Add an assumption"
+                    searchLabel="Add a concept on the map it holds under"
+                    concepts={ctx.confirmed.nodes}
+                    entries={confirmedEntries}
+                  />
+                </details>
                 <details className="draft-relation-more" open={Boolean(r.description || r.derivation)}>
                   <summary>How they connect — a description and a derivation (optional)</summary>
                   <Field
@@ -595,98 +759,6 @@ export default function DraftEditor({
             <SearchBox entries={searchEntries} onPick={setPairFrom} placeholder="From which concept?" label="Relation from" />
           )}
         </details>
-      </section>
-
-      <section className="rel-block draft-section" aria-labelledby={fieldId('h-details')}>
-        <h3 className="block-heading" id={fieldId('h-details')}>
-          Details
-        </h3>
-        <Field id={fieldId('description')} label="Description" hint="A sentence or two in plain words.">
-          <textarea
-            id={fieldId('description')}
-            className="draft-input"
-            rows={3}
-            value={draft.description}
-            onChange={(e) => set('description', e.target.value)}
-            aria-describedby={fieldId('description-hint')}
-          />
-        </Field>
-
-        {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
-        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
-
-        <AssumptionFields
-          draft={draft}
-          update={update}
-          fieldId={fieldId}
-          concepts={ctx.confirmed.nodes}
-          entries={assumableEntries}
-        />
-
-        <PageFields draft={draft} update={update} fieldId={fieldId} sectionOf={pageSection} />
-
-        <fieldset className="draft-domains">
-          <legend className="draft-label">
-            Field <span className="draft-optional">optional</span>
-          </legend>
-          {CONCEPT_DOMAINS.map((domain) => (
-            <label key={domain} className="draft-check">
-              <input
-                type="checkbox"
-                checked={draft.domains.includes(domain)}
-                onChange={(e) =>
-                  set(
-                    'domains',
-                    e.target.checked
-                      ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
-                      : draft.domains.filter((d) => d !== domain),
-                  )
-                }
-              />
-              {domain}
-            </label>
-          ))}
-        </fieldset>
-
-        <Field
-          id={fieldId('generality')}
-          label={`Generality, 1–${GENERALITY_MAX}`}
-          hint={`How broad the idea is: 1 is very specific, ${GENERALITY_MAX} very general. On the map it sets the size of the circle, from small (1) to 40 times larger (${GENERALITY_MAX}) — watch your draft grow or shrink.`}
-          optional
-        >
-          <input
-            id={fieldId('generality')}
-            className="draft-input draft-number"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={GENERALITY_MAX}
-            step={1}
-            value={draft.generality ?? ''}
-            onChange={(e) => set('generality', e.target.value === '' ? undefined : Number(e.target.value))}
-            aria-describedby={fieldId('generality-hint')}
-          />
-        </Field>
-        <Field
-          id={fieldId('importance')}
-          label={`Importance, 1–${IMPORTANCE_MAX}`}
-          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 8 shows on the whole map, and each step lower needs about a 1.5× closer look, so 1 only appears when you're right next to it.`}
-          optional
-        >
-          <input
-            id={fieldId('importance')}
-            className="draft-input draft-number"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={IMPORTANCE_MAX}
-            step={1}
-            value={draft.importance ?? ''}
-            onChange={(e) => set('importance', e.target.value === '' ? undefined : Number(e.target.value))}
-            aria-describedby={fieldId('importance-hint')}
-          />
-        </Field>
-        <p className="draft-hint">Leave either empty and the curator sets it.</p>
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-claim')}>
@@ -894,8 +966,9 @@ export default function DraftEditor({
               </div>
             )}
             <p>
-              {submission ? 'Download' : 'Ready. Download'} the files and put them into <code>content/concepts/</code>
-              {draft.editOf ? ' (the concept’s file replaces the old one)' : ''}
+              {submission ? 'Download' : 'Ready. Download'} the files and put each where its path says (most into{' '}
+              <code>content/concepts/</code>)
+              {draft.editOf ? '; the concept’s file replaces the old one' : ''}
               {deletions.length ? ', delete the files listed below' : ''}, run <code>npm run validate</code>, and open a
               pull request with the text below as its description.
             </p>
@@ -940,7 +1013,11 @@ export default function DraftEditor({
               {[...files, ...(bundle ? [bundle] : [])].map((f) => (
                 <div key={f.path}>
                   <p className="draft-label">{f.path}</p>
-                  <pre className="draft-code">{f.content}</pre>
+                  {f.encoding === 'base64' ? (
+                    <p className="draft-hint">A picture ({Math.round((f.content.length * 0.75) / 1000)} kB).</p>
+                  ) : (
+                    <pre className="draft-code">{f.content}</pre>
+                  )}
                 </div>
               ))}
               <p className="draft-label">Pull-request text</p>
@@ -1208,51 +1285,60 @@ function PageFields({
 }
 
 /**
- * What the concept takes for granted, one row each: a name, more detail if it
- * helps, and — optionally — the concept on the map it is.
+ * Assumptions, one row each: a name, more detail if it helps, and — optionally
+ * — the concept on the map it is. What a concept assumes, and what one of its
+ * relations holds under, are both written this way.
  */
-function AssumptionFields({
-  draft,
-  update,
-  fieldId,
+function AssumptionRows({
+  rows,
+  onChange,
+  idBase,
+  legend,
+  hint,
+  placeholder,
+  addLabel,
+  searchLabel,
   concepts,
   entries,
 }: {
-  draft: Draft;
-  update: (change: (d: Draft) => Draft) => void;
-  fieldId: (name: string) => string;
+  rows: DraftAssumption[];
+  onChange: (rows: DraftAssumption[]) => void;
+  /** The ids: `${idBase}-${i}` for each row's name, `idBase` on "Add" while there are none */
+  idBase: string;
+  legend: string;
+  hint: string;
+  placeholder: string;
+  addLabel: string;
+  searchLabel: string;
   concepts: GraphNode[];
   entries: SearchEntry[];
 }) {
-  const setRow = (i: number, change: Partial<DraftAssumption>) =>
-    update((d) => ({ ...d, assumes: d.assumes.map((x, j) => (j === i ? { ...x, ...change } : x)) }));
-  const add = (row: DraftAssumption) => update((d) => ({ ...d, assumes: [...d.assumes, row] }));
+  const setRow = (i: number, change: Partial<DraftAssumption>) => onChange(rows.map((x, j) => (j === i ? { ...x, ...change } : x)));
+  const linkedIds = new Set(rows.flatMap((a) => (a.concept ? [a.concept] : [])));
   return (
     <fieldset className="draft-assumes">
       <legend className="draft-label">
-        Assumes <span className="draft-optional">optional</span>
+        {legend} <span className="draft-optional">optional</span>
       </legend>
-      <p className="draft-hint" id={fieldId('assumes-hint')}>
-        What this concept takes for granted — a limit, an approximation, a condition. Name each in a few words, with more
-        detail if it helps. No line is drawn; they're listed on its card. One can also point to a concept on the map,
-        which is then highlighted when this concept is selected.
+      <p className="draft-hint" id={`${idBase}-hint`}>
+        {hint}
       </p>
-      {draft.assumes.map((row, i) => {
+      {rows.map((row, i) => {
         const linked = row.concept ? concepts.find((n) => n.id === row.concept) : undefined;
         return (
           <div key={i} className="draft-relation draft-assumption">
-            <Field id={fieldId(`assumes-${i}`)} label={`Assumption ${i + 1}`} optional={Boolean(row.concept)}>
+            <Field id={`${idBase}-${i}`} label={`Assumption ${i + 1}`} optional={Boolean(row.concept)}>
               <input
-                id={fieldId(`assumes-${i}`)}
+                id={`${idBase}-${i}`}
                 className="draft-input"
                 value={row.label}
-                placeholder={linked?.label ?? 'Weak gravitational field'}
+                placeholder={linked?.label ?? placeholder}
                 onChange={(e) => setRow(i, { label: e.target.value })}
               />
             </Field>
-            <Field id={fieldId(`assumes-detail-${i}`)} label="In more detail" optional>
+            <Field id={`${idBase}-detail-${i}`} label="In more detail" optional>
               <textarea
-                id={fieldId(`assumes-detail-${i}`)}
+                id={`${idBase}-detail-${i}`}
                 className="draft-input draft-textarea"
                 rows={2}
                 value={row.description}
@@ -1269,11 +1355,7 @@ function AssumptionFields({
               </p>
             )}
             <div className="draft-row-actions">
-              <button
-                type="button"
-                className="draft-button"
-                onClick={() => update((d) => ({ ...d, assumes: d.assumes.filter((_, j) => j !== i) }))}
-              >
+              <button type="button" className="draft-button" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
                 Remove assumption {i + 1}
               </button>
             </div>
@@ -1283,17 +1365,194 @@ function AssumptionFields({
       <button
         type="button"
         className="draft-button"
-        id={draft.assumes.length ? undefined : fieldId('assumes')}
-        onClick={() => add({ label: '', description: '' })}
+        id={rows.length ? undefined : idBase}
+        onClick={() => onChange([...rows, { label: '', description: '' }])}
       >
-        Add an assumption
+        {addLabel}
       </button>
       <SearchBox
-        entries={entries}
-        onPick={(id) => add({ label: '', description: '', concept: id })}
-        placeholder="Or add a concept on the map it assumes…"
-        label="Add a concept on the map it assumes"
+        entries={entries.filter((e) => !linkedIds.has(e.ref))}
+        onPick={(id) => onChange([...rows, { label: '', description: '', concept: id }])}
+        placeholder={`Or ${searchLabel.charAt(0).toLowerCase()}${searchLabel.slice(1)}…`}
+        label={searchLabel}
       />
+    </fieldset>
+  );
+}
+
+/** What the concept itself takes for granted. */
+function AssumptionFields({
+  draft,
+  update,
+  fieldId,
+  concepts,
+  entries,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+  concepts: GraphNode[];
+  entries: SearchEntry[];
+}) {
+  return (
+    <AssumptionRows
+      rows={draft.assumes}
+      onChange={(assumes) => update((d) => ({ ...d, assumes }))}
+      idBase={fieldId('assumes')}
+      legend="Assumes"
+      hint="What this concept takes for granted — a limit, an approximation, a condition. Name each in a few words, with more detail if it helps. No line is drawn; they're listed on its card. One can also point to a concept on the map, which is then highlighted when this concept is selected. When only one of its relations holds under a condition, say it on that relation instead (under Connections)."
+      placeholder="Weak gravitational field"
+      addLabel="Add an assumption"
+      searchLabel="Add a concept on the map it assumes"
+      concepts={concepts}
+      entries={entries}
+    />
+  );
+}
+
+/**
+ * Pictures of the concept, on its card and page: each described for people
+ * who can't see it, and credited. A new one is made ready in the browser
+ * (lib/prepareImage.ts) and kept with the draft until it's proposed.
+ */
+function FigureFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  // Describing a new picture comes next: focus goes there once its row is drawn.
+  const [describe, setDescribe] = useState<number | null>(null);
+  useEffect(() => {
+    if (describe === null || describe >= draft.figures.length) return;
+    document.getElementById(fieldId(`figures-${describe}`))?.focus();
+    setDescribe(null);
+  }, [describe, draft.figures.length, fieldId]);
+  const setRow = (i: number, change: Partial<DraftFigure>) =>
+    update((d) => ({ ...d, figures: d.figures.map((x, j) => (j === i ? { ...x, ...change } : x)) }));
+  const add = async (file: File) => {
+    setBusy(true);
+    setProblem('');
+    const ready = await prepareImage(file);
+    setBusy(false);
+    if ('problem' in ready) {
+      setProblem(ready.problem);
+      return;
+    }
+    setDescribe(draft.figures.length);
+    update((d) => ({
+      ...d,
+      figures: [...d.figures, { key: `f${Date.now().toString(36)}`, data: ready.data, name: file.name, alt: '', caption: '', credit: '' }],
+    }));
+  };
+  return (
+    <fieldset className="draft-figures">
+      <legend className="draft-label">
+        Pictures <span className="draft-optional">optional</span>
+      </legend>
+      <p className="draft-hint" id={fieldId('figures-hint')}>
+        Up to {MAX_FIGURES} PNG, JPEG, WebP or GIF pictures, shown on its card and page. Large ones are made smaller (to{' '}
+        {FIGURE_MAX_SIDE} px). Each needs a description for people who can't see it, and where it's from with its
+        licence: add only pictures that may be shared.
+      </p>
+      {draft.figures.map((f, i) => {
+        const src = f.data ?? (f.file ? figureUrl(f.file) : undefined);
+        return (
+          <div key={f.key} className="draft-relation draft-figure">
+            {src ? (
+              <img className="draft-figure-preview" src={src} alt="" />
+            ) : (
+              <p className="concept-empty">
+                {f.file ? 'Not on the site yet (it comes with an open proposal).' : "This picture isn't in this browser any more — remove it and add it again."}
+              </p>
+            )}
+            <Field
+              id={fieldId(`figures-${i}`)}
+              label={`Picture ${i + 1}: what it shows`}
+              hint="Read out in its place: what someone who can't see it needs to know from it."
+            >
+              <textarea
+                id={fieldId(`figures-${i}`)}
+                className="draft-input draft-textarea"
+                rows={2}
+                value={f.alt}
+                onChange={(e) => setRow(i, { alt: e.target.value })}
+                aria-describedby={fieldId(`figures-${i}-hint`)}
+              />
+            </Field>
+            <Field id={fieldId(`figure-caption-${i}`)} label="Caption" hint="Shown under it. Markdown and $LaTeX$." optional>
+              <input
+                id={fieldId(`figure-caption-${i}`)}
+                className="draft-input"
+                value={f.caption}
+                onChange={(e) => setRow(i, { caption: e.target.value })}
+                aria-describedby={fieldId(`figure-caption-${i}-hint`)}
+              />
+            </Field>
+            <Field
+              id={fieldId(`figure-credit-${i}`)}
+              label="Where it's from, and its licence"
+              hint="E.g. “Own work, CC BY 4.0” or “NASA, public domain”."
+            >
+              <input
+                id={fieldId(`figure-credit-${i}`)}
+                className="draft-input"
+                value={f.credit}
+                onChange={(e) => setRow(i, { credit: e.target.value })}
+                aria-describedby={fieldId(`figure-credit-${i}-hint`)}
+              />
+            </Field>
+            <div className="draft-row-actions">
+              <button
+                type="button"
+                className="draft-button"
+                onClick={() => update((d) => ({ ...d, figures: d.figures.filter((_, j) => j !== i) }))}
+              >
+                Remove picture {i + 1}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      {draft.figures.length < MAX_FIGURES && (
+        <>
+          <button
+            type="button"
+            className="draft-button"
+            id={fieldId('figures')}
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            aria-describedby={fieldId('figures-hint')}
+          >
+            {busy ? 'Preparing the picture…' : 'Add a picture…'}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            className="visually-hidden"
+            accept={Object.values(FIGURE_TYPES).join(',')}
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void add(file);
+            }}
+          />
+        </>
+      )}
+      {problem && (
+        <p className="draft-warning" role="alert">
+          <span aria-hidden>⚠ </span>
+          {problem}
+        </p>
+      )}
     </fieldset>
   );
 }

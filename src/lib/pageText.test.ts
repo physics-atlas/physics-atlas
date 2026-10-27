@@ -43,6 +43,9 @@ describe('parsePage', () => {
     expect(problems('::: theorm\n:::')[0]).toMatch(/"theorm" isn't a block/);
     expect(problems('$$ x')).toEqual([expect.stringMatching(/never closes/)]);
     expect(problems('[bad](javascript:alert(1))')).toEqual([expect.stringMatching(/starts with https/)]);
+    // LaTeX written without its dollars shows as text: said, with the command.
+    expect(problems('Sample:\n\\mathbf{v} = \\begin{pmatrix} 1 \\end{pmatrix}')).toEqual([expect.stringMatching(/"\\mathbf" is LaTeX outside maths/)]);
+    expect(problems('Sample $\\mathbf{v}$, `\\frac` and a price of \\$5.\n\n$$\n\\mathbf{v}\n$$')).toEqual([]);
   });
 });
 

@@ -1,6 +1,8 @@
-import { NODE_TYPE_LABELS } from '../data/types';
+import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
+import { figureProblems } from './figures';
+import { relationPhrase, relationTypeProblems } from './relationTypes';
 import type { Evidence, Proposal, ProposalState, VoteTally } from './types';
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
@@ -57,6 +59,19 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
     if (ownNodes.has(n.id)) problems.push(`${where}: concept "${n.id}" is both new and edited`);
     problems.push(...nodeProblems(where, n));
   }
+  for (const n of [...p.nodes, ...(p.edits ?? [])])
+    for (const message of figureProblems(n.figures, n.id)) problems.push(`${where}: concept "${n.id}", ${message}`);
+
+  // Relation types it adds: each new, in a category, and used by one of its relations.
+  const declared = new Set<string>();
+  for (const t of p.relationTypes ?? []) {
+    for (const message of relationTypeProblems(t, Object.keys(EDGE_SENTENCE_TEMPLATES), RELATION_CATEGORIES.map((c) => c.key)))
+      problems.push(`${where}: new relation type — ${message}`);
+    if (declared.has(t.type)) problems.push(`${where}: adds the relation type "${t.type}" twice`);
+    declared.add(t.type);
+    if (!p.edges.some((e) => relationPhrase(e.relationship) === t.type))
+      problems.push(`${where}: adds the relation type "${t.type}", but no relation of it`);
+  }
   for (const id of p.removals ?? [])
     if (!confirmedEdges.has(id)) problems.push(`${where}: removes relation "${id}", which isn't on the map`);
   // A page belongs to the proposal's own concept: depths of Markdown + LaTeX, none empty.
@@ -99,8 +114,12 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
       else if (!from && !depMissing)
         problems.push(`${where}: relation "${e.id}" points at "${end}", which is neither confirmed nor proposed`);
     }
-    if (!normalizeRelationship(e.relationship))
+    if (!normalizeRelationship(e.relationship) && !declared.has(relationPhrase(e.relationship)))
       problems.push(`${where}: relation "${e.id}" has unknown relationship "${e.relationship}"`);
+    for (const a of e.assumes ?? [])
+      if (!a.label?.trim() && !a.concept) problems.push(`${where}: relation "${e.id}" assumes something without naming it`);
+      else if (a.concept && !confirmedNodes.has(a.concept) && !ownNodes.has(a.concept))
+        problems.push(`${where}: relation "${e.id}" assumes "${a.concept}", which isn't a confirmed concept`);
   }
   for (const ev of p.evidence) {
     const bad =
@@ -173,6 +192,11 @@ export interface FieldChange {
   after: string;
 }
 
+const assumptionsText = (n: GraphNode) =>
+  (n.assumes ?? []).map((a) => [a.label ?? a.concept, a.description].filter(Boolean).join(': ')).join('; ');
+const figuresText = (n: GraphNode) =>
+  (n.figures ?? []).map((f) => [f.file, f.alt, f.caption, f.credit].filter(Boolean).join(' — ')).join('; ');
+
 export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] {
   const attr = (n: GraphNode, key: string) => String((n.attrs as unknown as Record<string, unknown>)[key] ?? '');
   const rows: [string, string, string][] = [
@@ -183,6 +207,8 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['Equation', attr(before, 'equation'), attr(after, 'equation')],
     ['Generality', String(before.generality ?? ''), String(after.generality ?? '')],
     ['Importance', String(before.importance ?? ''), String(after.importance ?? '')],
+    ['Assumes', assumptionsText(before), assumptionsText(after)],
+    ['Pictures', figuresText(before), figuresText(after)],
   ];
   return rows.filter(([, b, a]) => b !== a).map(([field, b, a]) => ({ field, before: b, after: a }));
 }

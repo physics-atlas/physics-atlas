@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NEW_CONCEPT, draftProposal, newDraft, newEditDraft } from '../src/community/draft';
+import { NEW_CONCEPT, draftProposal, draftUploads, newDraft, newEditDraft } from '../src/community/draft';
 import type { Draft, DraftContext } from '../src/community/draft';
 import type { Proposal } from '../src/community/types';
 import { concepts } from '../src/data/loadConcepts';
+import vocabulary from '../src/data/conceptVocabulary.json';
 import { handle, resetCaches } from './api';
 import type { Env } from './config';
 import { base64url, fromBase64url, pemToPkcs8 } from './crypto';
@@ -61,11 +62,14 @@ function fakeGitHub(invited: string[] = ['ada'], { issues = true } = {}) {
     const r = '/repos/atlas-org/atlas-test';
     if (path === `${r}/contents/community/experts.json`)
       return reply({ content: btoa(JSON.stringify(experts)) });
+    if (path === `${r}/contents/src/data/conceptVocabulary.json`)
+      return reply({ content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(vocabulary, null, 2)))) });
     if (path === `${r}/issues` && method === 'GET') return reply(pulls);
     if (path === `${r}/git/ref/heads/main`) return reply({ object: { sha: 'base-sha' } });
     if (path === `${r}/git/commits/base-sha`) return reply({ tree: { sha: 'base-tree' } });
     writes.push({ method, path, body });
     if (path === `${r}/git/trees`) return reply({ sha: 'new-tree' });
+    if (path === `${r}/git/blobs`) return reply({ sha: `blob-${writes.filter((w) => w.path.endsWith('/git/blobs')).length}` });
     if (path === `${r}/git/commits`) return reply({ sha: 'new-commit' });
     if (path === `${r}/git/refs`) return reply({ ref: body.ref });
     if (path === `${r}/pulls`) {
@@ -116,11 +120,17 @@ const jeans = (): Draft => ({
   relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a condition of' }],
 });
 const alone = (...drafts: Draft[]): DraftContext => ({ confirmed: concepts, drafts, proposals: [] });
-const submit = (gh: ReturnType<typeof fakeGitHub>, session: string | undefined, proposal: Proposal, origin = ORIGIN) =>
+const submit = (
+  gh: ReturnType<typeof fakeGitHub>,
+  session: string | undefined,
+  proposal: Proposal,
+  origin = ORIGIN,
+  uploads?: { path: string; data: string }[],
+) =>
   call(gh, '/api/proposals', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin, ...(session ? { cookie: session } : {}) },
-    body: JSON.stringify({ proposal, description: `# ${proposal.title}\n\nWhat it adds.` }),
+    body: JSON.stringify({ proposal, description: `# ${proposal.title}\n\nWhat it adds.`, ...(uploads ? { uploads } : {}) }),
   });
 
 beforeEach(() => resetCaches());
@@ -370,6 +380,49 @@ describe('sending feedback', () => {
     const res = await send(gh, session);
     expect(res.status).toBe(503);
     expect((await res.json()).error).toMatch(/not allowed to open issues/);
+  });
+});
+
+describe('pictures and new relation types in a submission', () => {
+  const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0))}`;
+  const pictured = (): Draft => ({
+    ...jeans(),
+    figures: [{ key: 'f1', data: PNG, name: 'sample.png', alt: 'Sample', caption: '', credit: 'Sample, CC BY 4.0' }],
+  });
+
+  it('writes a new picture as a blob of its own, and keeps it out of the description', async () => {
+    const gh = fakeGitHub();
+    const session = await signIn(gh);
+    const d = pictured();
+    const p = draftProposal(d, alone(d));
+    expect((await submit(gh, session, p, ORIGIN, draftUploads(d))).status).toBe(201);
+    const blob = gh.writes.find((w) => w.path.endsWith('/git/blobs'))!.body as { encoding: string };
+    expect(blob.encoding).toBe('base64');
+    const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { tree: { path: string; sha?: string }[] };
+    expect(tree.tree.find((t) => t.path.startsWith('content/media/'))?.sha).toBe('blob-1');
+    expect(gh.pulls[0].body).not.toContain(PNG.slice(30));
+  });
+
+  it("refuses a picture that isn't sent, isn't the proposal's, or isn't what it says", async () => {
+    const gh = fakeGitHub();
+    const session = await signIn(gh);
+    const d = pictured();
+    const p = draftProposal(d, alone(d));
+    expect((await submit(gh, session, p, ORIGIN, [])).status).toBe(422);
+    const [u] = draftUploads(d);
+    expect((await submit(gh, session, p, ORIGIN, [u, { ...u, path: 'src/App.tsx' }])).status).toBe(422);
+    expect((await submit(gh, session, p, ORIGIN, [{ ...u, data: btoa('<svg onload=alert(1)>') }])).status).toBe(422);
+  });
+
+  it('adds a new relation type to the vocabulary in the same pull request', async () => {
+    const gh = fakeGitHub();
+    const session = await signIn(gh);
+    const d = jeans();
+    d.relations[0] = { ...d.relations[0], relationship: 'is a sample limit of', newCategory: 'derivation' };
+    expect((await submit(gh, session, draftProposal(d, alone(d)))).status).toBe(201);
+    const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { tree: { path: string; content?: string }[] };
+    const vocab = tree.tree.find((t) => t.path === 'src/data/conceptVocabulary.json');
+    expect(JSON.parse(vocab!.content!).edgeTemplates['is a sample limit of']).toBe('{s} is a sample limit of {t}.');
   });
 });
 

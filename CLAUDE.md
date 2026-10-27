@@ -51,7 +51,7 @@ sophie_scicom/
 │   ├── data/         # types.ts (schema) + conceptVocabulary.json; concepts.json is GENERATED (gitignored)
 │   ├── graph/        # concepts.ts (sizes, zoom depth, edge weight, learning path), dag.ts,
 │   │                 # layoutOptimize.ts (force layout), conceptLayout.ts (build-time layout), typeColors.ts, conflicts.ts,
-│   │                 # contents.ts (the atlas pages' chapters, reading order, sidebar views)
+│   │                 # contents.ts (the atlas pages' chapters — closest more general concept, Decision 39 — reading order, sidebar views)
 │   ├── community/    # community review: proposal types, validation, overlay, store, claim text,
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,

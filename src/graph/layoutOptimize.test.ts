@@ -20,6 +20,7 @@ import {
   scoreLayout,
   stretchForLabels,
   swapNodes,
+  untangle,
 } from './layoutOptimize';
 import type { NodeBox, Positions, Segment, SegmentLabels } from './layoutOptimize';
 
@@ -296,5 +297,26 @@ describe('swapNodes', () => {
       expect(fast.pos).toEqual(slow.pos);
       expect(fast.score).toEqual(slow.score);
     }
+  });
+});
+
+describe('untangle', () => {
+  it('ranks crossings above every other problem', () => {
+    const tidy = { crossings: 1, tangles: 0, length: 100 };
+    const knotted = { crossings: 0, tangles: 9, length: 900 };
+    expect(better(knotted, tidy)).toBe(true);
+  });
+  it('moves a concept off a crossing when a free spot takes it out', () => {
+    // Four concepts, all connected (drawable without crossings): as a square
+    // with both diagonals, two relations cross; one concept inside the others' triangle uncrosses them.
+    const ids = ['a', 'b', 'c', 'd'];
+    const boxes = Object.fromEntries(ids.map((id) => [id, box(8, 0, 0)]));
+    const segments: Segment[] = [['a', 'b'], ['b', 'c'], ['c', 'd'], ['d', 'a'], ['a', 'c'], ['b', 'd']];
+    const square: Positions = { a: { x: 0, y: 0 }, b: { x: 400, y: 0 }, c: { x: 400, y: 400 }, d: { x: 0, y: 400 } };
+    expect(countCrossings(segments, square)).toBe(1);
+    const { pos, score } = untangle(segments, square, boxes);
+    expect(score.crossings).toBe(0);
+    expect(countCrossings(segments, pos)).toBe(0);
+    expect(countBoxOverlaps(pos, boxes) + countNodeOverlaps(segments, pos, boxes)).toBe(0);
   });
 });

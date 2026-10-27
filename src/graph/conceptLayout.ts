@@ -17,7 +17,7 @@ import {
   normalizeRelationship,
   relationFontSize,
 } from './concepts';
-import { arrangeComponent, better, clearance, createRng, layoutKey, packComponents, SPACING } from './layoutOptimize';
+import { arrangeComponent, better, clearance, createRng, layoutKey, packComponents, SPACING, untangle } from './layoutOptimize';
 import type { NodeBox, Positions, Segment, SegmentLabel, SegmentLabels } from './layoutOptimize';
 
 /** A line's width in model px when zoomed in. */
@@ -234,14 +234,18 @@ export function arrangeConceptComponent(input: ConceptLayoutInput, comp: number,
 /** The whole search, every component and seed: what the build ships. */
 export function searchConceptLayout(input: ConceptLayoutInput): Positions[] {
   return input.components.map((c, i) => {
-    let best: ReturnType<typeof arrangeConceptComponent> | null = null;
-    for (const seed of searchSeeds(i, c.ids)) {
-      const candidate = arrangeConceptComponent(input, i, seed);
-      if (!best || better(candidate.score, best.score)) best = candidate;
-    }
-    return best!.pos;
+    const candidates = searchSeeds(i, c.ids).map((seed) => arrangeConceptComponent(input, i, seed));
+    // The best few go on to have their crossings taken out (untangle): it's
+    // slower than the search, and the order can change once it's done.
+    const order = (a: (typeof candidates)[number], b: (typeof candidates)[number]) =>
+      better(a.score, b.score) ? -1 : better(b.score, a.score) ? 1 : 0;
+    const finalists = candidates.sort(order).slice(0, UNTANGLE_FINALISTS);
+    return finalists.map((f) => untangle(c.segments, f.pos, input.boxes, c.labels)).sort(order)[0].pos;
   });
 }
+
+/** How many of the search's best arrangements are untangled before one is chosen. */
+const UNTANGLE_FINALISTS = 4;
 
 /**
  * The components side by side for a viewport of this aspect (width ÷

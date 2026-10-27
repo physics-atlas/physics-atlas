@@ -39,7 +39,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 |---|---|
 | Learners choose the goal | Any concept can become a goal ("Show path to this") |
 | Self-paced, no time limits | Nothing advances or expires on its own |
-| Distraction can be switched off | **Reduce motion** stops the animated starfield, galaxy and map glides |
+| Distraction can be switched off | **Reduce motion** (header, and the home page) stops the home galaxy, the drifting nebulae and the map glides; motion is on until it's pressed, and the choice is kept (WCAG 2.2.2 for the backdrop, 2.3.3 for the glides) |
 | Progress is visible | Path progress ("3 of 8 learned"), learned markers on the map |
 
 ## WCAG 2.2 AA rules for contributors
@@ -88,7 +88,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   instead of rendering unreadably small.
 - **Images and canvases have a text alternative.** The graph canvas is
   `role="img"` with a name that points to the keyboard route; decorative canvases
-  (starfield, galaxy) are `aria-hidden`.
+  (the home galaxy) are `aria-hidden`.
 
 **Operable**
 
@@ -102,7 +102,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 - **No dragging-only actions:** offer a button for anything done by drag, wheel or
   pinch.
 - **Motion:** every animation must stop under `reducedMotion()` (`src/lib/motion.ts`)
-  — the OS setting or the in-app toggle. CSS animations are covered globally by the
+  — the in-app **Reduce motion** toggle (motion is on until it's pressed). CSS animations are covered globally by the
   `data-motion` rules in `App.css`; JS animations must call `reducedMotion()` when
   they run, not once at load.
 - **Bypass blocks and page titles:** the skip link targets `<main id="main">`; every
@@ -191,6 +191,17 @@ long reading needs:
   page, a concept page in each sidebar view, both themes, a phone with the contents open,
   a page with written depths, blocks, links and a wide equation (both themes, a phone), a
   relation page, the open filter groups, and the proposal editor with a page at two depths.
+
+## Pictures
+
+- **Described:** every picture's description (`alt`) is required — by the editor, the
+  proposal checks and the validator — and is read out in its place; the caption and the
+  credit are text under it (`figcaption`), the credit in italics, not a dimmer colour.
+- **In the editor:** "Add a picture…" is a real button (the file input it opens is hidden);
+  focus moves to describing the new picture; its preview has an empty `alt`, as the
+  description is being written beside it.
+- **Checked:** axe-core reports nothing on a card and a page with a picture, and on the
+  editor with a picture, a relation's assumption and a new relation type.
 
 ## Map on a phone, and feedback
 

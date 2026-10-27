@@ -1,5 +1,7 @@
 import { concepts } from '../src/data/loadConcepts';
 import { feedbackIssue, feedbackProblems } from '../src/community/feedback';
+import { MAX_FIGURES, figurePath, uploadProblem } from '../src/community/figures';
+import type { FigureUpload } from '../src/community/figures';
 import type { Feedback } from '../src/community/feedback';
 import { proposalProblems, resolveDependencies } from '../src/community/proposals';
 import type { Proposal } from '../src/community/types';
@@ -8,7 +10,7 @@ import type { Config, Env } from './config';
 import { randomToken } from './crypto';
 import { GitHub, GitHubError, SignInError } from './github';
 import type { Fetch } from './github';
-import { branchFor, decodeProposal, filesFor, parseExperts, pullRequestBody } from './proposalPr';
+import { VOCABULARY_PATH, branchFor, decodeProposal, filesFor, parseExperts, pullRequestBody } from './proposalPr';
 import type { Expert } from './proposalPr';
 import { SESSION_COOKIE, SESSION_SECONDS, STATE_COOKIE, cookie, openSession, readCookie, sealSession } from './session';
 import type { SessionUser } from './session';
@@ -22,7 +24,7 @@ import type { SessionUser } from './session';
 //   GET  /api/auth/callback      GitHub sends the browser here → back, with ?signin=<reason> if it failed
 //   POST /api/auth/logout
 //   GET  /api/proposals          { proposals } — open pull requests labelled "proposal"
-//   POST /api/proposals          { proposal, description } → { number, url }
+//   POST /api/proposals          { proposal, description, uploads? } → { number, url }
 //   POST /api/feedback           { kind, title, message, page? } → { number, url } — anyone signed in
 
 export const PROPOSAL_LABEL = 'proposal';
@@ -189,7 +191,11 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
         if (!expert)
           return json({ error: `@${user.login} isn't on the invite list yet. Ask the curators to add you.` }, 403);
 
-        const body = (await request.json().catch(() => null)) as { proposal?: Proposal; description?: string } | null;
+        const body = (await request.json().catch(() => null)) as {
+          proposal?: Proposal;
+          description?: string;
+          uploads?: FigureUpload[];
+        } | null;
         if (!body?.proposal || typeof body.proposal !== 'object') return json({ error: 'No proposal in the request.' }, 400);
         const open = await openProposals(config, gh, now);
         // The server decides who proposed it, when, and how the vote stands.
@@ -209,7 +215,23 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           return json({ error: `Submit what it depends on first: ${waiting.join(', ')}.`, waiting }, 409);
         const problems = proposalProblems(proposal, concepts, open);
         if (problems.length) return json({ error: 'The proposal does not fit the map.', problems }, 422);
-        const files = filesFor(proposal);
+        // Pictures: every new one the concept names is uploaded, and nothing else is.
+        const owned = [...proposal.nodes, ...(proposal.edits ?? [])];
+        const before = new Map(concepts.nodes.map((n) => [n.id, new Set((n.figures ?? []).map((f) => f.file))]));
+        const fresh = new Set(owned.flatMap((n) => (n.figures ?? []).filter((f) => !before.get(n.id)?.has(f.file)).map((f) => figurePath(f.file))));
+        const uploads = Array.isArray(body.uploads) ? body.uploads : [];
+        if (uploads.length > MAX_FIGURES || uploads.some((u) => !u || typeof u.path !== 'string' || typeof u.data !== 'string'))
+          return json({ error: 'The pictures in the request are not readable.' }, 400);
+        const pictureProblems = uploads.flatMap((u) => uploadProblem(u, fresh) ?? []);
+        const missing = [...fresh].filter((path) => !uploads.some((u) => u.path === path));
+        if (missing.length) pictureProblems.push(...missing.map((path) => `"${path}" is named but wasn't sent`));
+        if (pictureProblems.length) return json({ error: 'The pictures do not fit the proposal.', problems: pictureProblems }, 422);
+        const dropped = (proposal.edits ?? []).flatMap((n) => {
+          const kept = new Set((n.figures ?? []).map((f) => f.file));
+          return [...(before.get(n.id) ?? [])].filter((f) => !kept.has(f)).map(figurePath);
+        });
+        const vocabulary = proposal.relationTypes?.length ? await gh.readFile(VOCABULARY_PATH) : undefined;
+        const files = filesFor(proposal, { vocabulary, uploads, dropped });
         if ('problem' in files) return json({ error: files.problem }, 422);
 
         const pr = await gh.openPullRequest({

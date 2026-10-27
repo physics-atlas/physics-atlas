@@ -9,7 +9,7 @@
 // nodes/learning goals, and example-domain resource links.
 // normalizeRelationship mirrors src/graph/concepts.ts — keep in sync.
 // Run via `npm run validate`.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 import katex from 'katex';
@@ -56,8 +56,11 @@ else if (new Set(DOMAINS).size !== DOMAINS.length) errors.push('conceptVocabular
 // Every relation type sits in exactly one broader category — a new type has to fit one.
 const CATEGORIES = vocab.relationCategories;
 if (!Array.isArray(CATEGORIES) || CATEGORIES.some((c) => !c?.key || !c.label || !Array.isArray(c.types)))
-  errors.push('conceptVocabulary.json "relationCategories" must be a list of { key, label, description, types }');
+  errors.push('conceptVocabulary.json "relationCategories" must be a list of { key, label, description, types, nests? }');
 else {
+  for (const c of CATEGORIES)
+    if (c.nests !== undefined && typeof c.nests !== 'boolean')
+      errors.push(`conceptVocabulary.json relationCategories.${c.key}: "nests" is true or false (whether the kind nests topics in the atlas contents)`);
   const placed = new Map();
   for (const c of CATEGORIES)
     for (const t of c.types) {
@@ -290,7 +293,7 @@ for (const e of data.edges) {
 
   if (e.conditions !== undefined)
     errors.push(
-      `${where}: relations no longer carry "conditions" — move each into the "assumes" of the concept that assumes it, as { "label", "description" } (docs/AUTHORING.md)`,
+      `${where}: relations don't carry "conditions" — what a relation holds under is its "assumes", as { "label", "description" } (docs/AUTHORING.md)`,
     );
   for (const key of ['description', 'derivation'])
     if (e[key] !== undefined && (typeof e[key] !== 'string' || !e[key].trim()))
@@ -339,6 +342,68 @@ for (const n of data.nodes) {
     seen.add(key);
   });
 }
+// A relation's `assumes`: what it holds under — the same { label, description?, concept? }.
+for (const e of data.edges) {
+  if (e.assumes === undefined) continue;
+  const where = `edge "${e.id}"`;
+  if (!Array.isArray(e.assumes) || e.assumes.length === 0 || e.assumes.some((a) => !a || typeof a !== 'object' || Array.isArray(a))) {
+    errors.push(`${where}: "assumes" must be a non-empty list of { "label", "description" } (and "concept" when one is on the map)`);
+    continue;
+  }
+  e.assumes.forEach((a, i) => {
+    const at = `${where}: assumption ${i + 1}`;
+    for (const key of Object.keys(a)) if (!ASSUMPTION_KEYS.has(key)) errors.push(`${at}: unknown field "${key}"`);
+    for (const key of ['label', 'description', 'concept'])
+      if (a[key] !== undefined && (typeof a[key] !== 'string' || !a[key].trim())) errors.push(`${at}: "${key}" must be text, or left out`);
+    if (a.label === undefined && a.concept === undefined) errors.push(`${at}: needs a "label" (or a "concept" it points to)`);
+    if (typeof a.concept === 'string' && !ids.has(a.concept)) errors.push(`${at}: points to "${a.concept}", which isn't a concept`);
+  });
+}
+
+// `figures`: pictures in content/media/<concept-id>/ — mirrors src/community/figures.ts.
+const MEDIA_DIR = join(ROOT, 'content/media');
+const FIGURE_FILE = /^([a-z0-9]+(?:_[a-z0-9]+)*)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.(png|jpg|webp|gif)$/;
+const FIGURE_MAX_BYTES = 1_000_000;
+const MAX_FIGURES = 4;
+const sniff = (b) =>
+  b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 ? 'png'
+  : b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? 'jpg'
+  : b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 ? 'gif'
+  : b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP' ? 'webp'
+  : null;
+const usedMedia = new Set();
+for (const n of data.nodes) {
+  if (n.figures === undefined) continue;
+  const where = `node "${n.id}"`;
+  if (!Array.isArray(n.figures) || n.figures.length === 0) {
+    errors.push(`${where}: "figures" must be a non-empty list of { "file", "alt", "credit", "caption"? }`);
+    continue;
+  }
+  if (n.figures.length > MAX_FIGURES) errors.push(`${where}: at most ${MAX_FIGURES} pictures`);
+  n.figures.forEach((f, i) => {
+    const at = `${where}: picture ${i + 1}`;
+    if (!f || typeof f !== 'object') return errors.push(`${at}: must be { "file", "alt", "credit" }`);
+    for (const key of Object.keys(f)) if (!['file', 'alt', 'caption', 'credit'].includes(key)) errors.push(`${at}: unknown field "${key}"`);
+    if (typeof f.alt !== 'string' || !f.alt.trim()) errors.push(`${at}: "alt" — what it shows, for people who can't see it — is required`);
+    if (typeof f.credit !== 'string' || !f.credit.trim()) errors.push(`${at}: "credit" — where it's from and its licence — is required`);
+    if (f.caption !== undefined && (typeof f.caption !== 'string' || !f.caption.trim())) errors.push(`${at}: "caption" must be text, or left out`);
+    const m = typeof f.file === 'string' ? FIGURE_FILE.exec(f.file) : null;
+    if (!m) return errors.push(`${at}: "file" must be "${n.id}/<name>.png" (or .jpg, .webp, .gif), under content/media/`);
+    if (m[1] !== n.id) errors.push(`${at}: "${f.file}" belongs in content/media/${n.id}/`);
+    usedMedia.add(f.file);
+    const path = join(MEDIA_DIR, f.file);
+    if (!existsSync(path)) return errors.push(`${at}: content/media/${f.file} doesn't exist`);
+    const bytes = readFileSync(path);
+    if (bytes.length > FIGURE_MAX_BYTES) errors.push(`${at}: content/media/${f.file} is larger than 1 MB`);
+    if (sniff(bytes) !== m[3]) errors.push(`${at}: content/media/${f.file} isn't the kind of picture its name says`);
+  });
+}
+if (existsSync(MEDIA_DIR))
+  for (const dir of readdirSync(MEDIA_DIR))
+    if (statSync(join(MEDIA_DIR, dir)).isDirectory())
+      for (const file of readdirSync(join(MEDIA_DIR, dir)))
+        if (!usedMedia.has(`${dir}/${file}`)) warn.push(`content/media/${dir}/${file} isn't a picture of any concept — delete it, or add it to the concept's "figures"`);
+
 for (const id of ids) {
   // An assumption in words joins nothing on the map; one pointing to a concept does.
   const inAssumption = assumedIds.has(id) || linksOut.has(id);

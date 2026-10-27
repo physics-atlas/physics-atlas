@@ -303,8 +303,13 @@ export function edgeLength(segments: Segment[], pos: Positions): number {
   return segments.reduce((sum, [s, t]) => sum + Math.hypot(pos[s].x - pos[t].x, pos[s].y - pos[t].y), 0);
 }
 
-/** Lower is better: visual tangles first, total edge length as the tie-break. */
+/**
+ * Lower is better, in this order: relations crossing each other (avoided
+ * above everything else, Decision 41), then the other visual tangles, then
+ * total edge length as the tie-break.
+ */
 export interface LayoutScore {
+  crossings: number;
   tangles: number;
   length: number;
 }
@@ -319,8 +324,8 @@ export function scoreLayout(
   labels: SegmentLabels = [],
 ): LayoutScore {
   return {
+    crossings: countCrossings(segments, pos),
     tangles:
-      countCrossings(segments, pos) +
       countNodeOverlaps(segments, pos, boxes) +
       countBoxOverlaps(pos, boxes) +
       countCrowded(pos, boxes) +
@@ -331,7 +336,8 @@ export function scoreLayout(
 }
 
 export const better = (a: LayoutScore, b: LayoutScore) =>
-  a.tangles < b.tangles || (a.tangles === b.tangles && a.length < b.length - 1e-6);
+  a.crossings < b.crossings ||
+  (a.crossings === b.crossings && (a.tangles < b.tangles || (a.tangles === b.tangles && a.length < b.length - 1e-6)));
 
 const copy = (pos: Positions): Positions =>
   Object.fromEntries(Object.entries(pos).map(([id, p]) => [id, { ...p }]));
@@ -652,12 +658,12 @@ export function swapNodes(
 
   /** The terms that involve a or b; the moved relations' names in full. */
   const local = (a: string, b: string, moved: number[], isMoved: Set<number>) => {
-    let tangles = 0, length = 0;
+    let crossings = 0, tangles = 0, length = 0;
     const movedFrames = moved.map(frameOf);
     const movedHits = movedFrames.map(hitsOf);
     moved.forEach((e, k) => {
       for (let f = 0; f < segments.length; f++)
-        if ((!isMoved.has(f) || f > e) && crosses(segments[e], segments[f], pos)) tangles++;
+        if ((!isMoved.has(f) || f > e) && crosses(segments[e], segments[f], pos)) crossings++;
       for (const id of ids) if (passesThrough(segments[e], id, pos, boxes)) tangles++;
       if (movedHits[k] > 0 || isShort(movedFrames[k], e)) tangles += COVERED_LABEL_WEIGHT;
       tangles += stretchCost(segments[e], labels[e], pos, boxes);
@@ -676,7 +682,7 @@ export function swapNodes(
         }
     if (boxesOverlap(a, b, pos, boxes)) tangles++;
     if (crowds(a, b, pos, boxes)) tangles++;
-    return { tangles, length, movedFrames, movedHits };
+    return { crossings, tangles, length, movedFrames, movedHits };
   };
 
   let score = scoreLayout(segments, pos, boxes, labels);
@@ -700,6 +706,7 @@ export function swapNodes(
           return next;
         });
         const next = {
+          crossings: score.crossings + after.crossings - before.crossings,
           tangles: score.tangles + after.tangles - before.tangles + names,
           length: score.length + after.length - before.length,
         };
@@ -718,6 +725,79 @@ export function swapNodes(
       }
   }
   return { pos, score: scoreLayout(segments, pos, boxes, labels) };
+}
+
+/** Angles tried around each neighbour when a concept is moved off a crossing. */
+const UNTANGLE_ANGLES = 24;
+
+/**
+ * Takes crossings out one concept at a time (Decision 41): each round, every
+ * concept at an end of two crossing relations is tried at spots around each
+ * of its neighbours (at the relation's ideal length) and at their centre,
+ * and goes to the one that scores best — fewest crossings first. A spot is
+ * only taken if the concept would overlap or crowd nothing there and no more
+ * lines would pass through a circle: a crossing isn't traded for a worse knot.
+ */
+export function untangle(
+  segments: Segment[],
+  start: Positions,
+  boxes: Record<string, NodeBox>,
+  labels: SegmentLabels = [],
+  rounds = 6,
+): { pos: Positions; score: LayoutScore } {
+  const pos = copy(start);
+  const ids = Object.keys(pos);
+  const around = new Map<string, number[]>(ids.map((id) => [id, []]));
+  segments.forEach(([s, t], e) => {
+    around.get(s)?.push(e);
+    around.get(t)?.push(e);
+  });
+  let score = scoreLayout(segments, pos, boxes, labels);
+  let through = countNodeOverlaps(segments, pos, boxes);
+  for (let round = 0; round < rounds && score.crossings > 0; round++) {
+    const ends = new Set<string>();
+    for (let e = 0; e < segments.length; e++)
+      for (let f = e + 1; f < segments.length; f++)
+        if (crosses(segments[e], segments[f], pos)) for (const id of [...segments[e], ...segments[f]]) ends.add(id);
+    let moved = false;
+    for (const id of [...ends].sort()) {
+      const here = pos[id];
+      const spots: Pos[] = [];
+      const others = around.get(id)!.map((e) => {
+        const other = segments[e][0] === id ? segments[e][1] : segments[e][0];
+        return { other, e };
+      });
+      for (const { other, e } of others) {
+        const length = idealLength(boxes[id].radius, boxes[other].radius, labels[e]);
+        for (let k = 0; k < UNTANGLE_ANGLES; k++) {
+          const a = (2 * Math.PI * k) / UNTANGLE_ANGLES;
+          spots.push({ x: pos[other].x + length * Math.cos(a), y: pos[other].y + length * Math.sin(a) });
+        }
+      }
+      if (others.length > 1)
+        spots.push({
+          x: others.reduce((s, o) => s + pos[o.other].x, 0) / others.length,
+          y: others.reduce((s, o) => s + pos[o.other].y, 0) / others.length,
+        });
+      let best: { at: Pos; score: LayoutScore; through: number } | null = null;
+      for (const at of spots) {
+        pos[id] = at;
+        if (ids.some((o) => o !== id && (boxesOverlap(id, o, pos, boxes) || crowds(id, o, pos, boxes)))) continue;
+        const next = scoreLayout(segments, pos, boxes, labels);
+        const nextThrough = countNodeOverlaps(segments, pos, boxes);
+        if (nextThrough > through) continue;
+        if (better(next, best?.score ?? score)) best = { at, score: next, through: nextThrough };
+      }
+      pos[id] = best ? best.at : here;
+      if (best) {
+        score = best.score;
+        through = best.through;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return { pos, score };
 }
 
 /** One full arrangement of a component: force layout → widen → de-overlap → swap clean-up. */

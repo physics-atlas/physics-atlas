@@ -261,6 +261,12 @@ the relations on a page; a new type has to fit one of them:
 | Conditions | is a condition of, valid under, under |
 | Association | relates, links (when no more specific kind fits) |
 
+Three of them — Classification and parts, Description and Derivation — are **nesting
+kinds** (`"nests": true`): in the atlas pages' contents a relation of these kinds counts as
+one step between two topics, any other as two. Every concept below the greatest
+generality goes under the closest concept more general than it (Decision 39), so these
+relations are what nest one topic inside another; a new category says whether it nests.
+
 ### How two concepts connect: `description` and `derivation`
 
 Clicking a line opens the relation's card (so does **Details** beside it in a concept's
@@ -281,6 +287,60 @@ fields, both Markdown with LaTeX (`$…$` inline, `$$…$$` on its own line):
 `description` is a few sentences on how they're linked; `derivation` shows, step by
 step, how one follows from the other. Leave either out until it's written — the card says
 *Not described yet* / *No derivation yet*. (The example only shows the format.)
+
+### When a relation holds only under an assumption: `assumes` on the relation
+
+Some relations hold only in a limit or a regime ("approximates … under the assumption of
+small velocities"). Say so on the relation, in the same shape as a concept's assumptions
+below — a `label`, an optional `description`, an optional `concept` it points to:
+
+```json
+{
+  "id": "e13",
+  "source": "einstein_eq",
+  "target": "newtonian_gravity",
+  "relationship": "leads to",
+  "assumes": [{ "label": "Sample: weak fields", "description": "Sample: and speeds far below c." }]
+}
+```
+
+It shows on the relation's card and page ("Under the assumption of") and beside the
+relation on each concept's page. This is about the relation only; what a concept always
+takes for granted goes in the concept's own `assumes`. The editor has it under each
+relation: **Under the assumption of…**.
+
+### A relation type that isn't there yet
+
+When none of the types fits, the editor's relation list ends with **Other…**: write the
+new relation as it reads between the two (lower case, e.g. "is a limit of") and choose
+which broader kind it is. The proposal carries it (`relationTypes`), and its pull request
+adds it to `conceptVocabulary.json` — the sentence template ("{s} is a limit of {t}.")
+and its place in the category — so the type arrives with the relation that needs it.
+
+## Pictures — `figures` on the concept
+
+A concept can carry up to four pictures, shown on its card and its page. Each is a file
+in `content/media/<concept-id>/` (PNG, JPEG, WebP or GIF, at most 1 MB; no SVG, which can
+carry scripts) and an entry in the concept's top-level `figures`:
+
+```json
+"figures": [
+  {
+    "file": "vector_space/sample-arrows.png",
+    "alt": "Sample: two arrows from one point, and their sum.",
+    "caption": "Sample: adding two vectors, $\\mathbf u + \\mathbf v$.",
+    "credit": "Sample: own work, CC BY 4.0"
+  }
+]
+```
+
+`alt` says what the picture shows for someone who can't see it, and is read out in its
+place — required. `credit` says where it's from and under what licence — required; only
+pictures that may be shared go in. `caption` (Markdown + LaTeX) is optional. The validator
+checks the file exists, is the kind its name says and isn't too large, and warns about a
+file in `content/media/` that no concept uses. The editor's **Pictures** field takes a
+file, makes a large one smaller (to 1600 px), and asks for the description and credit;
+the picture goes into the same pull request.
 
 ## Assumptions — `assumes` on the concept
 
@@ -316,8 +376,9 @@ out when there are none. The proposal editor has an **Assumes** field: a row per
 assumption, and a search to add one that points to a confirmed concept.
 
 Until 2026-10 assumptions were text on a relation (`"conditions": [{ "label": … }]`);
-each moved into the `assumes` of the relation's source, in the same words. The validator
-refuses `conditions` on a relation, and `assumes` as a relationship.
+each moved into the `assumes` of the relation's source, in the same words. A relation
+that holds only under an assumption now says so in its own `assumes` (above). The
+validator refuses `conditions` on a relation, and `assumes` as a relationship.
 
 An equation's own `attrs.conditions` (plain strings, see above) stays as it is.
 That list describes the equation itself.

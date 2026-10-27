@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { afterSubmission, parseDraft, withoutDraft } from './draft';
 import type { Draft } from './draft';
+import { loadPictures, savePictures } from './pictureStore';
 
 const STORAGE_KEY = 'physics-atlas-proposal-drafts-v2';
 /** Phase 2 kept a single draft here; it's moved into the list once. */
@@ -28,12 +29,26 @@ function load(): Stored {
   }
 }
 
+/** Each new picture's data in the drafts, by "<suffix>/<figure key>". */
+const picturesOf = (drafts: Draft[]) =>
+  new Map(drafts.flatMap((d) => d.figures.flatMap((f) => (f.data ? [[`${d.suffix}/${f.key}`, f.data] as const] : []))));
+
+/** The pictures as last written to IndexedDB; null until they've been read back (nothing is written before). */
+let keptPictures: Map<string, string> | null = null;
+
 function persist(next: Stored) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    // The drafts without their new pictures' data: that's in IndexedDB (pictureStore.ts).
+    const light = next.drafts.map((d) => ({ ...d, figures: d.figures.map(({ data: _data, ...f }) => (void _data, f)) }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, drafts: light }));
     localStorage.removeItem(OLD_KEY);
   } catch {
     // private mode / quota — drafts just won't survive a reload
+  }
+  if (keptPictures) {
+    const now = picturesOf(next.drafts);
+    void savePictures(now, keptPictures);
+    keptPictures = now;
   }
 }
 
@@ -54,6 +69,25 @@ export interface DraftStore {
 /** The proposals being written, kept in this browser between visits (the useProgress pattern). */
 export function useDrafts(): DraftStore {
   const [state, setState] = useState<Stored>(load);
+
+  // The new pictures come back from IndexedDB a moment after the drafts.
+  useEffect(() => {
+    let live = true;
+    void loadPictures().then((kept) => {
+      if (!live) return;
+      keptPictures = kept;
+      setState((s) => ({
+        ...s,
+        drafts: s.drafts.map((d) => ({
+          ...d,
+          figures: d.figures.map((f) => (f.data || f.file ? f : { ...f, data: kept.get(`${d.suffix}/${f.key}`) })),
+        })),
+      }));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const change = useCallback((f: (s: Stored) => Stored) => {
     setState((s) => {

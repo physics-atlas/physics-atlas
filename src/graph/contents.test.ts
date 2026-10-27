@@ -55,17 +55,69 @@ describe('buildContents', () => {
     expect(contents.byId.get('d')!.parent).toBe('a');
   });
   it('numbers the pages like a book and reads them depth-first, bigger first', () => {
-    expect(contents.order).toEqual(['A', 'B', 'a', 'd', 'c', 'b', 'lone']);
+    // a and c are just as general; c, with more relations, is the more important.
+    expect(contents.order).toEqual(['A', 'B', 'c', 'a', 'd', 'b', 'lone']);
     expect(contents.byId.get('A')!.number).toBe('1');
-    expect(contents.byId.get('a')!.number).toBe('1.2');
-    expect(contents.byId.get('d')!.number).toBe('1.2.1');
+    expect(contents.byId.get('a')!.number).toBe('1.3');
+    expect(contents.byId.get('d')!.number).toBe('1.3.1');
     expect(contents.byId.get('lone')!.number).toBe('2');
   });
   it('gives each page its previous, next and up, and the trail above it', () => {
-    expect(pageNeighbours('a', contents)).toEqual({ prev: 'B', next: 'd', up: 'A' });
+    expect(pageNeighbours('a', contents)).toEqual({ prev: 'c', next: 'd', up: 'A' });
     expect(pageNeighbours('A', contents).prev).toBeNull();
     expect(pageNeighbours('lone', contents).next).toBeNull();
     expect(trail('d', contents)).toEqual(['A', 'a']);
+  });
+});
+
+describe('buildContents: where a concept goes', () => {
+  const build = (nodes: GraphNode[], edges: [string, string, string][]) =>
+    buildContents(
+      buildConceptIndex({
+        version: 1,
+        nodes,
+        edges: edges.map(([source, relationship, target], i) => ({ id: `s${i}`, source, target, relationship })),
+      } as ConceptGraph),
+    );
+
+  it('keeps every concept of the greatest generality a chapter, even next to another', () => {
+    const c = build([concept('X', 10), concept('Y', 10), concept('x', 4)], [['X', 'relates', 'Y'], ['x', 'is a', 'Y']]);
+    // Y first: as general and as important, with more relations.
+    expect(c.roots).toEqual(['Y', 'X']);
+    expect(c.byId.get('x')!.parent).toBe('Y');
+  });
+
+  it('goes under the closest more general concept, even past one just as general next to it', () => {
+    // The Wave function case: its one equal neighbour doesn't hold it; the landmark two concepts away does.
+    const c = build(
+      [concept('Big', 10), concept('equal', 8, { importance: 10 }), concept('mid', 8, { importance: 8 }), concept('small', 3), concept('class', 4)],
+      [['mid', 'relates', 'equal'], ['small', 'uses', 'mid'], ['small', 'relates', 'class'], ['class', 'is a class of', 'Big']],
+    );
+    expect(c.byId.get('mid')!.parent).toBe('Big');
+    expect(c.byId.get('mid')!.via).toEqual(['small', 'class']);
+    expect(c.byId.get('class')!.via).toEqual([]);
+  });
+
+  it('counts a nesting kind of relation as one step and any other as two', () => {
+    // n "relates" to P directly (2 steps) but "is a" Q's part through m (1 + 1).
+    const c = build(
+      [concept('P', 9, { importance: 10 }), concept('Q', 9, { importance: 1 }), concept('m', 4), concept('n', 3)],
+      [['n', 'relates', 'P'], ['n', 'is a', 'm'], ['m', 'is one property of', 'Q']],
+    );
+    // Two steps either way: the higher-ranked one wins…
+    expect(c.byId.get('n')!.parent).toBe('m');
+    const far = build(
+      [concept('P', 9, { importance: 10 }), concept('Q', 9, { importance: 1 }), concept('n', 3)],
+      [['n', 'relates', 'P'], ['n', 'is a', 'Q']],
+    );
+    // …and a direct "is a" beats a direct "relates", however the two rank.
+    expect(far.byId.get('n')!.parent).toBe('Q');
+  });
+
+  it("breaks a tie instead of making two chapters, when nothing more general is in reach", () => {
+    const c = build([concept('one', 6, { importance: 3 }), concept('two', 6, { importance: 7 })], [['one', 'relates', 'two']]);
+    expect(c.roots).toEqual(['two']);
+    expect(c.byId.get('one')!.parent).toBe('two');
   });
 });
 

@@ -43,11 +43,7 @@ body {
   color: var(--ink);
 }
 
-/* Cosmic backdrop is a dark-theme thing: stars off, nebulas barely-there */
-:root[data-theme='light'] .starfield {
-  display: none;
-}
-
+/* Cosmic backdrop is a dark-theme thing: nebulas barely-there in light */
 :root[data-theme='light'] .nebula {
   opacity: 0.18;
 }
@@ -90,13 +86,6 @@ body {
 }
 
 /* ---------- cosmic background ---------- */
-.starfield {
-  position: fixed;
-  inset: 0;
-  z-index: -3;
-  pointer-events: none;
-}
-
 .nebula {
   position: fixed;
   z-index: -2;
@@ -150,10 +139,8 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .nebula {
-    animation: none;
-  }
+:root[data-motion='reduce'] .nebula {
+  animation: none;
 }
 
 /* ---------- home ---------- */
@@ -246,10 +233,8 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .search-hero .search-input {
-    animation: none;
-  }
+:root[data-motion='reduce'] .search-hero .search-input {
+  animation: none;
 }
 
 .search-hero .search-input:focus {
@@ -476,10 +461,8 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .view {
-    animation: none;
-  }
+:root[data-motion='reduce'] .view {
+  animation: none;
 }
 
 .graph-pane {
@@ -925,10 +908,8 @@ body {
   margin-top: 6px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .type-definition {
-    animation: none;
-  }
+:root[data-motion='reduce'] .type-definition {
+  animation: none;
 }
 
 /* Concept map: the guide at the top middle of the map; its button is in the header. */
@@ -1759,19 +1740,8 @@ input[type='checkbox'] {
   }
 }
 
-/* WCAG 2.2.2 / 2.3.3 — one switch stops everything that moves: the OS setting
-   or the in-app "Reduce motion" toggle (data-motion on <html>). */
-@media (prefers-reduced-motion: reduce) {
-  :root:not([data-motion='full']) *,
-  :root:not([data-motion='full']) *::before,
-  :root:not([data-motion='full']) *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
+/* WCAG 2.2.2 / 2.3.3 — one switch stops everything that moves: the in-app
+   "Reduce motion" toggle (data-motion on <html>, lib/motion.ts). */
 :root[data-motion='reduce'] *,
 :root[data-motion='reduce'] *::before,
 :root[data-motion='reduce'] *::after {
@@ -3068,6 +3038,72 @@ a.mode-tab {
   margin: 8px 0 12px;
 }
 
+/* A concept's pictures, on its card and its page. */
+.concept-figures {
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.concept-figure {
+  margin: 0;
+}
+
+.concept-figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.concept-figure figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.concept-figure-credit {
+  font-style: italic;
+}
+
+/* The proposal editor's pictures: a preview above each picture's fields. */
+.draft-figure-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 180px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.draft-new-type {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 8px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent-ink);
+}
+
+.atlas-relation-under {
+  margin: 4px 0;
+  font-style: italic;
+}
+
+/* Why the page sits where it does in the contents. */
+.atlas-placed {
+  margin: 0 0 12px;
+  font-style: italic;
+}
+
 .atlas-pagenav ul {
   display: flex;
   flex-wrap: wrap;
@@ -3199,7 +3235,6 @@ a.mode-tab {
   .atlas-sidebar,
   .atlas-pagenav,
   .atlas-page-header button,
-  .starfield,
   .nebula {
     display: none !important;
   }

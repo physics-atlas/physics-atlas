@@ -3,7 +3,9 @@
 // puppeteer-core + installed Chrome. Walks the home page, the concept map and
 // the community view, and collects console errors. Screenshots go to SMOKE_OUT (default /tmp).
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { runnerImport } from 'vite';
 
 const OUT = process.env.SMOKE_OUT ?? '/tmp';
 const URL = process.env.DEV_URL ?? 'http://localhost:5173';
@@ -11,10 +13,16 @@ const URL = process.env.DEV_URL ?? 'http://localhost:5173';
 // relation only when both its concepts exist).
 const compiled = JSON.parse(readFileSync(new globalThis.URL('../src/data/concepts.json', import.meta.url), 'utf8'));
 const serious = new Set(compiled.nodes.filter((n) => n.type !== 'fluff').map((n) => n.id));
-const expected = {
-  nodes: serious.size,
-  edges: compiled.edges.filter((e) => serious.has(e.source) && serious.has(e.target)).length,
-};
+const seriousEdges = compiled.edges.filter((e) => serious.has(e.source) && serious.has(e.target));
+const expected = { nodes: serious.size, edges: seriousEdges.length };
+// The learning path the map should show for lg_pt_3, from the same code — the
+// content changes (a proposal can rewire prerequisites), so it isn't written here.
+const ROOT = fileURLToPath(new globalThis.URL('..', import.meta.url));
+const { module: graphLib } = await runnerImport('/src/graph/concepts.ts', { root: ROOT, configFile: false, logLevel: 'error' });
+const goalPath = graphLib.conceptPathFor(
+  'lg_pt_3',
+  graphLib.buildConceptIndex({ ...compiled, nodes: compiled.nodes.filter((n) => serious.has(n.id)), edges: seriousEdges }),
+).order;
 const CHROME =
   process.env.CHROME_BIN ??
   (process.platform === 'darwin'
@@ -234,14 +242,14 @@ await page.waitForSelector('.concept-path-step');
 const conceptSteps = await page.$$eval('.concept-path-step', (els) => els.length);
 const conceptGoalMarked = await page.evaluate(() => window.__cy.$id('lg_pt_3').hasClass('goal-node'));
 console.log(`concept path lg_pt_3: ${conceptSteps} steps, goal marked: ${conceptGoalMarked}`);
-if (conceptSteps !== 7) errors.push(`expected 7 concept path steps, got ${conceptSteps}`);
+if (conceptSteps !== goalPath.length) errors.push(`expected ${goalPath.length} concept path steps, got ${conceptSteps}`);
 if (!conceptGoalMarked) errors.push('lg_pt_3 is not marked as the goal node');
 await page.click('.concept-path-step input[type=checkbox]');
 await new Promise((r) => setTimeout(r, 250));
 const conceptProgress = await page.evaluate(() => localStorage.getItem('physics-atlas-progress-v1') ?? '');
-console.log('concept progress key stored:', conceptProgress.includes('"concept:linear_algebra"'));
-if (!conceptProgress.includes('"concept:linear_algebra"'))
-  errors.push('ticking the first concept step did not store concept:linear_algebra');
+console.log(`concept progress key stored (concept:${goalPath[0]}):`, conceptProgress.includes(`"concept:${goalPath[0]}"`));
+if (!conceptProgress.includes(`"concept:${goalPath[0]}"`))
+  errors.push(`ticking the first concept step did not store concept:${goalPath[0]}`);
 await page.screenshot({ path: `${OUT}/concepts-goal.png` });
 
 // --- Community preview, Phase 1: proposed layer from the sample fixtures ---

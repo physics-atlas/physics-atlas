@@ -18,15 +18,14 @@ export function normalizeRelationship(raw: string): EdgeType | null {
 /**
  * The edge's sentence ({s}/{t} filled with node labels) split into text runs
  * and node references, so a view can render the other node's label as a
- * control. Falls back to a plain "{s} — {raw} — {t}" reading only for an
- * unknown relationship type — a case the validator already rejects, so this
- * is a defensive fallback, not a normal path.
+ * control. A type the vocabulary doesn't have yet — one a proposal adds
+ * ("Other…" in the editor) — reads as its own words: "{s} is a limit of {t}."
  */
 export function sentenceParts(edge: GraphEdge, byId: ConceptMap): (string | { id: string; label: string })[] {
   const s = { id: edge.source, label: byId.get(edge.source)?.label ?? edge.source };
   const t = { id: edge.target, label: byId.get(edge.target)?.label ?? edge.target };
   const type = normalizeRelationship(edge.relationship);
-  const template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} — ${edge.relationship} — {t}`;
+  const template = type ? EDGE_SENTENCE_TEMPLATES[type] : `{s} ${edge.relationship.trim()} {t}.`;
   return template
     .split(/(\{s\}|\{t\})/)
     .filter((part) => part !== '')

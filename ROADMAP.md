@@ -6,6 +6,57 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-70: Crossings first in the layout
+
+**Status:** ✅ Implemented <!-- status-line: feature-70 -->
+**Planned:** 2026-10-27 — requested: the highest priority on not crossing relations, above the current layout goals; say if that's an issue
+**Implemented:** 2026-10-27
+
+### Implemented
+- `layoutOptimize.ts`: `LayoutScore.crossings` ranked first (`better`, the swap pass); `untangle` moves concepts off crossings without new overlaps or lines through circles
+- `conceptLayout.ts`: the search untangles its 4 best arrangements and ships the best
+- Shipped layout: crossings 6 → 3, lines through circles 5 → 4, covered names 5 → 3, stretched 14 → 17
+- Tests: crossings outrank everything; untangling a square with its diagonals
+- Decision 41
+
+### Review
+Not run — direct session.
+
+## feature-69: Editor order, relation assumptions, "Other…" relation types, pictures; no motion
+
+**Status:** ✅ Implemented <!-- status-line: feature-69 -->
+**Planned:** 2026-10-27 — requested: the form with the concept's own fields first and its connections after; "under the assumption of" on a relation restored (apart from the concept's assumptions); an "Other" relation type that ships with the request; pictures when creating or editing a concept; LaTeX shown as plain text on the Vector space page; no Reduce motion button, the site still by default — then: keep the button and gliding by default if accessibility needs it (it does, at AAA), and remove the stars from the background
+**Implemented:** 2026-10-27
+
+### Implemented
+- `DraftEditor.tsx`: sections reordered; `AssumptionRows` shared by the concept and each relation (**Under the assumption of…**); **Other…** with the new phrase and its category; **Pictures** (`FigureFields`, `lib/prepareImage.ts`); the export downloads pictures and the vocabulary change
+- Data: `GraphEdge.assumes`, `GraphNode.figures` (`Figure`), `Proposal.relationTypes`; `community/relationTypes.ts` (phrase checks, `withRelationTypes` inserting two lines), `community/figures.ts` (rules, byte sniffing, upload checks), `community/pictureStore.ts` (IndexedDB), `data/media.ts`
+- Backend: pictures as git blobs, the vocabulary file for new types, dropped pictures deleted; `submitProposal` sends `uploads`
+- Shown: `Figures.tsx` on the card and page; a relation's assumptions on its card, its page and the concept page
+- Validator: relation `assumes`, `figures` (file, kind, size, alt, credit), unused media
+- Motion: the Reduce motion button and gliding by default kept (WCAG 2.3.3, 2.2.2), regular motion the default whatever the OS setting; the background stars (`Starfield.tsx`) removed
+- Pages: LaTeX outside maths flagged (`pageText.ts`). The Vector space page itself was right: the live site still served the Typst-era build (the deploy failed)
+- Tests: relation types (insertion keeps the file), figures (rules, sniffing, uploads), drafts (relation assumptions, Other…, pictures, edits dropping one, old drafts), the backend (blob upload, refusals, vocabulary in the tree), the page check; browser: editor order, Other…, assumption, a picture kept across a reload, axe on editor, card and page
+
+### Review
+Not run — direct session.
+
+## feature-68: Atlas contents nest by closeness along the map
+
+**Status:** ✅ Implemented <!-- status-line: feature-68 -->
+**Planned:** 2026-10-27 — requested: nest topics by only some kinds of relation; a tie-break instead of making two equal concepts both chapters; every connected concept below the greatest generality under one of the more general ones, chosen by how closely they're related (e.g. Wave function under Dark Matter, not a chapter)
+**Implemented:** 2026-10-27
+
+### Implemented
+- `src/graph/contents.ts`: chapters are the generality-10 concepts; every other goes under the closest more general concept (shortest path, nesting kinds 1 step, others `LOOSE_STEP` 2), ties by rank; the tie-break to an equal only when nothing more general is in reach; `ContentsEntry.via`
+- `conceptVocabulary.json` `"nests": true` on classification, description, derivation (+ validator, `RelationCategory.nests`)
+- Concept pages say why they sit where they do (`Placement` in `ConceptPage.tsx`)
+- Tests: chapters at the greatest generality, past an equal neighbour to a farther landmark (with the path), nesting kinds as one step, the tie-break
+- Docs: Decision 39 (36 marked replaced), AUTHORING (nesting kinds)
+
+### Review
+Not run — direct session.
+
 ## feature-67: Feedback as GitHub issues; the map on a phone
 
 **Status:** ✅ Implemented <!-- status-line: feature-67 -->

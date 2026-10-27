@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from 'react';
 import { NODE_TYPE_LABELS, RELATION_CATEGORIES, relationCategory } from '../../data/types';
 import type { GraphEdge, GraphNode } from '../../data/types';
 import { loadPage, PAGE_DEPTHS } from '../../data/pageSources';
-import { assumptionsOf, normalizeRelationship } from '../../graph/concepts';
+import { assumptionsOf, effectiveGenerality, GENERALITY_MAX, normalizeRelationship } from '../../graph/concepts';
 import type { ConceptIndex } from '../../graph/concepts';
 import { CARD_SECTIONS, CONDITION_SECTIONS, conditionItems, sectionItems } from '../../graph/cardSections';
 import { connectionsOf, trail } from '../../graph/contents';
@@ -11,6 +11,7 @@ import type { Contents } from '../../graph/contents';
 import type { PageRef } from '../../lib/pageLinks';
 import type { LinkTarget } from '../../lib/pageText';
 import EquationView, { FormulaView } from '../EquationView';
+import Figures from '../Figures';
 import RichText from '../RichText';
 import TypeBadge from '../TypeBadge';
 import ConnectionsDiagram from './ConnectionsDiagram';
@@ -34,6 +35,44 @@ function useWrittenDepths(id: string) {
   }, [id]);
   if (!PAGE_DEPTHS[id]) return [];
   return state?.id === id ? state.depths : null;
+}
+
+/**
+ * Why the page sits where it does in the contents (graph/contents.ts): a
+ * chapter, or the concept it's under and the concepts that connect the two.
+ */
+function Placement({ id, index, contents, links }: { id: string; index: ConceptIndex; contents: Contents; links: Links }) {
+  const entry = contents.byId.get(id)!;
+  const generality = (x: string) => effectiveGenerality(index.byId.get(x)!, index.degree.get(x) ?? 0);
+  if (!entry.parent)
+    return (
+      <p className="atlas-placed">
+        {generality(id) >= GENERALITY_MAX
+          ? 'A chapter: one of the most general concepts on the map.'
+          : 'A chapter: no concept that ranks above it is connected to it.'}
+      </p>
+    );
+  const parent = index.byId.get(entry.parent)!;
+  const kind = generality(entry.parent) > generality(id) ? 'its closest more general concept' : 'the closest concept as general that ranks above it';
+  return (
+    <p className="atlas-placed">
+      In {links.concept(parent.id, parent.label)}, {kind}
+      {entry.via.length === 0 ? (
+        ': the two are directly related.'
+      ) : (
+        <>
+          {': connected through '}
+          {entry.via.map((v, i) => (
+            <span key={v}>
+              {i > 0 && (i === entry.via.length - 1 ? ' and ' : ', ')}
+              {links.concept(v, index.byId.get(v)!.label)}
+            </span>
+          ))}
+          .
+        </>
+      )}
+    </p>
+  );
 }
 
 /** A link written on a page: to a concept's or a relation's page (named after it when the text is left out), or the web. */
@@ -121,6 +160,7 @@ export default function ConceptPage({
           {domain && ` · ${domain}`}
           {node.epistemicStatus && ` · ${node.epistemicStatus}`}
         </p>
+        <Placement id={node.id} index={index} contents={contents} links={links} />
         <p>
           <button type="button" className="draft-button" onClick={() => onShowOnMap(node.id)}>
             Show on the map
@@ -134,6 +174,8 @@ export default function ConceptPage({
         </h2>
         {description?.trim() ? <p>{description}</p> : <p className="atlas-empty">Not written yet.</p>}
       </section>
+
+      {node.figures && node.figures.length > 0 && <Figures figures={node.figures} />}
 
       {depthCount > 1 && (
         <fieldset className="atlas-depths">
@@ -247,6 +289,22 @@ export default function ConceptPage({
                           <Sentence edge={e} byId={index.byId} selfId={node.id} links={links} />{' '}
                           {links.relation(e.id, <>About this relation<span className="visually-hidden">: {typeOf(e)} {otherNode?.label}</span></>, { className: 'atlas-about' })}
                         </p>
+                        {e.assumes && e.assumes.length > 0 && (
+                          <p className="atlas-relation-under">
+                            Under the assumption of{' '}
+                            {e.assumes.map((a, k) => {
+                              const n = a.concept ? index.byId.get(a.concept) : undefined;
+                              const name = a.label ?? n?.label ?? a.concept ?? '';
+                              return (
+                                <span key={k}>
+                                  {k > 0 && (k === e.assumes!.length - 1 ? ' and ' : ', ')}
+                                  {n ? links.concept(n.id, name) : name}
+                                </span>
+                              );
+                            })}
+                            .
+                          </p>
+                        )}
                         {e.description && (
                           <details>
                             <summary>How they connect</summary>

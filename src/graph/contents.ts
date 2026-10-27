@@ -1,9 +1,12 @@
 // The atlas as a book: every concept gets a page, and the pages are ordered
-// like the map reads — the big concepts are the chapters, each smaller concept
-// sits under its most general neighbour (the one it gathers round on the
-// map), and reading order walks that tree depth-first. Pure: no React, no DOM.
+// like the map reads. The most general concepts are the chapters; every other
+// concept sits under the closest concept that outranks it, closeness measured
+// along the map's relations — the kinds that nest one topic in another
+// (classification, description, derivation) as one step, any other kind as
+// two. Reading order walks that tree depth-first. Pure: no React, no DOM.
+import { relationCategory } from '../data/types';
 import type { GraphEdge, GraphNode, NodeType } from '../data/types';
-import { assumptionsOf, nodeRadius, normalizeRelationship } from './concepts';
+import { assumptionsOf, effectiveGenerality, effectiveImportance, GENERALITY_MAX, normalizeRelationship } from './concepts';
 import type { ConceptIndex } from './concepts';
 import { TYPE_GROUPS } from './typeColors';
 
@@ -13,6 +16,8 @@ export interface ContentsEntry {
   number: string;
   depth: number;
   parent: string | null;
+  /** The concepts between it and its parent along the map, nearest first ([] when they're directly connected) */
+  via: string[];
   children: string[];
 }
 
@@ -24,19 +29,41 @@ export interface Contents {
   order: string[];
 }
 
-/** A concept's size on the map — the same generality the circles use. */
-const sizeOf = (n: GraphNode, index: ConceptIndex) => nodeRadius(n, index.degree.get(n.id) ?? 0);
+/** A relation of a nesting kind is one step between two topics; any other relation, or an assumption, this many. */
+export const LOOSE_STEP = 2;
 
-/** Bigger first, then more important, then A→Z: the order chapters and sections come in. */
+/**
+ * Which concept outranks which: more general (the circle's size), then more
+ * important, then more connected, then A→Z. A strict order, so two concepts
+ * that are just as general don't both become chapters — one goes under the
+ * other — and the order chapters and sections come in.
+ */
 function byStanding(index: ConceptIndex) {
-  return (a: string, b: string) => {
-    const na = index.byId.get(a)!, nb = index.byId.get(b)!;
-    return (
-      sizeOf(nb, index) - sizeOf(na, index) ||
-      (nb.importance ?? 0) - (na.importance ?? 0) ||
-      na.label.localeCompare(nb.label)
-    );
+  const rank = (id: string) => {
+    const n = index.byId.get(id)!;
+    const degree = index.degree.get(id) ?? 0;
+    return [effectiveGenerality(n, degree), effectiveImportance(n, degree), degree];
   };
+  return (a: string, b: string) => {
+    const ra = rank(a), rb = rank(b);
+    return rb[0] - ra[0] || rb[1] - ra[1] || rb[2] - ra[2] || index.byId.get(a)!.label.localeCompare(index.byId.get(b)!.label);
+  };
+}
+
+/** Each concept's links for the contents: the other end and how many steps it is (both directions). */
+function contentsLinks(index: ConceptIndex): Map<string, Map<string, number>> {
+  const links = new Map<string, Map<string, number>>([...index.byId.keys()].map((id) => [id, new Map()]));
+  const link = (a: string, b: string, cost: number) => {
+    if (a === b || !links.has(a) || !links.has(b)) return;
+    for (const [x, y] of [[a, b], [b, a]]) links.get(x)!.set(y, Math.min(cost, links.get(x)!.get(y) ?? Infinity));
+  };
+  for (const edges of index.outgoing.values())
+    for (const e of edges) {
+      const type = normalizeRelationship(e.relationship) ?? e.relationship.trim();
+      link(e.source, e.target, relationCategory(type).nests ? 1 : LOOSE_STEP);
+    }
+  for (const id of index.byId.keys()) for (const a of assumptionsOf(id, index).assumes) if (a.node) link(id, a.node.id, LOOSE_STEP);
+  return links;
 }
 
 /** Everything a concept is connected to: its relations' other ends, and assumptions that link concepts. */
@@ -51,28 +78,86 @@ export function neighbourIds(id: string, index: ConceptIndex): string[] {
   return [...ids].filter((x) => index.byId.has(x));
 }
 
+type Placement = { parent: string; via: string[] };
+
 /**
- * The contents of the atlas. A concept's parent is its most general
- * neighbour that's more general than itself; one with none is a chapter.
- * Parents are always strictly bigger, so the tree has no cycles.
+ * The closest concept `accepts` takes, along the contents links (Dijkstra; the
+ * map is small) — between two as close, the one that ranks higher — and the
+ * concepts on the way to it, nearest first. null when none can be reached.
+ */
+function closest(
+  id: string,
+  links: Map<string, Map<string, number>>,
+  order: (a: string, b: string) => number,
+  accepts: (other: string) => boolean,
+): Placement | null {
+  const dist = new Map<string, number>([[id, 0]]);
+  const prev = new Map<string, string>();
+  const done = new Set<string>();
+  const found: string[] = [];
+  let foundAt = Infinity;
+  for (;;) {
+    let here: string | null = null;
+    for (const [x, d] of dist)
+      if (!done.has(x) && (here === null || d < dist.get(here)! || (d === dist.get(here)! && order(x, here) < 0))) here = x;
+    if (here === null || dist.get(here)! > foundAt) break;
+    done.add(here);
+    if (here !== id && accepts(here)) {
+      found.push(here);
+      foundAt = dist.get(here)!;
+      continue; // what's beyond a candidate is farther than it
+    }
+    for (const [next, cost] of links.get(here)!) {
+      const d = dist.get(here)! + cost;
+      if (d < (dist.get(next) ?? Infinity)) {
+        dist.set(next, d);
+        prev.set(next, here);
+      }
+    }
+  }
+  if (!found.length) return null;
+  const parent = found.sort(order)[0];
+  const via: string[] = [];
+  for (let x = prev.get(parent); x && x !== id; x = prev.get(x)) via.unshift(x);
+  return { parent, via };
+}
+
+/**
+ * The contents of the atlas. The concepts of the greatest generality are the
+ * chapters. Every other concept goes under the closest concept that is more
+ * general than it — closest along the relations, a nesting kind one step and
+ * any other kind LOOSE_STEP (contentsLinks); between two as close, the one
+ * that ranks higher (byStanding). Only when nothing more general can be
+ * reached does the tie-break decide: it goes under the closest concept just
+ * as general that outranks it, so two equals don't both become chapters. A
+ * concept that nothing reachable outranks is a chapter too (the top of a part
+ * of the map with no landmark). A parent always outranks its child, so the
+ * tree has no cycles.
  */
 export function buildContents(index: ConceptIndex): Contents {
   const order = byStanding(index);
-  const parentOf = new Map<string, string | null>();
+  const links = contentsLinks(index);
+  const generality = (id: string) => effectiveGenerality(index.byId.get(id)!, index.degree.get(id) ?? 0);
+  const parentOf = new Map<string, Placement | null>();
   for (const id of index.byId.keys()) {
-    const own = sizeOf(index.byId.get(id)!, index);
-    const bigger = neighbourIds(id, index).filter((n) => sizeOf(index.byId.get(n)!, index) > own);
-    parentOf.set(id, bigger.length ? bigger.sort(order)[0] : null);
+    const own = generality(id);
+    parentOf.set(
+      id,
+      own >= GENERALITY_MAX
+        ? null
+        : (closest(id, links, order, (x) => generality(x) > own) ?? closest(id, links, order, (x) => order(x, id) < 0)),
+    );
   }
   const children = new Map<string, string[]>([...index.byId.keys()].map((id) => [id, []]));
-  for (const [id, parent] of parentOf) if (parent) children.get(parent)!.push(id);
+  for (const [id, p] of parentOf) if (p) children.get(p.parent)!.push(id);
   for (const list of children.values()) list.sort(order);
   const roots = [...index.byId.keys()].filter((id) => !parentOf.get(id)).sort(order);
 
   const byId = new Map<string, ContentsEntry>();
   const reading: string[] = [];
   const walk = (id: string, number: string, depth: number) => {
-    byId.set(id, { id, number, depth, parent: parentOf.get(id) ?? null, children: children.get(id)! });
+    const p = parentOf.get(id) ?? null;
+    byId.set(id, { id, number, depth, parent: p?.parent ?? null, via: p?.via ?? [], children: children.get(id)! });
     reading.push(id);
     children.get(id)!.forEach((c, i) => walk(c, `${number}.${i + 1}`, depth + 1));
   };

@@ -1,4 +1,5 @@
 import type { Feedback } from './feedback';
+import type { FigureUpload } from './figures';
 import type { Proposal, ProposalStore } from './types';
 
 // The browser side of the community backend (server/api.ts, served at /api on
@@ -84,10 +85,15 @@ export async function logout(): Promise<void> {
   await backend('/api/auth/logout', { method: 'POST' });
 }
 
-export async function submitProposal(proposal: Proposal, description: string): Promise<SubmitResult> {
+/** Submits a proposal; `uploads` are its new pictures, which go into the pull request but not into its description. */
+export async function submitProposal(proposal: Proposal, description: string, uploads: FigureUpload[] = []): Promise<SubmitResult> {
   const r = await backend<{ number?: number; url?: string; error?: string; problems?: string[]; waiting?: string[] }>(
     '/api/proposals',
-    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proposal, description }) },
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ proposal, description, ...(uploads.length ? { uploads } : {}) }),
+    },
   );
   if (!r) return { ok: false, error: 'The community backend could not be reached.' };
   if (r.status === 201 && r.data.number && r.data.url) return { ok: true, number: r.data.number, url: r.data.url };

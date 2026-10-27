@@ -47,6 +47,8 @@ export interface FileChange {
   path: string;
   /** null deletes the file */
   content: string | null;
+  /** A picture: `content` is its bytes in base64 */
+  encoding?: 'base64';
 }
 
 export class GitHub {
@@ -161,6 +163,17 @@ export class GitHub {
     const r = `/repos/${owner}/${repo}`;
     const head = await this.call<{ object: { sha: string } }>(`${r}/git/ref/heads/${encodeURIComponent(base)}`, { token });
     const parent = await this.call<{ tree: { sha: string } }>(`${r}/git/commits/${head.object.sha}`, { token });
+    // A tree takes text inline; a picture goes up first as a blob of its own.
+    const blobs = new Map<string, string>();
+    for (const f of p.files)
+      if (f.content !== null && f.encoding === 'base64') {
+        const blob = await this.call<{ sha: string }>(`${r}/git/blobs`, {
+          token,
+          method: 'POST',
+          body: JSON.stringify({ content: f.content, encoding: 'base64' }),
+        });
+        blobs.set(f.path, blob.sha);
+      }
     const tree = await this.call<{ sha: string }>(`${r}/git/trees`, {
       token,
       method: 'POST',
@@ -169,7 +182,9 @@ export class GitHub {
         tree: p.files.map((f) =>
           f.content === null
             ? { path: f.path, mode: '100644', type: 'blob', sha: null }
-            : { path: f.path, mode: '100644', type: 'blob', content: f.content },
+            : blobs.has(f.path)
+              ? { path: f.path, mode: '100644', type: 'blob', sha: blobs.get(f.path) }
+              : { path: f.path, mode: '100644', type: 'blob', content: f.content },
         ),
       }),
     });

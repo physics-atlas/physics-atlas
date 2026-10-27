@@ -1,3 +1,5 @@
+import type { FigureUpload } from '../src/community/figures';
+import { withRelationTypes } from '../src/community/relationTypes';
 import type { Proposal } from '../src/community/types';
 import type { FileChange } from './github';
 
@@ -40,11 +42,21 @@ export function pullRequestBody(description: string, p: Proposal, login: string)
 
 const formatEntity = (entity: unknown) => JSON.stringify(entity, null, 2) + '\n';
 
+/** Where the relation types are: a proposal adding one changes it. */
+export const VOCABULARY_PATH = 'src/data/conceptVocabulary.json';
+
 /**
  * The repository changes a proposal makes, derived from the proposal itself —
- * never from paths a browser sent. Ids are checked before they become paths.
+ * never from paths a browser sent. Ids are checked before they become paths;
+ * pictures go only where the proposal's figures say (checked by the caller,
+ * figures.ts uploadProblem). `vocabulary` is conceptVocabulary.json as it is
+ * now, when the proposal adds relation types; `dropped` the pictures an edit
+ * no longer keeps.
  */
-export function filesFor(p: Proposal): FileChange[] | { problem: string } {
+export function filesFor(
+  p: Proposal,
+  extra: { vocabulary?: string | null; uploads?: FigureUpload[]; dropped?: string[] } = {},
+): FileChange[] | { problem: string } {
   const out: FileChange[] = [];
   for (const n of [...p.nodes, ...(p.edits ?? [])]) {
     if (!SAFE_ID.test(n.id)) return { problem: `concept id "${n.id}" can't be a file name` };
@@ -66,6 +78,12 @@ export function filesFor(p: Proposal): FileChange[] | { problem: string } {
     );
     for (let d = page.depths.length + 1; d <= (page.replaces ?? 0); d++)
       out.push({ path: `content/pages/${page.concept}/depth-${d}.md`, content: null });
+  }
+  for (const u of extra.uploads ?? []) out.push({ path: u.path, content: u.data, encoding: 'base64' });
+  for (const path of extra.dropped ?? []) out.push({ path, content: null });
+  if (p.relationTypes?.length) {
+    if (!extra.vocabulary) return { problem: 'the relation types could not be read to add the new one' };
+    out.push({ path: VOCABULARY_PATH, content: withRelationTypes(extra.vocabulary, p.relationTypes) });
   }
   return out;
 }
