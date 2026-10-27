@@ -744,6 +744,82 @@ body {
   color: var(--ink-2);
 }
 
+/* The legend folds to its "Legend" button (Legend.tsx) — folded at first on a
+   phone, where it would cover the map. */
+.legend-type {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.legend-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.legend-body[hidden] {
+  display: none;
+}
+
+.legend-folded {
+  padding: 3px;
+  border-radius: 999px;
+}
+
+.legend-toggle {
+  pointer-events: auto;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.legend-toggle:hover {
+  border-color: var(--border);
+  background: var(--accent-soft);
+}
+
+.legend-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Zoomed far out or panned off the map: the way back, bottom centre above the legend. */
+.graph-take-back {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  z-index: 6;
+  transform: translateX(-50%);
+  min-height: 44px;
+  padding: 8px 22px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(2, 4, 10, 0.45);
+  cursor: pointer;
+}
+
+.graph-take-back:hover {
+  background: var(--accent-soft);
+}
+
 /* One row per family of types: its name in a fixed column, the types beside it */
 .legend-type-group {
   display: grid;
@@ -1453,6 +1529,106 @@ body {
   display: block;
 }
 
+/* The way to the feedback form, beside the display settings. */
+.header-feedback {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+
+.header-feedback:hover,
+.header-feedback[aria-current='page'] {
+  border-color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+.home-feedback {
+  margin: 18px 0 0;
+  font-size: 15px;
+}
+
+.home-feedback a {
+  color: inherit;
+}
+
+/* The feedback form: one readable column. */
+.feedback-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 16px 48px;
+}
+
+.feedback-panel {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 28px;
+  background: rgba(var(--panel-rgb), 0.88);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.feedback-panel h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 14px;
+}
+
+.feedback-kinds {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.feedback-note {
+  font-style: italic;
+}
+
+.feedback-problem {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.feedback-problem::before {
+  content: '⚠ ';
+}
+
+.feedback-summary,
+.feedback-done {
+  padding: 12px 16px;
+  border: 2px solid var(--accent-ink);
+  border-radius: 10px;
+}
+
+.feedback-summary ul {
+  margin: 6px 0 0;
+}
+
+.feedback-done h2 {
+  margin: 0 0 6px;
+}
+
+@media (max-width: 520px) {
+  .feedback-panel {
+    padding: 18px 16px;
+  }
+}
+
 .header-settings {
   display: flex;
   align-items: center;
@@ -1564,12 +1740,22 @@ input[type='checkbox'] {
 }
 
 /* The legend sits bottom-left and the controls bottom-right; on narrow screens
-   stack the controls above the legend. */
+   the legend starts folded to its button, the controls go above it (the
+   concept list has the top), and "Take me back!" beside it. */
 @media (max-width: 720px) {
   .graph-controls {
-    bottom: auto;
-    top: 12px;
+    bottom: 56px;
     max-width: calc(100% - 24px);
+  }
+
+  .graph-take-back {
+    left: auto;
+    right: 12px;
+    bottom: 12px;
+    transform: none;
+    min-height: 36px;
+    padding: 4px 16px;
+    font-size: 15px;
   }
 }
 
@@ -3090,7 +3276,7 @@ a.mode-tab {
   margin-top: 6px;
 }
 
-/* What the page's authors wrote (Typst → HTML): blocks like lecture notes. */
+/* What the page's authors wrote (Markdown + LaTeX, lib/pageText.ts): blocks like lecture notes. */
 .atlas-written {
   margin: 16px 0;
 }
@@ -3130,18 +3316,13 @@ a.mode-tab {
   border-left-style: dotted;
 }
 
-/* A display equation: MathML's own layout, in a box that scrolls sideways when the
-   equation is wider than the column (made focusable then — lib/scrollableMath.ts). */
-.atlas-math-block {
+/* A display equation scrolls sideways when it's wider than the column (made
+   focusable then — lib/scrollableMath.ts). */
+.atlas-written .rich-math-display {
   margin: 12px 0;
   padding: 6px 0;
-  overflow-x: auto;
   /* sideways only: a tall fraction mustn't turn it into a vertical scroller too */
   overflow-y: hidden;
-}
-
-.atlas-math-block > math {
-  font-size: 1.15em;
 }
 
 /* The neighbourhood drawing and the lists under it. */

@@ -46,7 +46,7 @@ backlog/roadmap entries and commit messages.
 sophie_scicom/
 ├── content/
 │   ├── concepts/     # THE concept graph: graph.json + nodes/<id>.json + edges/<id>.json
-│   └── pages/        # atlas pages in Typst: <concept-id>/depth-1.typ, depth-2.typ, … (compiled by scripts/compile-pages.mjs)
+│   └── pages/        # atlas pages in Markdown + LaTeX: <concept-id>/depth-1.md, depth-2.md, … (checked by scripts/check-pages.mjs)
 ├── src/
 │   ├── data/         # types.ts (schema) + conceptVocabulary.json; concepts.json is GENERATED (gitignored)
 │   ├── graph/        # concepts.ts (sizes, zoom depth, edge weight, learning path), dag.ts,
@@ -61,8 +61,8 @@ sophie_scicom/
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
 ├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
 ├── community/        # experts.json — the invite list while the repo is private
-├── scripts/          # compile-concepts.mjs (content → src/data), compile-pages.mjs (Typst pages + Typst equations → HTML/MathML,
-│                     # lib/typst.mjs, lib/atlas-preamble.typ), build-layout.mjs, validate-concepts.mjs, lib/concept-files.mjs
+├── scripts/          # compile-concepts.mjs (content → src/data), check-pages.mjs (the atlas pages),
+│                     # build-layout.mjs, validate-concepts.mjs, lib/concept-files.mjs
 └── docs/             # DESIGN-DECISIONS.md, AUTHORING.md, COMMUNITY-BACKEND-SETUP.md
 ```
 

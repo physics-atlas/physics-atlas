@@ -170,9 +170,10 @@ long reading needs:
   (`aria-expanded`), and Escape folds it back to the button.
 - **Depths:** a page written at several depths has a "Depth" radio group (fieldset and
   legend, a hint tied to each choice); the chosen depth carries to the next page.
-- **Written content (Typst):** compiled to real HTML — headings, paragraphs, lists — with
-  equations as MathML, so they're read out, zoom and reflow; numbered blocks carry their
-  label ("Definition 3.1.2") as text. A display equation wider than the column scrolls
+- **Written content (Markdown + LaTeX):** parsed into real headings, paragraphs and
+  lists, with equations typeset by KaTeX, which adds MathML, so they're read out; numbered
+  blocks carry their label ("Definition 3.1.2") as text. A page starts its headings at
+  `##` (the concept's name is the `h1`); the build refuses a `#`. A display equation wider than the column scrolls
   sideways in a box that becomes focusable (and named "Equation (scrolls sideways)") only
   then, so equations that fit add no Tab stops.
 - **How it connects:** the diagram of first and second-order connections is a picture
@@ -188,8 +189,26 @@ long reading needs:
 - **Print:** the header, contents and page navigation are left out.
 - **Checked:** axe-core (WCAG 2.0–2.2 A/AA + best practice) reports nothing on the front
   page, a concept page in each sidebar view, both themes, a phone with the contents open,
-  a page with written depths and Typst maths, a relation page, the open filter groups, and
-  the proposal editor with an equation in Typst and a page at two depths.
+  a page with written depths, blocks, links and a wide equation (both themes, a phone), a
+  relation page, the open filter groups, and the proposal editor with a page at two depths.
+
+## Map on a phone, and feedback
+
+- **Legend:** folds to a **Legend** button (`aria-expanded`, `aria-controls`), folded at
+  first on a phone so it doesn't cover the map; the folded body is `hidden`.
+- **Panning:** a one-finger drag pans wherever it starts, on a concept too; a tap still
+  opens the card. The zoom and "Show the whole map" buttons stay the non-gesture way
+  (WCAG 2.5.7).
+- **Take me back!:** a real button, shown when the map is zoomed far out or off the screen;
+  the zoom stops at half the whole-map view, so the map can't shrink out of sight.
+- **Feedback form:** a labelled radio group, title and message with hints tied to them;
+  problems are listed in a summary that takes focus (each a link to its field) and marked
+  on the fields (`aria-invalid`, the message tied with `aria-describedby`, a ⚠ and bold,
+  not colour); the thank-you takes focus and links the issue. It says before sending that
+  issues are public.
+- **Checked:** axe-core reports nothing on the phone map with the legend folded, open and
+  with "Take me back!" (both themes), and on the feedback form signed out, signed in, with
+  problems and sent (both themes, a phone).
 
 ## Known gaps
 

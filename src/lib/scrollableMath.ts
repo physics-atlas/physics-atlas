@@ -4,7 +4,7 @@
  * named then — and only then, so equations that fit add no Tab stops.
  */
 export function markScrollableMath(root: ParentNode | null) {
-  root?.querySelectorAll<HTMLElement>('.atlas-math-block').forEach((box) => {
+  root?.querySelectorAll<HTMLElement>('.rich-math-display').forEach((box) => {
     const wide = box.scrollWidth > box.clientWidth + 1;
     if (wide) {
       box.tabIndex = 0;

@@ -1,3 +1,4 @@
+import type { Feedback } from './feedback';
 import type { Proposal, ProposalStore } from './types';
 
 // The browser side of the community backend (server/api.ts, served at /api on
@@ -100,4 +101,18 @@ export class GitHubStore implements ProposalStore {
     if (!r || r.status !== 200) throw new Error('Proposals could not be loaded from GitHub.');
     return r.data.proposals;
   }
+}
+
+export type FeedbackResult = { ok: true; number: number; url: string } | { ok: false; error: string; problems?: string[] };
+
+/** Sends feedback; the backend opens it as an issue (src/community/feedback.ts). */
+export async function submitFeedback(feedback: Feedback): Promise<FeedbackResult> {
+  const r = await backend<{ number?: number; url?: string; error?: string; problems?: string[] }>('/api/feedback', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(feedback),
+  });
+  if (!r) return { ok: false, error: 'The site could not reach its backend. Please try again in a minute.' };
+  if (r.status === 201 && r.data.number && r.data.url) return { ok: true, number: r.data.number, url: r.data.url };
+  return { ok: false, error: r.data.error ?? `Sending failed (${r.status}).`, problems: r.data.problems };
 }

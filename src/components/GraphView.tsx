@@ -150,6 +150,12 @@ export interface DraftOverlay {
 }
 
 const ZOOM_STEP = 1.5;
+/** How far out the map zooms, as a share of the whole-map view: smaller, never lost to a speck. */
+const MIN_ZOOM_OF_OVERVIEW = 0.5;
+/** Zoomed out past this share of the whole-map view, "Take me back!" offers the way home. */
+const LOST_ZOOM_OF_OVERVIEW = 0.75;
+/** How far (px) a press on a concept moves before it pans the map instead of tapping it. */
+const PAN_SLOP = 8;
 const NO_IDS: string[] = [];
 const NO_SHAPES: DraftShape[] = [];
 /** What an edit draft overrides on the confirmed concept while it's previewed. */
@@ -1024,6 +1030,8 @@ export default function GraphView({
   useEffect(() => {
     applyFadeRef.current?.();
   }, [showAll]);
+  // Zoomed far out, or panned until none of the map is on screen.
+  const [lost, setLost] = useState(false);
   const overviewInsets = (): Insets => ({
     left: 0,
     right: 0,
@@ -1077,6 +1085,7 @@ export default function GraphView({
         }
         // The overview zoom moved with the layout, even if the viewport didn't.
         refreshCovers();
+        limitZoom();
       };
       if (reduced) {
         setPositions(cy, positions);
@@ -1097,6 +1106,29 @@ export default function GraphView({
     });
     fitBeside(cy, cy.elements(), overviewInsets(), false);
     coversRef.current = relationCovers(cy);
+
+    // The map zooms out only a little past the whole-map view, so it can't
+    // shrink out of sight; past LOST_ZOOM_OF_OVERVIEW of it, or panned until
+    // none of the map is on screen, "Take me back!" shows. The limit follows
+    // the whole-map view as the layout and the window change.
+    let overview = cy.zoom();
+    let lostFrame = 0;
+    const checkLost = () => {
+      lostFrame = 0;
+      const bb = cy.elements().renderedBoundingBox();
+      const offScreen = bb.x2 < 0 || bb.y2 < 0 || bb.x1 > cy.width() || bb.y1 > cy.height();
+      setLost(cy.zoom() < overview * LOST_ZOOM_OF_OVERVIEW || offScreen);
+    };
+    const limitZoom = () => {
+      overview = overviewZoom(cy, overviewInsets());
+      cy.minZoom(Math.min(overview * MIN_ZOOM_OF_OVERVIEW, cy.zoom()));
+      checkLost();
+    };
+    limitZoom();
+    cy.on('viewport', () => {
+      if (!lostFrame) lostFrame = window.requestAnimationFrame(checkLost);
+    });
+    cy.on('resize', limitZoom);
 
     // Map-style level of detail: as you zoom out, less important concepts
     // (and the lines to them) disappear, leaving the landmarks; zooming in
@@ -1222,6 +1254,43 @@ export default function GraphView({
       refreshCovers();
     });
 
+    // A drag that starts on a concept pans the map, as one on the background
+    // does. Cytoscape leaves it still (the concepts can't be moved), and on a
+    // phone the circles cover most of the screen at the whole-map zoom, so a
+    // finger would rarely find anywhere that pans. The draft keeps its own drag;
+    // two fingers are a pinch, Cytoscape's.
+    let press: { at: cytoscape.Position; pan: cytoscape.Position; moving: boolean } | null = null;
+    cy.on('tapstart', 'node', (e) => {
+      const n = e.target as cytoscape.NodeSingular;
+      if (n.grabbable()) {
+        press = null;
+        return;
+      }
+      press = cy.userPanningEnabled() ? { at: { ...e.renderedPosition }, pan: { ...cy.pan() }, moving: false } : null;
+      // Cytoscape 3.34 makes the list of dragged elements only for a node that
+      // can be dragged, then reads it when a second finger starts a pinch — a
+      // pinch begun on a concept threw. An empty list is what it means.
+      const renderer = (cy as unknown as { renderer?: () => { dragData?: { touchDragEles?: unknown } } }).renderer?.();
+      if (renderer?.dragData) renderer.dragData.touchDragEles = cy.collection();
+    });
+    cy.on('tapdrag', (e) => {
+      if (!press) return;
+      const touches = (e.originalEvent as Event as Partial<TouchEvent> | undefined)?.touches;
+      if (touches && touches.length > 1) {
+        press = null;
+        return;
+      }
+      const dx = e.renderedPosition.x - press.at.x;
+      const dy = e.renderedPosition.y - press.at.y;
+      if (!press.moving && Math.hypot(dx, dy) < PAN_SLOP) return;
+      press.moving = true;
+      viewportTouchedRef.current = true;
+      cy.pan({ x: press.pan.x + dx, y: press.pan.y + dy });
+    });
+    cy.on('tapend', () => {
+      press = null;
+    });
+
     cy.on('tap', (e) => {
       const tgt = e.target;
       if (tgt === cy) {
@@ -1275,6 +1344,7 @@ export default function GraphView({
       if (fadeFrame) window.cancelAnimationFrame(fadeFrame);
       if (dragFrame) window.cancelAnimationFrame(dragFrame);
       if (bubbleFrame) window.cancelAnimationFrame(bubbleFrame);
+      if (lostFrame) window.cancelAnimationFrame(lostFrame);
       cancelLayoutSearch();
       applyFadeRef.current = null;
       placeBubblesRef.current = null;
@@ -1742,6 +1812,11 @@ export default function GraphView({
         </button>
         {extraControls}
       </div>
+      {lost && (
+        <button type="button" className="graph-take-back" onClick={fitAll}>
+          Take me back!
+        </button>
+      )}
     </>
   );
 }

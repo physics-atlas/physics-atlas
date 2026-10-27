@@ -59,7 +59,7 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   }
   for (const id of p.removals ?? [])
     if (!confirmedEdges.has(id)) problems.push(`${where}: removes relation "${id}", which isn't on the map`);
-  // A page belongs to the proposal's own concept: depths of Typst, none empty.
+  // A page belongs to the proposal's own concept: depths of Markdown + LaTeX, none empty.
   const pageOwners = new Set([...p.nodes, ...(p.edits ?? [])].map((n) => n.id));
   for (const page of p.pages ?? []) {
     if (!pageOwners.has(page.concept))

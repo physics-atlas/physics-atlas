@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build:content && vite",
-    "build:content": "node scripts/compile-concepts.mjs && node scripts/compile-pages.mjs && node scripts/build-layout.mjs",
+    "build:content": "node scripts/compile-concepts.mjs && node scripts/check-pages.mjs && node scripts/build-layout.mjs",
     "build": "npm run build:content && tsc -b && vite build",
     "lint": "oxlint",
     "validate": "npm run build:content && node scripts/validate-concepts.mjs",
@@ -18,11 +18,9 @@
     "cytoscape": "^3.34.0",
     "katex": "^0.19.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "tex2typst": "0.6.2"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@myriaddreamin/typst-ts-node-compiler": "0.8.0-rc3",
     "@types/cytoscape": "^3.21.9",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

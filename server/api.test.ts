@@ -36,7 +36,7 @@ const env: Env = {
 };
 
 /** A stand-in for GitHub: records what the backend writes, serves what it reads. */
-function fakeGitHub(invited: string[] = ['ada']) {
+function fakeGitHub(invited: string[] = ['ada'], { issues = true } = {}) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object }[] = [];
   let jwtSeen = '';
@@ -82,6 +82,10 @@ function fakeGitHub(invited: string[] = ['ada']) {
       return reply({ number, html_url: `https://github.com/atlas-org/atlas-test/pull/${number}` });
     }
     if (/\/issues\/\d+\/labels$/.test(path)) return reply([]);
+    if (path === `${r}/issues` && method === 'POST')
+      return issues
+        ? reply({ number: 40, html_url: 'https://github.com/atlas-org/atlas-test/issues/40' }, 201)
+        : reply({ message: 'Resource not accessible by integration' }, 403);
     return reply({ message: 'Not Found' }, 404);
   };
   return { fetchImpl, writes, pulls, jwt: () => jwtSeen };
@@ -318,6 +322,54 @@ describe('submitting a proposal', () => {
     const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { tree: { path: string; sha?: null }[] };
     expect(tree.tree).toContainEqual({ path: 'content/concepts/nodes/vlasov_equation.json', mode: '100644', type: 'blob', content: expect.any(String) });
     expect(tree.tree).toContainEqual({ path: 'content/concepts/edges/e62.json', mode: '100644', type: 'blob', sha: null });
+  });
+});
+
+describe('sending feedback', () => {
+  const feedback = { kind: 'idea', title: 'Sample title', message: 'Sample: ping @someone.', page: '/?mode=concepts' };
+  const send = (gh: ReturnType<typeof fakeGitHub>, session: string | undefined, body: unknown = feedback, origin = ORIGIN) =>
+    call(gh, '/api/feedback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin, ...(session ? { cookie: session } : {}) },
+      body: JSON.stringify(body),
+    });
+
+  it('opens a labelled issue for anyone signed in — no invitation needed', async () => {
+    const gh = fakeGitHub([]);
+    const session = await signIn(gh);
+    const res = await send(gh, session);
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ number: 40, url: 'https://github.com/atlas-org/atlas-test/issues/40' });
+    const issue = gh.writes.find((w) => w.path === '/repos/atlas-org/atlas-test/issues')!.body as { title: string; body: string; labels: string[] };
+    expect(issue.labels).toEqual(['feedback', 'feedback: idea']);
+    expect(issue.body).toContain('@ada');
+    expect(issue.body).not.toContain('@someone');
+  });
+
+  it('refuses it signed out, from another site, or incomplete', async () => {
+    const gh = fakeGitHub();
+    expect((await send(gh, undefined)).status).toBe(401);
+    const session = await signIn(gh);
+    expect((await send(gh, session, feedback, 'https://evil.example')).status).toBe(403);
+    const res = await send(gh, session, { ...feedback, message: '' });
+    expect(res.status).toBe(422);
+    expect((await res.json()).problems).toHaveLength(1);
+    expect(gh.writes.filter((w) => w.path.endsWith('/issues'))).toEqual([]);
+  });
+
+  it('slows down one person sending a lot', async () => {
+    const gh = fakeGitHub();
+    const session = await signIn(gh);
+    for (let i = 0; i < 5; i++) expect((await send(gh, session)).status).toBe(201);
+    expect((await send(gh, session)).status).toBe(429);
+  });
+
+  it('says so when the App may not open issues yet', async () => {
+    const gh = fakeGitHub(['ada'], { issues: false });
+    const session = await signIn(gh);
+    const res = await send(gh, session);
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toMatch(/not allowed to open issues/);
   });
 });
 

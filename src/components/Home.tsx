@@ -1,6 +1,7 @@
 import type { SearchEntry } from './SearchBox';
 import Galaxy from './Galaxy';
 import SearchBox from './SearchBox';
+import { isPlainClick } from '../lib/pageLinks';
 
 interface HomeProps {
   /** Every concept, for the hero search */
@@ -14,6 +15,8 @@ interface HomeProps {
   onCommunity: () => void;
   /** Open the atlas pages (the chapters) */
   onPages: () => void;
+  /** Open the feedback form */
+  onFeedback: () => void;
   /** The reduce-motion switch — the galaxy animates indefinitely, so it must be stoppable here too */
   motionButton: React.ReactNode;
   still: boolean;
@@ -26,6 +29,7 @@ export default function Home({
   onExplore,
   onCommunity,
   onPages,
+  onFeedback,
   motionButton,
   still,
 }: HomeProps) {
@@ -74,6 +78,18 @@ export default function Home({
             <span aria-hidden> →</span>
           </button>
         </div>
+        <p className="home-feedback">
+          <a
+            href="?mode=feedback"
+            onClick={(e) => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              onFeedback();
+            }}
+          >
+            Tell us what you think of the site
+          </a>
+        </p>
       </div>
     </div>
   );

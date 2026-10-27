@@ -3,7 +3,7 @@ import { signJwt } from './crypto';
 
 // The GitHub calls the backend makes. Two identities:
 // - the GitHub App's installation token writes to the repository (branches,
-//   commits, pull requests) — proposers need no access of their own;
+//   commits, pull requests, feedback issues) — proposers need no access of their own;
 // - a proposer's own token is used once, at sign-in, to read who they are.
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -130,6 +130,17 @@ export class GitHub {
       { token: await this.appToken() },
     );
     return issues.filter((i) => i.pull_request);
+  }
+
+  /** An issue in the repository, opened by the App (feedback from the site). */
+  async openIssue(p: { title: string; body: string; labels: string[] }): Promise<{ number: number; url: string }> {
+    const { owner, repo } = this.config;
+    const issue = await this.call<{ number: number; html_url: string }>(`/repos/${owner}/${repo}/issues`, {
+      token: await this.appToken(),
+      method: 'POST',
+      body: JSON.stringify(p),
+    });
+    return { number: issue.number, url: issue.html_url };
   }
 
   /**

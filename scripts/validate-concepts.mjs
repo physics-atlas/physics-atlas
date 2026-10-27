@@ -100,8 +100,8 @@ if (!Array.isArray(data.edges)) {
 if (typeof data.version !== 'number') errors.push('top-level "version" must be a number');
 
 const ALLOWED_ATTRS = {
-  equation: ['description', 'notation', 'equation', 'variables', 'conditions', 'representations', 'domain'],
-  formalism: ['description', 'notation', 'formulas', 'domain'],
+  equation: ['description', 'equation', 'variables', 'conditions', 'representations', 'domain'],
+  formalism: ['description', 'formulas', 'domain'],
   learning_goal: ['description'],
   resource: ['link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
 };
@@ -154,10 +154,6 @@ function checkNodeAttrs(where, node) {
       if (!DOMAINS.includes(d))
         errors.push(`${where}: unknown domain "${d}" — use one from conceptVocabulary.json "domains" (several: "A / B"), or add it there first`);
 
-  // LaTeX unless the concept says Typst; Typst maths is compiled (and checked) by compile-pages.mjs.
-  mathNotation = attrs.notation ?? 'latex';
-  if (!['latex', 'typst'].includes(mathNotation)) errors.push(`${where}: attrs.notation must be "latex" or "typst"`);
-
   if (node.type === 'equation') {
     if (typeof attrs.equation !== 'string' || !attrs.equation.trim())
       errors.push(`${where}: attrs.equation is required`);
@@ -203,12 +199,8 @@ function checkVariables(where, at, variables) {
   variables.forEach((v, i) => checkLatex(where, `${at}[${i}].symbol`, v.symbol));
 }
 
-/** The notation of the node being checked: LaTeX is checked here, Typst by compile-pages.mjs. */
-let mathNotation = 'latex';
-
 /** Equations and symbols are LaTeX, typeset by KaTeX on the card — say so when one won't typeset. */
 function checkLatex(where, at, tex) {
-  if (mathNotation === 'typst') return;
   try {
     katex.renderToString(tex, { throwOnError: true });
   } catch (e) {

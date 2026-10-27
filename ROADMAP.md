@@ -6,19 +6,35 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
-## feature-65: Atlas pages corrections — Typst at many depths, relation pages, connections, relation categories
+## feature-67: Feedback as GitHub issues; the map on a phone
+
+**Status:** ✅ Implemented <!-- status-line: feature-67 -->
+**Planned:** 2026-10-27 — requested: a feedback page for signed-in GitHub users (email or issues?); a collapsible legend, as it covers the view on small screens; the graph not panning on mobile (the background moved, the graph didn't); a zoom-out limit, and a "Take me back!" button past a threshold
+**Implemented:** 2026-10-27
+
+### Implemented
+- `src/community/feedback.ts` (kinds, checks, the issue, inert @names), `POST /api/feedback` in `server/api.ts` (signed in, same origin, 5 an hour), `GitHub.openIssue`; `submitFeedback` in `community/api.ts`
+- `components/FeedbackView.tsx` (`?mode=feedback`): signed out → sign in; problems summary; thank-you with the issue; "say which page it's about"; a **Feedback** link in the header and on the home page
+- `Legend.tsx` folds to a **Legend** button, folded at first on a phone, remembered
+- `GraphView.tsx`: a drag from a concept pans; `minZoom` at half the whole-map view; **Take me back!**; the Cytoscape pinch workaround; phone layout (controls above the folded legend)
+- Tests: feedback checks and issue, the server route (signed out, cross-site, incomplete, rate, no permission); browser: touch and mouse panning, tap, pinch to the limit, take-back, legend folding (phone, desktop); axe clean on the phone map and the feedback form
+
+### Review
+Not run — direct session.
+
+## feature-65: Atlas pages corrections — Markdown + LaTeX at many depths, relation pages, connections, relation categories
 
 **Status:** ✅ Implemented <!-- status-line: feature-65 -->
-**Planned:** 2026-10-25 — requested: collapsible concept families when filtering; pages with unnamed depth levels, created when adding content; pages in Typst only, and Typst for equations; a page per relation (card information for now); first and second-order connections in "How it connects"; broader relation categories to group the filters, which new types must fit
+**Planned:** 2026-10-25 — requested: collapsible concept families when filtering; pages with unnamed depth levels, created when adding content; pages in Typst only, and Typst for equations (2026-10-27: Typst dropped from the request — pages are Markdown + LaTeX, equations stay LaTeX); a page per relation (card information for now); first and second-order connections in "How it connects"; broader relation categories to group the filters, which new types must fit
 **Implemented:** 2026-10-25
 
 ### Implemented
-- `scripts/compile-pages.mjs` + `scripts/lib/typst.mjs` + `scripts/lib/atlas-preamble.typ` — Typst 0.15 → HTML/MathML at build time (sandboxed, output checked), `src/data/pages/*.json`, `pageIndex.json`, `typstMath.json`; in `build:content` and the dev watcher; `content/pages/README.md`
-- `src/lib/typstHtml.ts` (allowlist sanitizer), `lib/scrollableMath.ts`, `lib/typstPreview.ts` (approximate preview), `components/MathSource.tsx`, `TypstPreview.tsx`; `EquationView` in either notation
-- `components/pages/` — `ConceptPage` (depths, connections diagram, relations by category with second-order lists), `RelationPage`, `Sidebar`, `FilterGroups` (folding, mixed state), `ConnectionsDiagram`, `TypstContent`; `lib/pageLinks.ts` (`PageRef`, relation addresses); `EdgeCard` **Open its page**
-- `conceptVocabulary.json` `relationCategories` (+ validator), `types.ts` `RELATION_CATEGORIES`, `relationCategory`, `MathNotation`; `contents.ts` `connectionsOf`
-- Proposals: `Draft.notation` / `page` / `pageBefore`, `draftPage`, page files and deletions in the export, `Proposal.pages`, checks in `proposals.ts`, `server/proposalPr.ts` writes `content/pages/…`; editor **Its maths is written in** and **Page**
-- Tests: Typst build (compile, numbering, errors, sandbox, refusals), preview parser, categories, connections, drafts with pages and notation; axe clean on pages with depths, relation pages, filters, editor
+- `src/lib/pageText.ts` (the page format: headings, lists, display maths, numbered blocks, links; problems by line), `components/pages/PageText.tsx` (one renderer for the page and the editor's preview), `src/data/pageSources.ts` (`content/pages/<id>/depth-<n>.md` loaded per file), `scripts/check-pages.mjs` in `build:content` and the dev watcher; `lib/scrollableMath.ts`; `content/pages/README.md`
+- Built first in Typst (commit ce2531d), then replaced: the Typst compiler, preamble, sanitizer, preview and `notation` were removed
+- `components/pages/` — `ConceptPage` (depths, connections diagram, relations by category with second-order lists), `RelationPage`, `Sidebar`, `FilterGroups` (folding, mixed state), `ConnectionsDiagram`; `lib/pageLinks.ts` (`PageRef`, relation addresses); `EdgeCard` **Open its page**
+- `conceptVocabulary.json` `relationCategories` (+ validator), `types.ts` `RELATION_CATEGORIES`, `relationCategory`; `contents.ts` `connectionsOf`
+- Proposals: `Draft.page` / `pageBefore`, `draftPage`, page files and deletions in the export, `Proposal.pages`, checks in `proposals.ts`, `server/proposalPr.ts` writes `content/pages/…`; editor **Page** (problems by depth and line, links checked)
+- Tests: the page parser (blocks, numbering, links, problems), categories, connections, drafts with pages; axe clean on pages with depths (both themes, a phone), relation pages, filters, editor
 
 ### Review
 Not run — direct session.

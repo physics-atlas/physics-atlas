@@ -1,4 +1,6 @@
 import { concepts } from '../src/data/loadConcepts';
+import { feedbackIssue, feedbackProblems } from '../src/community/feedback';
+import type { Feedback } from '../src/community/feedback';
 import { proposalProblems, resolveDependencies } from '../src/community/proposals';
 import type { Proposal } from '../src/community/types';
 import { readConfig } from './config';
@@ -12,7 +14,7 @@ import { SESSION_COOKIE, SESSION_SECONDS, STATE_COOKIE, cookie, openSession, rea
 import type { SessionUser } from './session';
 
 // The community backend (Phase 3): sign in with GitHub, see open proposals,
-// submit one as a pull request. Everything a browser can't be trusted with —
+// submit one as a pull request, send feedback as an issue. Everything a browser can't be trusted with —
 // the App key, the OAuth secret, deciding who may submit — happens here.
 //
 //   GET  /api/me                 { configured, user, invited }
@@ -21,11 +23,14 @@ import type { SessionUser } from './session';
 //   POST /api/auth/logout
 //   GET  /api/proposals          { proposals } — open pull requests labelled "proposal"
 //   POST /api/proposals          { proposal, description } → { number, url }
+//   POST /api/feedback           { kind, title, message, page? } → { number, url } — anyone signed in
 
 export const PROPOSAL_LABEL = 'proposal';
 /** How long the list of open proposals is reused: a new one shows within this for everyone. */
 const LIST_TTL = 30_000;
 const EXPERTS_TTL = 300_000;
+/** How many feedback issues one person may open per hour (per Worker instance — a brake, not a wall). */
+const FEEDBACK_PER_HOUR = 5;
 
 const json = (data: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
@@ -56,6 +61,8 @@ const state = {
   clients: new Map<string, GitHub>(),
   list: new Map<string, Cached<Proposal[]>>(),
   experts: new Map<string, Cached<Expert[]>>(),
+  /** login → when they last sent feedback, within the hour */
+  feedback: new Map<string, number[]>(),
 };
 
 /** Clears the caches — tests start each case from nothing. */
@@ -63,6 +70,7 @@ export function resetCaches() {
   state.clients.clear();
   state.list.clear();
   state.experts.clear();
+  state.feedback.clear();
 }
 
 function client(config: Config, fetchImpl: Fetch) {
@@ -217,12 +225,35 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
         return json(pr, 201);
       }
 
+      case 'POST /api/feedback': {
+        const origin = request.headers.get('origin');
+        if (origin && origin !== url.origin) return json({ error: 'Cross-site feedback is not accepted.' }, 403);
+        if (!user) return json({ error: 'Sign in with GitHub to send feedback.' }, 401);
+        const body = (await request.json().catch(() => null)) as Partial<Record<keyof Feedback, unknown>> | null;
+        if (!body || typeof body !== 'object') return json({ error: 'No feedback in the request.' }, 400);
+        const problems = feedbackProblems(body);
+        if (problems.length) return json({ error: 'The feedback is not complete.', problems: problems.map((p) => p.message) }, 422);
+        const key = user.login.toLowerCase();
+        const recent = (state.feedback.get(key) ?? []).filter((t) => t > now - 3600_000);
+        if (recent.length >= FEEDBACK_PER_HOUR)
+          return json({ error: 'You have sent a lot of feedback this hour — thank you! Please wait a while before sending more.' }, 429);
+        const issue = await gh.openIssue(feedbackIssue(body as unknown as Feedback, user.login));
+        state.feedback.set(key, [...recent, now]);
+        console.log(`feedback: #${issue.number} from @${user.login}`);
+        return json(issue, 201);
+      }
+
       default:
         return json({ error: 'Not found.' }, 404);
     }
   } catch (e) {
     if (e instanceof GitHubError && e.status === 422 && route === 'POST /api/proposals')
       return json({ error: 'GitHub refused the change — a branch for this proposal may already exist.' }, 409);
+    // The App needs "Issues: read and write" (docs/COMMUNITY-BACKEND-SETUP.md); without it GitHub says 403.
+    if (e instanceof GitHubError && e.status === 403 && route === 'POST /api/feedback') {
+      console.error(e);
+      return json({ error: 'The site is not allowed to open issues yet — the curators have to grant it. Sorry!' }, 503);
+    }
     console.error(e);
     return json({ error: 'GitHub could not be reached. Please try again in a minute.' }, 502);
   }

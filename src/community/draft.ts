@@ -1,8 +1,8 @@
 import { NODE_TYPE_LABELS } from '../data/types';
+import { pageLinkTargets, parsePage } from '../lib/pageText';
 import type {
   Assumption,
   ConceptGraph,
-  MathNotation,
   EquationRepresentation,
   EquationVariable,
   Formula,
@@ -84,10 +84,8 @@ export interface Draft {
   formulas: DraftRepresentation[];
   /** What it takes for granted, in words — each may point to a confirmed concept; no line on the map */
   assumes: DraftAssumption[];
-  /** How its equations and symbols are written (equations and formalisms) */
-  notation: MathNotation;
   /**
-   * Its atlas page, in Typst — one source per depth, depth 1 first. null: the
+   * Its atlas page, in Markdown + LaTeX (lib/pageText.ts) — one text per depth, depth 1 first. null: the
    * page is left as it is (an edit that doesn't touch it, until it's loaded).
    */
   page: string[] | null;
@@ -134,7 +132,6 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     representations: [],
     formulas: [],
     assumes: [],
-    notation: 'latex',
     page: [],
     pageBefore: 0,
     relations: [],
@@ -170,7 +167,6 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
       description: a.description ?? '',
       ...(a.concept ? { concept: a.concept } : {}),
     })),
-    notation: attrs.notation === 'typst' ? 'typst' : 'latex',
     // The page stays as it is until the editor loads it (DraftEditor's "Edit the page").
     page: null,
     pageBefore: 0,
@@ -292,7 +288,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, review notes) is kept.
       ([k]) =>
-        !['description', 'domain', 'notation', 'equation', 'variables', 'representations', 'formulas'].includes(k) &&
+        !['description', 'domain', 'equation', 'variables', 'representations', 'formulas'].includes(k) &&
         (type === 'equation' || !EQUATION_ONLY.includes(k)) &&
         (type === 'formalism' || !FORMALISM_ONLY.includes(k)),
     ),
@@ -303,12 +299,10 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   };
   const assumes = cleanAssumptions(d.assumes);
   const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}) };
-  const notation = d.notation === 'typst' ? { notation: 'typst' as const } : {};
   const attrs =
     type === 'equation'
       ? {
           description,
-          ...notation,
           equation: d.equation.trim(),
           variables: cleanVariables(d.variables),
           conditions: [],
@@ -321,7 +315,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
         : type === 'formalism'
           ? (() => {
               const formulas = cleanFormulas(d.formulas);
-              return { description, ...notation, ...(formulas.length ? { formulas } : {}), ...kept, ...(domain ? { domain } : {}) };
+              return { description, ...(formulas.length ? { formulas } : {}), ...kept, ...(domain ? { domain } : {}) };
             })()
           : { description, ...(domain ? { domain } : {}) };
   return inOrderOf(base, { ...head, attrs: inOrderOf(baseAttrs, attrs) }) as GraphNode;
@@ -447,7 +441,7 @@ export function draftPage(d: Draft, id = conceptId(d)): ProposedPage | null {
 }
 
 /** A depth's file. */
-export const pageFile = (concept: string, depth: number) => `content/pages/${concept}/depth-${depth}.typ`;
+export const pageFile = (concept: string, depth: number) => `content/pages/${concept}/depth-${depth}.md`;
 
 export function draftProposal(d: Draft, ctx: DraftContext): Proposal {
   const id = conceptId(d);
@@ -547,6 +541,15 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
       out.push({ field: 'page', index, message: `Depth ${index + 1} of the page is empty — write it, or remove it.` });
     else if (source.length > PAGE_MAX)
       out.push({ field: 'page', index, message: `Depth ${index + 1} is very long — split it, or keep it under ${PAGE_MAX / 1000}k characters.` });
+    else {
+      const { blocks, problems } = parsePage(source);
+      for (const p of problems) out.push({ field: 'page', index, message: `Depth ${index + 1}, ${p}` });
+      for (const to of pageLinkTargets(blocks))
+        if ('concept' in to && !confirmedIds.has(to.concept))
+          out.push({ field: 'page', index, message: `Depth ${index + 1} links to “${to.concept}”, which isn't a concept on the map.` });
+        else if ('relation' in to && !ctx.confirmed.edges.some((e) => e.id === to.relation))
+          out.push({ field: 'page', index, message: `Depth ${index + 1} links to the relation “${to.relation}”, which isn't on the map.` });
+    }
   });
   d.assumes.forEach((a, index) => {
     const label = a.label.trim();
@@ -826,9 +829,7 @@ export function parseDraft(raw: unknown): Draft | null {
   const assumes = (rawAssumes as (string | DraftAssumption)[]).map((a) =>
     isString(a) ? { label: '', description: '', concept: a } : a,
   );
-  // Added 2026-10: the notation of its maths, and its page — older drafts have neither.
-  const notation = d.notation === 'typst' ? 'typst' : 'latex';
-  if (d.notation !== undefined && d.notation !== 'latex' && d.notation !== 'typst') return null;
+  // Added 2026-10: its page — older drafts have none.
   const page = d.page === undefined ? (d.editOf ? null : []) : d.page;
   if (page !== null && (!Array.isArray(page) || !page.every(isString))) return null;
   const pageBefore = typeof d.pageBefore === 'number' ? d.pageBefore : 0;
@@ -848,7 +849,6 @@ export function parseDraft(raw: unknown): Draft | null {
     representations: representations as DraftRepresentation[],
     formulas: formulas as DraftRepresentation[],
     assumes,
-    notation,
     page: page as string[] | null,
     pageBefore,
     relations,

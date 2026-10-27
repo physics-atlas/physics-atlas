@@ -1,18 +1,18 @@
-import type { EquationAttrs, EquationVariable, Formula, MathNotation } from '../data/types';
-import MathSource from './MathSource';
+import type { EquationAttrs, EquationVariable, Formula } from '../data/types';
+import { MathText } from './RichText';
 
 // An equation on the concept card, typeset like the editor's preview: the main
 // form with its variables, then every other representation with its own.
 // Loaded on demand (KaTeX is large), so the card shows the LaTeX source until
-// it arrives — see ConceptMapView. LaTeX or Typst, as the concept is written (MathSource).
+// it arrives — see ConceptMapView.
 
-function Variables({ variables, notation }: { variables: EquationVariable[]; notation?: MathNotation }) {
+function Variables({ variables }: { variables: EquationVariable[] }) {
   return (
     <dl className="concept-variables">
       {variables.map((v, i) => (
         <div key={`${v.symbol}-${i}`} className="concept-variable">
           <dt>
-            <MathSource source={v.symbol} notation={notation} />
+            <MathText tex={v.symbol} />
           </dt>
           <dd>{v.meaning}</dd>
         </div>
@@ -22,16 +22,15 @@ function Variables({ variables, notation }: { variables: EquationVariable[]; not
 }
 
 export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
-  const notation = attrs.notation;
   return (
     <div className="rel-block concept-equation">
       <div className="concept-equation-formula">
-        <MathSource source={attrs.equation} notation={notation} display />
+        <MathText tex={attrs.equation} display />
       </div>
       {attrs.variables.length > 0 && (
         <>
           <h3 className="block-heading">Variables</h3>
-          <Variables variables={attrs.variables} notation={notation} />
+          <Variables variables={attrs.variables} />
         </>
       )}
       {attrs.conditions.length > 0 && (
@@ -53,10 +52,10 @@ export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
                 <p className="concept-representation-name">{r.name}</p>
                 {r.equation && (
                   <div className="concept-equation-formula">
-                    <MathSource source={r.equation} notation={notation} display />
+                    <MathText tex={r.equation} display />
                   </div>
                 )}
-                {r.variables && r.variables.length > 0 && <Variables variables={r.variables} notation={notation} />}
+                {r.variables && r.variables.length > 0 && <Variables variables={r.variables} />}
               </li>
             ))}
           </ul>
@@ -67,7 +66,7 @@ export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
 }
 
 /** A mathematical formalism's formulas — how it works — each typeset, named and with its variables. */
-export function FormulaView({ formulas, notation }: { formulas: Formula[]; notation?: MathNotation }) {
+export function FormulaView({ formulas }: { formulas: Formula[] }) {
   return (
     <section className="rel-block concept-equation">
       <h3 className="block-heading">
@@ -82,9 +81,9 @@ export function FormulaView({ formulas, notation }: { formulas: Formula[]; notat
             <li key={`${f.name ?? ''}-${i}`} className="concept-representation">
               {f.name && <p className="concept-representation-name">{f.name}</p>}
               <div className="concept-equation-formula">
-                <MathSource source={f.equation} notation={notation} display />
+                <MathText tex={f.equation} display />
               </div>
-              {f.variables && f.variables.length > 0 && <Variables variables={f.variables} notation={notation} />}
+              {f.variables && f.variables.length > 0 && <Variables variables={f.variables} />}
             </li>
           ))}
         </ul>

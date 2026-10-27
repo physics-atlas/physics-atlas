@@ -71,18 +71,9 @@ export interface EquationRepresentation {
   variables?: EquationVariable[];
 }
 
-/**
- * How a concept's equations and symbols are written: LaTeX (the default, typeset
- * by KaTeX) or Typst math (compiled to MathML at build time). One notation for
- * all of a concept's maths.
- */
-export type MathNotation = 'latex' | 'typst';
-
 export interface EquationAttrs {
   description: string;
-  /** LaTeX unless notation is "typst" */
-  notation?: MathNotation;
-  /** The main form, in LaTeX (or Typst, with notation "typst") */
+  /** The main form, in LaTeX */
   equation: string;
   /** The main form's variables */
   variables: EquationVariable[];
@@ -101,8 +92,6 @@ export interface Formula {
 }
 
 export interface FormalismAttrs extends ConceptAttrs {
-  /** How its formulas are written (LaTeX unless "typst") */
-  notation?: MathNotation;
   /** Formulas and equations that show how the formalism works, each with its variables */
   formulas?: Formula[];
 }

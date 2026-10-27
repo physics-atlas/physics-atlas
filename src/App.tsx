@@ -17,14 +17,16 @@ import './App.css';
 
 // The atlas pages typeset maths and carry their own sidebar: loaded on first visit.
 const PageView = lazy(() => import('./components/PageView'));
+const FeedbackView = lazy(() => import('./components/FeedbackView'));
 
-type Mode = 'home' | 'concepts' | 'community' | 'page';
+type Mode = 'home' | 'concepts' | 'community' | 'page' | 'feedback';
 
 const VIEW_TITLES: Record<Mode, string> = {
   home: 'Learn by prerequisites',
   concepts: 'Concept map',
   community: 'Community review',
   page: 'Atlas pages',
+  feedback: 'Feedback',
 };
 
 /** The pages cover the confirmed, serious atlas — fluff is fun mode only. */
@@ -43,6 +45,7 @@ function initialMode(): Mode {
   // `?mode=concepts&community=1` was the community preview's address before it had a tab.
   if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
   if (m === 'page') return 'page';
+  if (m === 'feedback') return 'feedback';
   // The retired topic views (map, explore, goal, topic) land on the concept map.
   if (m) return 'concepts';
   return 'home';
@@ -159,7 +162,7 @@ export default function App() {
         ? ''
         : mode === 'page'
           ? hrefOf(pageRef)
-          : conceptGoal
+          : conceptGoal && isConceptView(mode)
           ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
           : `?mode=${mode}`;
     if (window.location.search === target) {
@@ -208,6 +211,13 @@ export default function App() {
     [focusOn],
   );
 
+  // Feedback remembers where it was opened from, so the writer can say which page it's about.
+  const [feedbackFrom, setFeedbackFrom] = useState<string | null>(null);
+  const openFeedback = useCallback(() => {
+    setFeedbackFrom(window.location.search ? `${window.location.pathname}${window.location.search}` : null);
+    setMode('feedback');
+  }, []);
+
   // Home search and landmarks land on the concept map, centred on the pick.
   const homePick = useCallback(
     (id: string) => {
@@ -233,12 +243,12 @@ export default function App() {
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
-          {/* On the pages, a search opens the concept's page; on the map, it centres the map on it. */}
+          {/* On the pages, a search opens the concept's page; elsewhere, it centres the map on it. */}
           <SearchBox
             entries={mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
-            onPick={mode === 'page' ? openConceptPage : focusOn}
+            onPick={mode === 'page' ? openConceptPage : isConceptView(mode) ? focusOn : homePick}
           />
-          {mode !== 'page' && (
+          {isConceptView(mode) && (
             <button
               type="button"
               className="map-hint-toggle"
@@ -278,6 +288,18 @@ export default function App() {
               Community
             </button>
           </nav>
+          <a
+            href="?mode=feedback"
+            className="header-feedback"
+            aria-current={mode === 'feedback' ? 'page' : undefined}
+            onClick={(e) => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              if (mode !== 'feedback') openFeedback();
+            }}
+          >
+            Feedback
+          </a>
           <div className="header-settings" role="group" aria-label="Display settings">
             {motionButton}
             {themeButton}
@@ -285,8 +307,8 @@ export default function App() {
         </header>
       )}
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
-        {/* An atlas page's own heading is the view's h1. */}
-        {mode !== 'home' && mode !== 'page' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
+        {/* An atlas page's own heading is the view's h1, and the feedback form's. */}
+        {mode !== 'home' && mode !== 'page' && mode !== 'feedback' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
         {mode === 'home' && (
           <Home
             entries={seriousSearchEntries}
@@ -295,6 +317,7 @@ export default function App() {
             onExplore={() => setMode('concepts')}
             onCommunity={() => setMode('community')}
             onPages={() => openPage({})}
+            onFeedback={openFeedback}
             motionButton={motionButton}
             still={motion.reduced}
           />
@@ -327,6 +350,11 @@ export default function App() {
               onShowOnMap={showOnMap}
               focusTick={pageFocus}
             />
+          </Suspense>
+        )}
+        {mode === 'feedback' && (
+          <Suspense fallback={<p className="atlas-loading">Loading the feedback form…</p>}>
+            <FeedbackView from={feedbackFrom} />
           </Suspense>
         )}
       </main>

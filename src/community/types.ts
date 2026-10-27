@@ -31,7 +31,7 @@ export interface VoteTally {
   clarify: number;
 }
 
-/** content/pages/<concept>/depth-<n>.typ, as a proposal carries them. */
+/** content/pages/<concept>/depth-<n>.md, as a proposal carries them. */
 export interface ProposedPage {
   concept: string;
   depths: string[];
@@ -64,7 +64,7 @@ export interface Proposal {
   /** Ids of confirmed relations this proposal would remove */
   removals?: string[];
   /**
-   * A concept's page, in Typst, one source per depth (depth 1 first). Replaces
+   * A concept's page, in Markdown + LaTeX, one text per depth (depth 1 first). Replaces
    * the page: depths past the last one, up to `replaces`, are deleted.
    */
   pages?: ProposedPage[];

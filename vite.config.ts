@@ -6,10 +6,10 @@ import { execFile } from 'node:child_process'
 import { resolve } from 'node:path'
 
 // `npm run dev` compiles content/ once at startup; this recompiles whenever a
-// concept or page file changes, so an edit shows up without restarting: a
-// concept recompiles the concepts and then the pages (their numbers and the
-// Typst equations follow the concepts), a page just the pages. The
-// regenerated files under src/data/ then reload as usual.
+// concept file changes, so an edit shows up on the map without restarting
+// (the regenerated src/data/concepts.json then reloads as usual). Page files
+// are loaded as they are and reload by themselves; a change to one, or to a
+// concept they link to, re-runs the page check so a problem shows in the terminal.
 function recompileContent(): Plugin {
   const concepts = resolve('content/concepts')
   const pages = resolve('content/pages')
@@ -29,8 +29,8 @@ function recompileContent(): Plugin {
       const run = async (file: string) => {
         const path = resolve(file)
         if (path.startsWith(concepts)) {
-          if (await script('compile-concepts.mjs')) await script('compile-pages.mjs')
-        } else if (path.startsWith(pages)) await script('compile-pages.mjs')
+          if (await script('compile-concepts.mjs')) await script('check-pages.mjs')
+        } else if (path.startsWith(pages)) await script('check-pages.mjs')
       }
       server.watcher.on('add', run).on('change', run).on('unlink', run)
     },

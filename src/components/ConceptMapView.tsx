@@ -758,7 +758,7 @@ export default function ConceptMapView({
 
               {selected.type === 'formalism' && (
                 <Suspense fallback={<p className="concept-empty">Loading the formulas…</p>}>
-                  <FormulaView formulas={selected.attrs.formulas ?? []} notation={selected.attrs.notation} />
+                  <FormulaView formulas={selected.attrs.formulas ?? []} />
                 </Suspense>
               )}
 

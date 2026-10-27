@@ -773,26 +773,34 @@ Accessibility is in docs/ACCESSIBILITY.md → Atlas pages (axe clean in both the
 **Open paths:** a curated contents file that overrides the automatic order; the next four
 steps above.
 
-## Decision 37 — Pages in Typst at many depths; relation pages; connections; relation categories (2026-10)
+## Decision 37 — Pages in Markdown + LaTeX at many depths; relation pages; connections; relation categories (2026-10)
 
 Corrections to step 1 of the atlas pages (Decision 36), which also bring in most of
 steps 2 and 3:
 
 | Piece | Rule |
 |---|---|
-| Typst only | A page is written in Typst, not Markdown or LaTeX: `content/pages/<id>/depth-<n>.typ`. Typst 0.15 compiles it at build time (`scripts/compile-pages.mjs`, typst.ts's Node compiler) to HTML with **MathML** equations — real text that's read out, zooms and reflows, instead of pictures of maths. The compiler runs sandboxed in `content/pages`; its output is checked for scripts, frames, forms, handlers and unsafe links (the build stops), and sanitized again when shown (`lib/typstHtml.ts`, an allowlist). Pinned: `@myriaddreamin/typst-ts-node-compiler` 0.8.0-rc3 (a release candidate wrapping Typst 0.15). |
-| Depths | A page has as many depths as its authors write — unnamed, 1, 2, 3…, each going further, each standing alone. A reader picks one (a "Depth" radio group); the choice carries to the next page. Blocks are numbered within the section: Definition 3.1.2 on page 3.1. The atlas preamble (`scripts/lib/atlas-preamble.typ`) gives the blocks (definition, theorem, lemma, example, remark, checkpoint; objectives and proof unnumbered) and links (`#concept`, `#relation`). |
-| Typst equations | An equation's or a formalism's maths can be Typst: `attrs.notation: "typst"` (one notation per concept, LaTeX by default). Compiled to MathML at build time (`src/data/typstMath.json`); KaTeX stays for LaTeX. |
-| Editor | **Its maths is written in** LaTeX / Typst; a **Page** field — a Typst text per depth, **Add a deeper level**, a quick reference, a preview. The previews are approximate (Typst maths converted to LaTeX by tex2typst, a light reading of Typst markup): no browser build of Typst fits — its compiler is 30 MB, over Cloudflare's 25 MiB per-file limit. An edit leaves the page alone until "Edit the page" loads it, so a proposal can't wipe a page by accident. The page travels in the same pull request (`pages` in the proposal; the backend builds each path from the checked id; dropped depths are deleted). |
+| Markdown + LaTeX | A page is written in the cards' Markdown + LaTeX, with what a page needs on top (`src/lib/pageText.ts`): headings, lists, display maths, blocks (`::: definition` … `:::`) and links (`[[concept_id]]`, `[[relation:edge_id\|words]]`, `[words](https://…)`). One file per depth: `content/pages/<id>/depth-<n>.md`. Parsed into React elements, never inserted as HTML — only KaTeX's own output is, and KaTeX adds MathML, so equations are read out. `scripts/check-pages.mjs` stops the build on a page that won't show as written (a gap in the depths, an open block, a link to nothing, maths KaTeX can't typeset); the site loads the files as they are, one small chunk each (`src/data/pageSources.ts`). Typst was built first (commit ce2531d) and set aside: its browser compiler (30 MB) is over Cloudflare's 25 MiB per-file limit, so the editor could only approximate it; one format for cards and pages keeps a single preview that is exact. |
+| Depths | A page has as many depths as its authors write — unnamed, 1, 2, 3…, each going further, each standing alone. A reader picks one (a "Depth" radio group); the choice carries to the next page. Blocks are numbered within the section: Definition 3.1.2 on page 3.1 (definition, theorem, lemma, example, remark, checkpoint; objectives and proof unnumbered). |
+| Editor | A **Page** field — a text per depth, **Add a deeper level**, a quick reference, and a preview drawn by the page's own renderer (links in it open in a new tab, so the draft stays). An edit leaves the page alone until "Edit the page" loads it, so a proposal can't wipe a page by accident. The page travels in the same pull request (`pages` in the proposal; the backend builds each path from the checked id; dropped depths are deleted). Equations stay LaTeX. |
 | Relation pages | Every relation has a page (`?mode=page&relation=<id>`): the relation as a sentence, its category, its two concepts with their definitions, how they connect, the derivation, other relations between the two. For now from the card's information. Reached from "About this relation" on a concept's page and **Open its page** on the relation's card. |
 | How it connects | A drawing of the page's neighbourhood — first-order connections on the inner ring, second-order on the outer (by the neighbour that reaches them) — then the relations grouped by category, each with **Further, through X** listing that neighbour's other connections. |
 | Relation categories | Ten broader kinds of relation (`relationCategories` in conceptVocabulary.json): Learning order, Dependence, Derivation, Description, Explanation and prediction, Evidence, Classification and parts, Occurrence, Conditions, Association — the two directions of a relation together (derived from / by, describes / described by), relates with links. Every type is in exactly one; the validator refuses a new type without one. |
 | Filters | Kinds of concept by family and kinds of relation by category, each group folding, with an "All of …" checkbox that's checked, unchecked or mixed. |
 
-**Open paths:** a Typst build in the browser for exact previews (if a smaller compiler
-appears); showing a proposed page in the Community view; written relation pages
-(`content/pages/relations/…`); equation numbers in Typst's HTML export (not yet
-supported upstream).
+**Open paths:** showing a proposed page in the Community view; written relation pages
+(`content/pages/relations/…`); figures and equation numbers on pages (images need the
+rules in BACKLOG feature-66 first).
+
+## Decision 38 — Feedback as GitHub issues; the map on a phone (2026-10)
+
+| Piece | Rule |
+|---|---|
+| Feedback | A **Feedback** link in the header (and on the home page) opens `?mode=feedback`: anyone signed in with GitHub — no invitation needed — picks what it's about, writes a title and a message, and may say which page it's about (the page they came from). The backend opens it as an **issue** in the atlas repository through the GitHub App (`POST /api/feedback`), labelled `feedback` and `feedback: <kind>`, naming the writer with an @mention so they follow the replies. Other @names in the words are made inert (a zero-width space) so the form can't ping strangers; one person may send 5 an hour per Worker instance. The form says before sending that issues are public. Without the backend (local development) it points to the GitHub issues page. |
+| Why issues, not email | The backend already has the App and sign-in; issues are tracked, labelled, answered and linked to the pull requests that fix them, in the same place as proposals; replies reach the writer without the site storing an address; and a Worker can't send email without a third-party mail service and another secret. The cost is that feedback is public — said on the form, with GitHub's private vulnerability reporting for security problems. Needs the App's **Issues: read and write** permission (docs/COMMUNITY-BACKEND-SETUP.md); until it's granted the form says the site can't open issues yet. |
+| Legend | Folds to one **Legend** button (`aria-expanded`); folded at first on a phone-sized screen, unfolded on a larger one, then as the reader last left it (localStorage, a convenience). On a phone the map controls sit above the folded legend, the concept list keeps the top. |
+| Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
+| Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
 ## Multi-agent workflow (web-dev-agent-system)
 

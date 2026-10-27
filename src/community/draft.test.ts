@@ -470,22 +470,15 @@ describe('storage', () => {
   });
 });
 
-describe('Typst in drafts', () => {
-  it('writes an equation in Typst when asked, and says so on the concept', () => {
-    const d: Draft = { ...jeans(), type: 'equation', equation: ' F = m a ', notation: 'typst' };
-    const attrs = draftNode(d, concepts).attrs as { notation?: string; equation: string };
-    expect(attrs.notation).toBe('typst');
-    expect(attrs.equation).toBe('F = m a');
-    expect('notation' in draftNode({ ...d, notation: 'latex' }, concepts).attrs).toBe(false);
-  });
-  it("exports a new concept's page, one Typst file per depth, in the same proposal", () => {
-    const d: Draft = { ...jeans(), page: ['= Sample\n\nSample: depth 1.', ' Sample: depth 2. '] };
+describe('pages in drafts', () => {
+  it("exports a new concept's page, one Markdown file per depth, in the same proposal", () => {
+    const d: Draft = { ...jeans(), page: ['## Sample\n\nSample: depth 1.', ' Sample: depth 2. '] };
     const id = conceptId(d);
-    expect(draftPage(d)).toEqual({ concept: id, depths: ['= Sample\n\nSample: depth 1.', 'Sample: depth 2.'] });
+    expect(draftPage(d)).toEqual({ concept: id, depths: ['## Sample\n\nSample: depth 1.', 'Sample: depth 2.'] });
     expect(draftProposal(d, alone(d)).pages).toEqual([draftPage(d)]);
     const files = exportFiles(d, alone(d)).map((f) => f.path);
-    expect(files).toContain(`content/pages/${id}/depth-1.typ`);
-    expect(files).toContain(`content/pages/${id}/depth-2.typ`);
+    expect(files).toContain(`content/pages/${id}/depth-1.md`);
+    expect(files).toContain(`content/pages/${id}/depth-2.md`);
     expect(draftProblems(d, alone(d))).toEqual([]);
     // No page, no files.
     expect(draftProposal(jeans(), alone(jeans())).pages).toBeUndefined();
@@ -497,21 +490,26 @@ describe('Typst in drafts', () => {
     const shorter: Draft = { ...z, page: ['Sample: one depth.'], pageBefore: 3 };
     expect(draftPage(shorter)).toEqual({ concept: 'zeldovich_approximation', depths: ['Sample: one depth.'], replaces: 3 });
     expect(removedFiles(shorter)).toEqual([
-      'content/pages/zeldovich_approximation/depth-2.typ',
-      'content/pages/zeldovich_approximation/depth-3.typ',
+      'content/pages/zeldovich_approximation/depth-2.md',
+      'content/pages/zeldovich_approximation/depth-3.md',
     ]);
   });
   it('flags an empty depth, pointing at it', () => {
     const d: Draft = { ...jeans(), page: ['Sample.', '  '] };
     expect(draftProblems(d, alone(d)).map((p) => [p.field, p.index])).toEqual([['page', 1]]);
   });
-  it('reads drafts saved before pages and notation existed', () => {
-    const { notation: _n, page: _p, pageBefore: _b, ...old } = jeans();
-    void _n;
+  it("flags what a depth won't show as meant: an unclosed block, a link to nothing", () => {
+    const d: Draft = { ...jeans(), page: ['::: definition\nSample.', 'See [[no_such_concept]] and [[vlasov_equation]].'] };
+    const problems = draftProblems(d, alone(d)).filter((p) => p.field === 'page');
+    expect(problems.map((p) => p.index)).toEqual([0, 1]);
+    expect(problems[0].message).toContain('never closed');
+    expect(problems[1].message).toContain('no_such_concept');
+  });
+  it('reads drafts saved before pages existed', () => {
+    const { page: _p, pageBefore: _b, ...old } = jeans();
     void _p;
     void _b;
     const back = parseDraft(old);
-    expect(back?.notation).toBe('latex');
     expect(back?.page).toEqual([]);
     const edit = parseDraft({ ...old, editOf: 'vlasov_equation' });
     expect(edit?.page).toBeNull();

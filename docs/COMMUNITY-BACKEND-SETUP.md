@@ -22,7 +22,7 @@ the settings it needs (organisation → Settings → Developer settings → GitH
 |---|---|
 | Callback URL | `https://<your-site>/api/auth/callback` (one per address you sign in on) |
 | Webhook → Active | off |
-| Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write**; Metadata: Read-only |
+| Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write** (labels on proposals, and the feedback form's issues); Metadata: Read-only |
 | Account permissions | none |
 | Visibility (*Advanced → Make public*) | **Public**. A private App only lets the organisation's own members sign in; everyone else gets a GitHub 404 page instead of the authorise page. Public only means other accounts *could* install it on their own repositories — it never gets access to this one, and the backend only uses this repository's installation. |
 
