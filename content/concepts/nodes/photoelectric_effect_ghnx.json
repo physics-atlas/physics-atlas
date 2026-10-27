@@ -1,0 +1,10 @@
+{
+  "id": "photoelectric_effect_ghnx",
+  "label": "Photoelectric effect",
+  "type": "phenomenon",
+  "importance": 4,
+  "generality": 2,
+  "attrs": {
+    "description": "Effect showing how light must be made up of quanta. Light is radiated onto a metal surface and electrons are only released when they absorb enough energy to escape in one go. Below a certain frequency/energy per photon no electrons escape at all."
+  }
+}

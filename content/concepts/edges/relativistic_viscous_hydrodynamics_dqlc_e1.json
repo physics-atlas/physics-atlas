@@ -1,0 +1,6 @@
+{
+  "id": "relativistic_viscous_hydrodynamics_dqlc_e1",
+  "source": "relativistic_viscous_hydrodynamics",
+  "target": "fluid_sapm",
+  "relationship": "valid under"
+}

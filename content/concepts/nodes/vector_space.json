@@ -2,8 +2,8 @@
   "id": "vector_space",
   "type": "formalism",
   "label": "Vector space",
-  "importance": 8,
-  "generality": 8,
+  "importance": 10,
+  "generality": 10,
   "attrs": {
     "description": "An abstract set of objects (vectors) that can be added together and scaled by numbers, satisfying a fixed set of axioms.",
     "domain": "Mathematics"
