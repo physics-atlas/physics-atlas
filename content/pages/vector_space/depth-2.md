@@ -1,4 +1,6 @@
-Mathematical definition of a vector _space_
+Mathematical definition of a vector *space*
+
+$$
 \mathbf{u} =
 \begin{pmatrix}
 1 \\
@@ -10,3 +12,4 @@ Mathematical definition of a vector _space_
 3 \\
 4
 \end{pmatrix}
+$$

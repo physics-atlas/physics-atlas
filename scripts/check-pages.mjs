@@ -42,7 +42,11 @@ if (existsSync(PAGES))
       continue;
     }
     const files = readdirSync(dir);
-    for (const f of files) if (!DEPTH_FILE.test(f)) problems.push(`${where}/${f}: a page holds only depth-1.md, depth-2.md, …`);
+    for (const f of files)
+      if (/^depth-[1-9][0-9]*\.typ$/.test(f))
+        // Pages were Typst for a while (October 2026): such a file is now Markdown + LaTeX.
+        problems.push(`${where}/${f}: pages are Markdown + LaTeX now — rename it to ${f.replace(/\.typ$/, '.md')} and put its maths in $…$ or $$…$$`);
+      else if (!DEPTH_FILE.test(f)) problems.push(`${where}/${f}: a page holds only depth-1.md, depth-2.md, …`);
     const depths = files
       .map((f) => Number(f.match(DEPTH_FILE)?.[1]))
       .filter(Boolean)
