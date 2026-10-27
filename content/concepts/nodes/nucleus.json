@@ -5,7 +5,7 @@
   "importance": 8,
   "generality": 8,
   "attrs": {
-    "description": "The compact, positively charged core of an atom containing protons and neutrons.",
+    "description": "The core of an atom, contains protons and neutrons.",
     "domain": "Nuclear physics"
   }
 }
