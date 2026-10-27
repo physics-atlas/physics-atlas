@@ -5,7 +5,13 @@
   "importance": 4,
   "generality": 6,
   "attrs": {
-    "description": "Solutions built from the Airy function Ai(x), which solves y'' − xy = 0 — the universal wave pattern near a fold caustic.",
+    "description": "Solutions built from the Airy function Ai(x), which solves y'' − xy = 0",
     "domain": "Mathematics"
-  }
+  },
+  "assumes": [
+    {
+      "label": "Linear potential",
+      "description": "The potential in the Schrödinger equation should have the form, V(x)=Ax"
+    }
+  ]
 }
