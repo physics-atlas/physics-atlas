@@ -1,0 +1,6 @@
+{
+  "id": "time_classical_parameter_cgll_e1",
+  "source": "time_classical_parameter_cgll",
+  "target": "spacetime",
+  "relationship": "relates"
+}
