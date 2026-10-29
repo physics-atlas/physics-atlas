@@ -1,0 +1,16 @@
+{
+  "id": "space_vp0j",
+  "label": "Space",
+  "type": "physical_system",
+  "importance": 10,
+  "generality": 10,
+  "assumes": [
+    {
+      "label": "A measure of distance exists"
+    }
+  ],
+  "attrs": {
+    "description": "In physics the classical concept of a background structure that gives meaning to positions and distances of objects as we experience in everyday life. In mathematics a collection of objects of a type. Often represented by R3.",
+    "domain": "Classical mechanics"
+  }
+}
