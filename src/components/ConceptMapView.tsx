@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import {
@@ -34,6 +34,7 @@ import RelationSentence from './RelationSentence';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, pageHref } from '../lib/pageLinks';
+import { useFold } from '../lib/useFold';
 
 // The proposal card brings KaTeX — load both only when a proposal is opened.
 const ProposalCard = lazy(() => import('./ProposalCard'));
@@ -1014,10 +1015,27 @@ function CommunityAccount({
   signInProblem: SignInProblem | null;
   onDismissProblem: () => void;
 }) {
+  // Folds to its button like the legend — at first on a phone, where it would
+  // take the map's room; a sign-in problem shows either way.
+  const [shown, setShown] = useFold('physics-atlas-account-shown-v1');
+  const bodyId = useId();
   if (!checked) return null;
   const here = `${window.location.pathname}${window.location.search}`;
+  const summary = !me?.configured ? 'sample proposals' : me.user ? `signed in as @${me.user.login}` : 'not signed in';
   return (
-    <section className="community-account" aria-label="Community account">
+    <section className={`community-account${shown ? '' : ' community-account-folded'}`} aria-label="Community account">
+      <button
+        type="button"
+        className="community-account-toggle"
+        aria-expanded={shown}
+        aria-controls={bodyId}
+        onClick={() => setShown(!shown)}
+      >
+        <span className="legend-toggle-mark" aria-hidden>
+          {shown ? '▾' : '▸'}
+        </span>
+        Account <span className="community-account-summary">· {summary}</span>
+      </button>
       {signInProblem && (
         <div className="draft-warning" role="alert">
           <p>
@@ -1029,56 +1047,58 @@ function CommunityAccount({
           </button>
         </div>
       )}
-      {!me?.configured ? (
-        <p className="community-account-note">
-          Showing <strong>sample</strong> proposals — this site isn't connected to GitHub yet. You can still draft and
-          export.
-        </p>
-      ) : me.user ? (
-        <>
-          <p className="community-account-who">
-            {me.user.avatar && <img className="community-avatar" src={me.user.avatar} alt="" width={24} height={24} />}
-            <span>
-              Signed in as <strong>{me.user.name}</strong> <span className="concept-via">@{me.user.login}</span>
-            </span>
+      <div className="community-account-body" id={bodyId} hidden={!shown}>
+        {!me?.configured ? (
+          <p className="community-account-note">
+            Showing <strong>sample</strong> proposals — this site isn't connected to GitHub yet. You can still draft and
+            export.
           </p>
-          {!me.invited && (
-            <p className="community-account-note">
-              You're not on the invite list yet, so you can't submit. You can still draft and export — ask a curator
-              to add <strong>@{me.user.login}</strong>.
+        ) : me.user ? (
+          <>
+            <p className="community-account-who">
+              {me.user.avatar && <img className="community-avatar" src={me.user.avatar} alt="" width={24} height={24} />}
+              <span>
+                Signed in as <strong>{me.user.name}</strong> <span className="concept-via">@{me.user.login}</span>
+              </span>
             </p>
-          )}
-          <button type="button" className="draft-link" onClick={onSignOut}>
-            Sign out
-          </button>
-        </>
-      ) : (
-        <>
-          <a className="draft-button community-signin" href={loginHref(here)}>
-            Sign in with GitHub
-          </a>
+            {!me.invited && (
+              <p className="community-account-note">
+                You're not on the invite list yet, so you can't submit. You can still draft and export — ask a curator
+                to add <strong>@{me.user.login}</strong>.
+              </p>
+            )}
+            <button type="button" className="draft-link" onClick={onSignOut}>
+              Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <a className="draft-button community-signin" href={loginHref(here)}>
+              Sign in with GitHub
+            </a>
+            <p className="community-account-note">
+              Only needed to submit a proposal. Physics Atlas reads your public GitHub profile — nothing else.
+            </p>
+            <p className="community-account-note">
+              If GitHub shows a 404 page instead of asking you to authorise Physics Atlas, its GitHub App isn't open to
+              your account yet — tell the curators.
+            </p>
+          </>
+        )}
+        {me?.configured && <p className="community-account-note">Proposals: open pull requests on GitHub.</p>}
+        {loadError && <p className="draft-warning">{loadError}</p>}
+        {lastSubmitted && (
           <p className="community-account-note">
-            Only needed to submit a proposal. Physics Atlas reads your public GitHub profile — nothing else.
+            Submitted “{lastSubmitted.title}”:{' '}
+            <a className="concept-resource-link" href={lastSubmitted.url} target="_blank" rel="noreferrer">
+              pull request #{lastSubmitted.number} ↗
+            </a>
           </p>
-          <p className="community-account-note">
-            If GitHub shows a 404 page instead of asking you to authorise Physics Atlas, its GitHub App isn't open to
-            your account yet — tell the curators.
-          </p>
-        </>
-      )}
-      {me?.configured && <p className="community-account-note">Proposals: open pull requests on GitHub.</p>}
+        )}
+      </div>
       <p className="visually-hidden" role="status" aria-live="polite">
         {loadError || (lastSubmitted ? `Submitted as pull request ${lastSubmitted.number}.` : '')}
       </p>
-      {loadError && <p className="draft-warning">{loadError}</p>}
-      {lastSubmitted && (
-        <p className="community-account-note">
-          Submitted “{lastSubmitted.title}”:{' '}
-          <a className="concept-resource-link" href={lastSubmitted.url} target="_blank" rel="noreferrer">
-            pull request #{lastSubmitted.number} ↗
-          </a>
-        </p>
-      )}
     </section>
   );
 }

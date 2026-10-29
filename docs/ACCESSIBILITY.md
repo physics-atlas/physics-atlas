@@ -206,7 +206,9 @@ long reading needs:
 ## Map on a phone, and feedback
 
 - **Legend:** folds to a **Legend** button (`aria-expanded`, `aria-controls`), folded at
-  first on a phone so it doesn't cover the map; the folded body is `hidden`.
+  first on a phone so it doesn't cover the map; the folded body is `hidden`. The
+  Community tab's account panel folds the same way, its button saying who's signed in
+  ("Account · not signed in"); a sign-in problem (`role="alert"`) stays outside the fold.
 - **Panning:** a one-finger drag pans wherever it starts, on a concept too; a tap still
   opens the card. The zoom and "Show the whole map" buttons stay the non-gesture way
   (WCAG 2.5.7).

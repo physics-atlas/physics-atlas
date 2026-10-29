@@ -66,7 +66,7 @@ Not run — direct session.
 ### Implemented
 - `src/community/feedback.ts` (kinds, checks, the issue, inert @names), `POST /api/feedback` in `server/api.ts` (signed in, same origin, 5 an hour), `GitHub.openIssue`; `submitFeedback` in `community/api.ts`
 - `components/FeedbackView.tsx` (`?mode=feedback`): signed out → sign in; problems summary; thank-you with the issue; "say which page it's about"; a **Feedback** link in the header and on the home page
-- `Legend.tsx` folds to a **Legend** button, folded at first on a phone, remembered
+- `Legend.tsx` folds to a **Legend** button, folded at first on a phone, remembered; later (2026-10-29) the Community account panel too (`lib/useFold.ts`, shared)
 - `GraphView.tsx`: a drag from a concept pans; `minZoom` at half the whole-map view; **Take me back!**; the Cytoscape pinch workaround; phone layout (controls above the folded legend)
 - Tests: feedback checks and issue, the server route (signed out, cross-site, incomplete, rate, no permission); browser: touch and mouse panning, tap, pinch to the limit, take-back, legend folding (phone, desktop); axe clean on the phone map and the feedback form
 

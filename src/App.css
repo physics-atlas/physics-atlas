@@ -2693,6 +2693,52 @@ textarea.draft-input {
   margin: 0;
 }
 
+/* Folds to its button like the legend (lib/useFold.ts). */
+.community-account-body {
+  display: grid;
+  gap: 6px;
+}
+
+.community-account-body[hidden] {
+  display: none;
+}
+
+.community-account-folded {
+  padding: 4px 8px;
+}
+
+.community-account-toggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.community-account-toggle:hover {
+  border-color: var(--border);
+  background: var(--accent-soft);
+}
+
+.community-account-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.community-account-summary {
+  font-weight: 400;
+  font-style: italic;
+}
+
 .community-account-who {
   display: flex;
   align-items: center;

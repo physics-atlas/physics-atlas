@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TYPE_GROUPS } from '../graph/typeColors';
+import { useFold } from '../lib/useFold';
 import { NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS } from '../data/types';
 import type { NodeType } from '../data/types';
 import TypeBadge from './TypeBadge';
@@ -7,21 +8,6 @@ import TypeBadge from './TypeBadge';
 const DEFINITION_ID = 'type-definition';
 const BODY_ID = 'legend-body';
 const SHOWN_KEY = 'physics-atlas-legend-shown-v1';
-
-/**
- * Whether the legend starts unfolded: as the reader last left it, else
- * folded on a phone-sized screen (where it would cover the map) and unfolded
- * on a larger one.
- */
-function initiallyShown(): boolean {
-  try {
-    const kept = window.localStorage.getItem(SHOWN_KEY);
-    if (kept === 'shown' || kept === 'folded') return kept === 'shown';
-  } catch {
-    // no storage (private window, blocked): fall back to the screen size
-  }
-  return !window.matchMedia?.('(max-width: 720px)').matches;
-}
 
 /** Outline swatches matching the canvas: solid, dashed (proposed), double (contested). */
 const STATUSES = [
@@ -37,17 +23,12 @@ const STATUSES = [
  */
 function TypeLegend({ statuses, draft, fun }: { statuses: boolean; draft: boolean; fun: boolean }) {
   const [open, setOpen] = useState<NodeType | null>(null);
-  const [shown, setShown] = useState(initiallyShown);
+  // Folded at first on a phone, then as the reader left it (lib/useFold.ts).
+  const [shown, setShown] = useFold(SHOWN_KEY);
   const def = open ? NODE_TYPE_DEFINITIONS[open] : undefined;
   const toggle = () => {
-    const next = !shown;
-    setShown(next);
-    if (!next) setOpen(null);
-    try {
-      window.localStorage.setItem(SHOWN_KEY, next ? 'shown' : 'folded');
-    } catch {
-      // not kept: the legend still folds for this visit
-    }
+    setShown(!shown);
+    if (shown) setOpen(null);
   };
 
   return (
