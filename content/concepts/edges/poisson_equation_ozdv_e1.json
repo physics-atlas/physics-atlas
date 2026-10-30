@@ -1,0 +1,6 @@
+{
+  "id": "poisson_equation_ozdv_e1",
+  "source": "poisson_equation_ozdv",
+  "target": "schrodinger_poisson_equation",
+  "relationship": "relates"
+}
