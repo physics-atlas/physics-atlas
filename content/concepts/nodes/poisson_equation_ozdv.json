@@ -1,0 +1,30 @@
+{
+  "id": "poisson_equation_ozdv",
+  "label": "Poisson equation",
+  "type": "equation",
+  "importance": 7,
+  "generality": 8,
+  "assumes": [
+    {
+      "label": "Newtonian Gravity"
+    }
+  ],
+  "attrs": {
+    "description": "Differential equation to find potential field from a source. For example the gravitational field around a mass.",
+    "equation": "\\begin{equation} \\nabla^2 \\Phi(\\mathbf{x}) = 4\\pi G\\rho(\\mathbf{x}) \\end{equation}  \\begin{equation} \\mathbf{g}(\\mathbf{x})  \\end{equation}",
+    "variables": [],
+    "conditions": [],
+    "representations": [
+      {
+        "name": "Cosmological Poisson",
+        "equation": "\\begin{equation} \\nabla_{\\mathbf{x}}^2\\Phi(\\mathbf{x},t) = 4\\pi G a^2(t)\\bar{\\rho}(t)\\delta(\\mathbf{x},t) \\end{equation}",
+        "variables": [
+          {
+            "symbol": "delta",
+            "meaning": "density contrast"
+          }
+        ]
+      }
+    ]
+  }
+}
