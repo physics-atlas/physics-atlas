@@ -1,0 +1,11 @@
+{
+  "id": "time_classical_parameter_cgll",
+  "label": "Time (classical parameter)",
+  "type": "physical_system",
+  "importance": 8,
+  "generality": 9,
+  "attrs": {
+    "description": "Ehhhhh",
+    "domain": "Classical mechanics"
+  }
+}
