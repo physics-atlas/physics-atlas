@@ -1,0 +1,11 @@
+{
+  "id": "schrodinger_poisson_equation_9e7n_e1",
+  "source": "schrodinger_poisson_equation",
+  "target": "structure_formation",
+  "relationship": "describes",
+  "assumes": [
+    {
+      "label": "Ultra-light dark matter"
+    }
+  ]
+}
