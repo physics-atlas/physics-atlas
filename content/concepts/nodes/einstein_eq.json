@@ -2,8 +2,8 @@
   "id": "einstein_eq",
   "type": "equation",
   "label": "Einstein Field Equations",
-  "importance": 10,
-  "generality": 10,
+  "importance": 9,
+  "generality": 8,
   "assumes": [
     {
       "label": "Weak-field low-velocity limit",
