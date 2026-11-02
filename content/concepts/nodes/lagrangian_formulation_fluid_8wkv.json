@@ -1,0 +1,10 @@
+{
+  "id": "lagrangian_formulation_fluid_8wkv",
+  "label": "Lagrangian Formulation (fluid)",
+  "type": "method",
+  "importance": 4,
+  "generality": 4,
+  "attrs": {
+    "description": "formulates equations in a way that \"follows\" the path of individual particles. so there are 2 fields. instead of the velocity at a point. we work with the displacement function."
+  }
+}
