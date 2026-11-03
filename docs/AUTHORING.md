@@ -179,6 +179,16 @@ A name alone is fine while the formula is still to come (the three on Einstein F
 Equations are names only). The six equations were written as Unicode text before
 2026-10 (`Gμν + Λgμν = …`); they're now the same formulas in LaTeX.
 
+In the proposal editor, a formula's variables follow its LaTeX (`src/lib/equationSymbols.ts`):
+the symbols it's written with are listed until each is described, **Add these as
+variables** makes a row for each with the symbol filled in, each symbol field suggests
+the ones still to describe, and a row whose symbol isn't in the formula says so. A
+symbol is a letter with its indices, accent or font (`T_{\mu\nu}`, `x^\mu`, `\vec{v}`,
+`\mathbf{q}`); powers (`c` in `c^4`), operators (`\partial`, `\nabla_\mu`), the
+exponential's `e` and `\pi` aren't. A row written with what the symbol depends on
+(`\psi(x,t)`) counts as that symbol. It's a help, not a rule: a variable that isn't in the
+formula can stay.
+
 ## Writing an edge
 
 `source` + `relationship` + `target` must read as a sentence: *"{source
@@ -503,7 +513,10 @@ Blocks don't nest. `npm run build:content` checks every depth (`scripts/check-pa
 and stops, naming the file and line, if a folder isn't a concept's page, the depths
 aren't `depth-1, depth-2…` without gaps, a depth is empty or over 100k characters, a
 block is left open, a link points to a concept or relation that isn't on the map, or
-maths won't typeset. The site shows the files as they are (`src/data/pageSources.ts`):
+maths won't typeset — the proposal editor runs the same maths check on each depth
+(`src/lib/pageMaths.ts`), so a page is fixed before it's proposed. LaTeX that only works
+in display (`\begin{equation}`, `\begin{aligned}`) has to be between `$$ … $$` on lines
+of its own, not `$ … $`. The site shows the files as they are (`src/data/pageSources.ts`):
 the format is parsed into page elements by `src/lib/pageText.ts`, never inserted as
 HTML. The proposal editor has a **Page** field: a text per depth, **Add a deeper level**,
 and a preview drawn by the same renderer as the published page; the page goes into the

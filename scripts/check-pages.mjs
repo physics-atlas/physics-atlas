@@ -11,7 +11,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import katex from 'katex';
 import { runnerImport } from 'vite';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,7 +22,9 @@ const load = async (file) => (await runnerImport(join(ROOT, file), { root: ROOT,
 const { concepts: graph } = await load('src/data/loadConcepts.ts');
 const { buildConceptIndex, splitFluff } = await load('src/graph/concepts.ts');
 const { buildContents } = await load('src/graph/contents.ts');
-const { pageLinkTargets, pageMaths, parsePage } = await load('src/lib/pageText.ts');
+const { pageLinkTargets, parsePage } = await load('src/lib/pageText.ts');
+// The same check the proposal editor runs on a page before it's proposed.
+const { pageMathProblems } = await load('src/lib/pageMaths.ts');
 const { base } = splitFluff(graph);
 const contents = buildContents(buildConceptIndex(base));
 const edgeIds = new Set(base.edges.map((e) => e.id));
@@ -69,12 +70,7 @@ if (existsSync(PAGES))
         if ('concept' in to && !contents.byId.has(to.concept)) problems.push(`${file}: links to "${to.concept}", which isn't a concept on the map`);
         if ('relation' in to && !edgeIds.has(to.relation)) problems.push(`${file}: links to the relation "${to.relation}", which isn't on the map`);
       }
-      for (const { tex, display } of pageMaths(page.blocks))
-        try {
-          katex.renderToString(tex, { displayMode: display, throwOnError: true });
-        } catch (e) {
-          problems.push(`${file}: "${tex}" isn't LaTeX KaTeX can typeset (${String(e.message).replace(/^KaTeX parse error: /, '')})`);
-        }
+      for (const p of pageMathProblems(source)) problems.push(`${file}: ${p}`);
     }
     pages++;
     depthCount += depths.length;

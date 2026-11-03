@@ -6,6 +6,23 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-71: Equation symbols in the editor; page maths checked before proposing
+
+**Status:** ✅ Implemented <!-- status-line: feature-71 -->
+**Planned:** 2026-11-03 — requested: the build failing on the Lagrangian Formulation page (and a revert not helping) fixed, the editor checking page maths, and variables offered from the equation (add them, suggestions while typing, a check)
+**Implemented:** 2026-11-03
+
+### Implemented
+- `content/pages/lagrangian_formulation_fluid_8wkv/depth-1.md`: display maths between `$$` (it came with PR #35; the reverts were of #36 and #37)
+- `lib/pageMaths.ts` (the maths check, with the fix for display-only LaTeX), used by `scripts/check-pages.mjs` and the editor
+- `lib/equationSymbols.ts`: symbols with indices, accents, fonts; powers, operators, the exponential's e and π left out; `symbolKey` (one spelling, arguments dropped)
+- `DraftEditor.tsx` `VariableRows`: the symbols still to describe, **Add these as variables**, suggestions per symbol field, "Not in the equation above"
+- Tests: symbols on real equations (EFE, conservation, decay, Vlasov, accents, fonts), keys, the page maths hint; browser: an edit of the Decay equation, a page depth with `$ \begin{equation} … $`, axe on the editor
+- Decision 42
+
+### Review
+Not run — direct session.
+
 ## feature-70: Crossings first in the layout
 
 **Status:** ✅ Implemented <!-- status-line: feature-70 -->

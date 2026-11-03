@@ -51,6 +51,8 @@ import SearchBox from './SearchBox';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import PageText from './pages/PageText';
+import { pageMathProblems } from '../lib/pageMaths';
+import { equationSymbols, symbolKey } from '../lib/equationSymbols';
 
 interface DraftEditorProps {
   /** The draft the form shows */
@@ -171,7 +173,17 @@ export default function DraftEditor({
   const shape = useMemo(() => draftShape(draft, ctx), [draft, ctx]);
   const own = mapId(draft);
   const byId = byMapId;
-  const problems = useMemo(() => draftProblems(draft, ctx), [draft, ctx]);
+  // The draft's own checks, and — with KaTeX, which only this editor loads —
+  // whether each page depth's maths typesets, as the build will check.
+  const problems = useMemo(
+    () => [
+      ...draftProblems(draft, ctx),
+      ...(draft.page ?? []).flatMap((source, index) =>
+        pageMathProblems(source).map((message) => ({ field: 'page' as const, index, message: `Depth ${index + 1}: ${message}` })),
+      ),
+    ],
+    [draft, ctx],
+  );
   // An edited concept's place in the atlas pages, so the page preview numbers its blocks as published.
   const pageSection = useMemo(
     () => (draft.editOf ? (buildContents(buildConceptIndex(splitFluff(ctx.confirmed).base)).byId.get(draft.editOf)?.number ?? '') : ''),
@@ -1078,7 +1090,10 @@ function LatexInput({ id, value, onChange, placeholder }: { id: string; value: s
 /**
  * A formula's variables: one row each, symbol (LaTeX, previewed) and what it
  * stands for. `focusId` goes on the first input — or on "Add a variable" while
- * there are none — so a problem in the list can be jumped to.
+ * there are none — so a problem in the list can be jumped to. The symbols of
+ * `equation` (lib/equationSymbols.ts) are offered: all at once ("Add the
+ * equation's symbols"), as suggestions in each symbol field, and in a check of
+ * which are described and which aren't in the equation.
  */
 function VariableRows({
   variables,
@@ -1086,20 +1101,58 @@ function VariableRows({
   idBase,
   focusId,
   title,
+  equation,
 }: {
   variables: EquationVariable[];
   onChange: (vs: EquationVariable[]) => void;
   idBase: string;
   focusId: string;
   title: string;
+  /** The formula these are the variables of (LaTeX) */
+  equation: string;
 }) {
   const setRow = (i: number, change: Partial<EquationVariable>) =>
     onChange(variables.map((v, j) => (j === i ? { ...v, ...change } : v)));
+  const symbols = useMemo(() => equationSymbols(equation), [equation]);
+  const described = new Set(variables.flatMap((v) => symbolKey(v.symbol) ?? []));
+  const missing = symbols.filter((s) => !described.has(s));
+  const listId = `${idBase}-symbols`;
+  /** A row's symbol isn't one of the equation's (only said once the equation has symbols). */
+  const elsewhere = (v: EquationVariable) => {
+    if (!symbols.length || !v.symbol.trim()) return false;
+    const key = symbolKey(v.symbol);
+    return key === null || !symbols.includes(key);
+  };
   return (
     <fieldset className="draft-variables">
       <legend className="draft-label">
         {title} <span className="draft-optional">optional</span>
       </legend>
+      {missing.length > 0 && (
+        <div className="draft-symbols" id={`${idBase}-missing`}>
+          <p className="draft-hint">
+            {variables.length ? 'In the equation, not described yet:' : 'The equation’s symbols:'}{' '}
+            {missing.map((s, k) => (
+              <span key={s}>
+                {k > 0 && ', '}
+                <MathText tex={s} />
+              </span>
+            ))}
+          </p>
+          <button
+            type="button"
+            className="draft-button"
+            onClick={() => onChange([...variables.filter((v) => v.symbol.trim() || v.meaning.trim()), ...missing.map((symbol) => ({ symbol, meaning: '' }))])}
+          >
+            {missing.length === 1 ? 'Add it as a variable' : `Add these ${missing.length} as variables`}
+          </button>
+        </div>
+      )}
+      <datalist id={listId}>
+        {missing.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
       {variables.length > 0 && (
         <ol className="draft-variable-list">
           {variables.map((v, i) => (
@@ -1112,11 +1165,18 @@ function VariableRows({
                   id={i === 0 ? focusId : `${idBase}-${i}-symbol`}
                   className="draft-input draft-mono"
                   value={v.symbol}
-                  placeholder="G_{\mu\nu}"
+                  placeholder={symbols[0] ?? 'G_{\\mu\\nu}'}
                   onChange={(e) => setRow(i, { symbol: e.target.value })}
+                  list={missing.length ? listId : undefined}
                   autoComplete="off"
                   spellCheck={false}
+                  aria-describedby={elsewhere(v) ? `${idBase}-${i}-elsewhere` : undefined}
                 />
+                {elsewhere(v) && (
+                  <p className="draft-hint draft-variable-elsewhere" id={`${idBase}-${i}-elsewhere`}>
+                    <span aria-hidden>⚠ </span>Not in the equation above.
+                  </p>
+                )}
               </div>
               <span className="draft-variable-preview" aria-hidden>
                 {v.symbol.trim() && <MathText tex={v.symbol} />}
@@ -1599,6 +1659,7 @@ function FormulaFields({
           </Field>
           <VariableRows
             title="Its variables"
+            equation={f.equation}
             variables={f.variables}
             onChange={(variables) => setFormula(i, { variables })}
             idBase={fieldId(`formula-${i}-var`)}
@@ -1650,6 +1711,7 @@ function EquationFields({
       </Field>
       <VariableRows
         title="Its variables"
+        equation={draft.equation}
         variables={draft.variables}
         onChange={(variables) => update((d) => ({ ...d, variables }))}
         idBase={fieldId('var')}
@@ -1684,6 +1746,7 @@ function EquationFields({
             </Field>
             <VariableRows
               title="Its variables"
+              equation={r.equation}
               variables={r.variables}
               onChange={(variables) => setRep(i, { variables })}
               idBase={fieldId(`rep-${i}-var`)}

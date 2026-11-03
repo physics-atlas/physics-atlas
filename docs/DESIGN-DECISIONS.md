@@ -802,6 +802,13 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 42 — The editor helps with variables and checks page maths (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Variables | A formula's variable rows read the formula's symbols from KaTeX's parse (`lib/equationSymbols.ts`): listed until described, **Add these as variables** (one row each, symbol filled in), suggestions in each symbol field (a native `datalist`), and "Not in the equation above" on a row whose symbol isn't. A suggestion list, not a dropdown, so a symbol defined elsewhere can still be written. Symbols are compared written one way (`\vec v` = `\vec{v}`). KaTeX's `__parse` isn't documented API; tests pin what it returns. |
+| Page maths | The editor runs the build's maths check on each page depth (`lib/pageMaths.ts`, shared with `scripts/check-pages.mjs`), with the fix for display-only LaTeX between single dollars. A page with `$ \begin{equation} … $` (PR #35, Lagrangian Formulation) reached `main` and stopped every build; its delimiters are now `$$`. |
+
 ## Decision 41 — Crossings first in the layout (2026-10)
 
 The layout's score was one count of every problem — crossings, lines through circles,
