@@ -12,12 +12,7 @@
   "attrs": {
     "variables": [],
     "conditions": [],
-    "representations": [
-      {
-        "name": "For single stream wave dark matter",
-        "equation": "\\begin{equation} \\boxed{ \\frac{\\partial\\mathbf{v}}{\\partial t} + H\\mathbf{v} + \\frac{1}{a} (\\mathbf{v}\\cdot\\nabla_{\\mathbf{x}})\\mathbf{v} = -\\frac{1}{a}\\nabla_{\\mathbf{x}}\\Phi + \\frac{\\hbar^2}{2m^2a^3} \\nabla_{\\mathbf{x}} \\left( \\frac{\\nabla_{\\mathbf{x}}^2\\sqrt{\\rho}} {\\sqrt{\\rho}} \\right) } \\end{equation}"
-      }
-    ],
+    "representations": [],
     "description": "The defining equation for describing the behaviour of a classical fluid",
     "equation": "\\frac{\\partial \\mathbf{v}}{\\partial t} + (\\mathbf{v}\\cdot\\nabla)\\mathbf{v} = -\\frac{1}{\\rho}\\nabla P - \\nabla\\Phi"
   }
