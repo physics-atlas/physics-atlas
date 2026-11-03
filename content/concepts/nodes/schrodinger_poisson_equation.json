@@ -6,7 +6,7 @@
   "generality": 2,
   "epistemicStatus": "Candidate",
   "attrs": {
-    "description": "Describes the evolution of a Schrödinger wave (with classical density amplitude) which is self-gravitational.",
+    "description": "Describes the evolution of a Schrödinger wave which is self-gravitational.",
     "equation": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = -\\frac{\\hbar^2}{2m} \\nabla^2 \\psi + m \\Phi \\psi, \\quad \\nabla^2 \\Phi = 4\\pi G m |\\psi|^2",
     "variables": [
       {
