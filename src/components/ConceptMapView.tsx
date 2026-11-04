@@ -70,6 +70,14 @@ const cardInset = () => {
   return Math.min(Math.max(w / 2, CARD_MIN_WIDTH), w - 2 * CARD_MARGIN) + 2 * CARD_MARGIN;
 };
 
+/** The last proposal sent from here; `published` when it was merged at once (Decision 43). */
+interface Submitted {
+  number: number;
+  url: string;
+  title: string;
+  published: boolean;
+}
+
 interface ConceptMapViewProps {
   graph: ConceptGraph;
   progress: Progress;
@@ -131,7 +139,7 @@ export default function ConceptMapView({
   const [backendChecked, setBackendChecked] = useState(false);
   const [listTick, setListTick] = useState(0);
   const [loadError, setLoadError] = useState('');
-  const [lastSubmitted, setLastSubmitted] = useState<{ number: number; url: string; title: string } | null>(null);
+  const [lastSubmitted, setLastSubmitted] = useState<Submitted | null>(null);
   const [signInProblem, setSignInProblem] = useState<SignInProblem | null>(signInProblemOnLoad);
   useEffect(() => {
     if (!community) return;
@@ -353,15 +361,24 @@ export default function ConceptMapView({
     if (drafts.drafts.length <= 1) closeEditor();
   };
   // Submit: one pull request, opened by the Physics Atlas app on the signed-in
-  // proposer's behalf. The draft then lives on as an open proposal.
-  const submitDraft = async (): Promise<SubmitResult> => {
+  // proposer's behalf. The draft then lives on as an open proposal — or, when
+  // published directly (Decision 43), the pull request is merged at once and the
+  // concept reaches the map with the site's next build.
+  const submitDraft = async (publish: boolean): Promise<SubmitResult> => {
     if (!draft || !me?.user) return { ok: false, error: 'Sign in with GitHub first.' };
     const signed = { ...draft, author: me.user.name || me.user.login };
-    const result = await submitProposal(draftProposal(signed, draftCtx), pullRequestText(signed, draftCtx), draftUploads(signed));
+    const result = await submitProposal(draftProposal(signed, draftCtx), pullRequestText(signed, draftCtx), draftUploads(signed), publish);
     if (result.ok) {
-      setLastSubmitted({ number: result.number, url: result.url, title: proposalTitle(draft) });
+      const title = proposalTitle(draft);
+      setLastSubmitted({ number: result.number, url: result.url, title, published: result.published });
       setNear(NO_NEAR);
-      setDraftStatus(`Submitted “${proposalTitle(draft)}” as pull request #${result.number}.`);
+      setDraftStatus(
+        result.published
+          ? `Published “${title}”: pull request #${result.number} was merged. It shows on the map once the site has rebuilt, in a few minutes.`
+          : publish
+            ? `“${title}” couldn't be merged straight away, so it was opened as pull request #${result.number} for review.`
+            : `Submitted “${title}” as pull request #${result.number}.`,
+      );
       drafts.submitted(draft.suffix);
       setListTick((t) => t + 1);
     }
@@ -706,6 +723,7 @@ export default function ConceptMapView({
                     ? {
                         user: me.user,
                         invited: me.invited,
+                        canPublish: Boolean(me.canPublish),
                         loginHref: loginHref(`${window.location.pathname}${window.location.search}`),
                         onSubmit: submitDraft,
                       }
@@ -1009,7 +1027,7 @@ function CommunityAccount({
   checked: boolean;
   me: Me | null;
   loadError: string;
-  lastSubmitted: { number: number; url: string; title: string } | null;
+  lastSubmitted: Submitted | null;
   onSignOut: () => void;
   /** Why the last sign-in didn't complete, until dismissed */
   signInProblem: SignInProblem | null;
@@ -1089,15 +1107,19 @@ function CommunityAccount({
         {loadError && <p className="draft-warning">{loadError}</p>}
         {lastSubmitted && (
           <p className="community-account-note">
-            Submitted “{lastSubmitted.title}”:{' '}
+            {lastSubmitted.published ? 'Published' : 'Submitted'} “{lastSubmitted.title}”:{' '}
             <a className="concept-resource-link" href={lastSubmitted.url} target="_blank" rel="noreferrer">
-              pull request #{lastSubmitted.number} ↗
+              pull request #{lastSubmitted.number}{lastSubmitted.published ? ', merged' : ''} ↗
             </a>
+            {lastSubmitted.published && ' — on the map after the next build.'}
           </p>
         )}
       </div>
       <p className="visually-hidden" role="status" aria-live="polite">
-        {loadError || (lastSubmitted ? `Submitted as pull request ${lastSubmitted.number}.` : '')}
+        {loadError ||
+          (lastSubmitted
+            ? `${lastSubmitted.published ? 'Published and merged' : 'Submitted'} as pull request ${lastSubmitted.number}.`
+            : '')}
       </p>
     </section>
   );

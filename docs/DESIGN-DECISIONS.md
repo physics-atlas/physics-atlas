@@ -802,6 +802,21 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 43 — Curators may publish directly, for now (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Who | Experts marked `"publish": true` in `community/experts.json`. The grant lives in the repository, so it has its own history; `ALLOWED_PROPOSERS` never grants it. `DIRECT_PUBLISH=off` (a Worker setting) turns it off for everyone at once. `/api/me` says `canPublish`. |
+| How | The editor shows **Publish now** beside **Submit as a pull request**, which stays the primary button. The backend runs every check a submission gets, opens the pull request as usual, and merges it at once through the GitHub App with a merge commit, as the curators do by hand. Its description says it was published directly. If GitHub won't merge it (a conflict, say), it stays open as an ordinary proposal, and the editor says so. |
+| Why merge a pull request, not commit to `main` | Every change keeps a number, a description and GitHub's **Revert** button, which the curators already use (#39, #40). A commit pushed straight to `main` has none of these. |
+| Dependencies | A proposal that depends on open proposals can't be published: merged, it would point `main` at concepts that are only proposed. It can still be submitted as a pull request. |
+| Accepted costs | The checks (`checks.yml`) run after the merge, not before, so a change the server's own checks miss can break the build on `main`. Cloudflare then keeps the last good build live. Checks run against the concepts of the last deploy, so two quick edits of one concept are checked against the older version. A published edit may conflict with an open pull request on the same concept. The concept reaches the map with the next build, a few minutes later. |
+
+**Open paths:** protect `main` so the checks must pass, and turn on GitHub's auto-merge for
+these pull requests instead of merging at once. Changes would then land 2–3 minutes later,
+and only once the checks pass. Retire the flag once the graph is built and review is the
+norm again.
+
 ## Decision 42 — The editor helps with variables and checks page maths (2026-11)
 
 | Piece | Rule |

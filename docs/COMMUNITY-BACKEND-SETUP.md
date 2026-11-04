@@ -59,6 +59,7 @@ ones (their values can't be read back afterwards — keep the originals somewher
 | `SESSION_SECRET` | a long random string, e.g. from `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"` | **Secret** |
 | `ALLOWED_PROPOSERS` | optional: invited GitHub handles, comma-separated (on top of `community/experts.json`) | Text |
 | `GITHUB_BASE` | optional: the branch proposals start from (default `main`) | Text |
+| `DIRECT_PUBLISH` | optional: `off` turns direct publishing off for everyone, whatever `experts.json` says (Decision 43) | Text |
 
 Saving them deploys the Worker again with the new settings. `wrangler.jsonc` has
 `"keep_vars": true`, so later pushes keep them.
@@ -75,6 +76,11 @@ While the repository is private, only invited GitHub handles can submit. Either:
 
 - or, for a first test, put your handle in `ALLOWED_PROPOSERS` (comma-separated, e.g.
   `gdaudt,sophelsa`).
+
+Someone marked `"publish": true` in `experts.json` may also **publish directly**: the app
+opens the pull request and merges it at once (Decision 43). Merging needs nothing beyond
+the App's existing **Contents** and **Pull requests** write permissions. `ALLOWED_PROPOSERS`
+never grants it.
 
 The backend reads `experts.json` from GitHub (the `main` branch), not from the deployed site,
 and re-reads it within five minutes. The list only decides who may **submit**: anyone can sign

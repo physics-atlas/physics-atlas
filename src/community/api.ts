@@ -18,12 +18,14 @@ export interface Me {
   user: SignedInUser | null;
   /** On the invite list (community/experts.json) — may submit */
   invited: boolean;
+  /** May publish directly: the pull request is merged at once (Decision 43) */
+  canPublish?: boolean;
   /** "owner/name" proposals go to */
   repo?: string;
 }
 
 export type SubmitResult =
-  | { ok: true; number: number; url: string }
+  | { ok: true; number: number; url: string; published: boolean }
   | { ok: false; error: string; problems?: string[]; waiting?: string[] };
 
 /** JSON from the backend, or null when what answered isn't it (e.g. the dev server's index.html). */
@@ -85,18 +87,28 @@ export async function logout(): Promise<void> {
   await backend('/api/auth/logout', { method: 'POST' });
 }
 
-/** Submits a proposal; `uploads` are its new pictures, which go into the pull request but not into its description. */
-export async function submitProposal(proposal: Proposal, description: string, uploads: FigureUpload[] = []): Promise<SubmitResult> {
-  const r = await backend<{ number?: number; url?: string; error?: string; problems?: string[]; waiting?: string[] }>(
+/**
+ * Submits a proposal; `uploads` are its new pictures, which go into the pull
+ * request but not into its description. `publish` asks for it to be merged at
+ * once — `published` says whether it was.
+ */
+export async function submitProposal(
+  proposal: Proposal,
+  description: string,
+  uploads: FigureUpload[] = [],
+  publish = false,
+): Promise<SubmitResult> {
+  const r = await backend<{ number?: number; url?: string; published?: boolean; error?: string; problems?: string[]; waiting?: string[] }>(
     '/api/proposals',
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ proposal, description, ...(uploads.length ? { uploads } : {}) }),
+      body: JSON.stringify({ proposal, description, ...(uploads.length ? { uploads } : {}), ...(publish ? { publish } : {}) }),
     },
   );
   if (!r) return { ok: false, error: 'The community backend could not be reached.' };
-  if (r.status === 201 && r.data.number && r.data.url) return { ok: true, number: r.data.number, url: r.data.url };
+  if (r.status === 201 && r.data.number && r.data.url)
+    return { ok: true, number: r.data.number, url: r.data.url, published: r.data.published === true };
   return { ok: false, error: r.data.error ?? `Submitting failed (${r.status}).`, problems: r.data.problems, waiting: r.data.waiting };
 }
 

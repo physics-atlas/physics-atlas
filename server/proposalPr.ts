@@ -27,14 +27,16 @@ export function decodeProposal(body: string | null): Proposal | null {
   }
 }
 
-export function pullRequestBody(description: string, p: Proposal, login: string): string {
+export function pullRequestBody(description: string, p: Proposal, login: string, publish = false): string {
   const text = description.trim().slice(0, MAX_DESCRIPTION);
   return [
     text,
     '',
     '---',
     `Submitted through Physics Atlas by @${login}. The Physics Atlas app opened this pull request on their behalf;`,
-    'the commit is authored by them. Please review it as their proposal.',
+    publish
+      ? 'the commit is authored by them. They published it directly, so the app merged it at once (Decision 43) — revert it here if needed.'
+      : 'the commit is authored by them. Please review it as their proposal.',
     '',
     encodeProposal(p),
   ].join('\n');
@@ -96,6 +98,8 @@ export interface Expert {
   name?: string;
   /** A curator has attested this person's expertise (Decision 18) */
   verified?: boolean;
+  /** May publish directly: the pull request is merged as soon as it's opened (Decision 43) */
+  publish?: boolean;
   domains?: string[];
 }
 

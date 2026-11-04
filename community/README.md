@@ -7,7 +7,7 @@ request on their behalf). Anyone can browse, draft and export.
 ```json
 {
   "experts": [
-    { "github": "their-handle", "name": "Display name", "verified": false, "domains": ["Cosmology"] }
+    { "github": "their-handle", "name": "Display name", "verified": false, "publish": false, "domains": ["Cosmology"] }
   ]
 }
 ```
@@ -15,6 +15,10 @@ request on their behalf). Anyone can browse, draft and export.
 - `github` — required; their GitHub handle (case doesn't matter).
 - `verified` — a curator has attested their expertise (Decision 18): their proposals show
   "✓ Verified expert". Leave it `false` until then.
+- `publish` — may publish directly (Decision 43): the editor offers **Publish now** beside
+  **Submit as a pull request**, and the app merges the pull request as soon as it's opened.
+  Meant for the curators while the graph is being built; leave it out otherwise. The
+  `DIRECT_PUBLISH=off` setting turns it off for everyone at once.
 - `domains` — what they're expert in, from `src/data/conceptVocabulary.json` → `domains`
   (used by the quorum rules in Phase 4).
 
