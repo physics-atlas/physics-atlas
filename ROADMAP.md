@@ -6,6 +6,22 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-72: Curators may publish directly
+
+**Status:** ✅ Implemented <!-- status-line: feature-72 -->
+**Planned:** 2026-11-04 — requested: let some allowed users bypass the pull request and commit changes directly for now, since review slows down building the graph. Option A chosen: the pull request is opened and merged at once, so it can still be reverted.
+**Implemented:** 2026-11-04
+
+### Implemented
+- `community/experts.json` `publish` flag (`Expert.publish`); `DIRECT_PUBLISH=off` Worker setting (`Config.directPublish`)
+- `server/api.ts`: `/api/me` `canPublish`; `POST /api/proposals` `publish` (403 unless allowed, 409 when it depends on open proposals), merge after opening, `published` in the reply; `GitHub.mergePullRequest` (merge commit; a refusal leaves the pull request open); the description says it was published directly
+- `DraftEditor.tsx`: **Publish now** beside **Submit as a pull request** for those allowed, with what it does and why it's unavailable with dependencies; `ConceptMapView.tsx` status and account panel say published / merged
+- Tests: `canPublish` (flag, switched off, not flagged), merged at once, refused to others and when switched off (nothing written), refused with dependencies, left open when GitHub won't merge
+- Docs: Decision 43, `community/README.md`, `docs/COMMUNITY-BACKEND-SETUP.md`
+
+### Review
+Not run — direct session.
+
 ## feature-71: Equation symbols in the editor; page maths checked before proposing
 
 **Status:** ✅ Implemented <!-- status-line: feature-71 -->

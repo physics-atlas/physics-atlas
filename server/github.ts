@@ -3,7 +3,7 @@ import { signJwt } from './crypto';
 
 // The GitHub calls the backend makes. Two identities:
 // - the GitHub App's installation token writes to the repository (branches,
-//   commits, pull requests, feedback issues) — proposers need no access of their own;
+//   commits, pull requests and merging them, feedback issues) — proposers need no access of their own;
 // - a proposer's own token is used once, at sign-in, to read who they are.
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -205,5 +205,24 @@ export class GitHub {
     });
     await this.call(`${r}/issues/${pr.number}/labels`, { token, method: 'POST', body: JSON.stringify({ labels: p.labels }) });
     return { number: pr.number, url: pr.html_url };
+  }
+
+  /** Merges a pull request with a merge commit, as the curators do by hand; false when GitHub won't (e.g. a conflict). */
+  async mergePullRequest(number: number): Promise<boolean> {
+    const { owner, repo } = this.config;
+    try {
+      await this.call(`/repos/${owner}/${repo}/pulls/${number}/merge`, {
+        token: await this.appToken(),
+        method: 'PUT',
+        body: JSON.stringify({ merge_method: 'merge' }),
+      });
+      return true;
+    } catch (e) {
+      if (e instanceof GitHubError && [405, 409, 422].includes(e.status)) {
+        console.warn(`direct publish: #${number} not merged (${e.status})`);
+        return false;
+      }
+      throw e;
+    }
   }
 }

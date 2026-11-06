@@ -37,11 +37,13 @@ const env: Env = {
 };
 
 /** A stand-in for GitHub: records what the backend writes, serves what it reads. */
-function fakeGitHub(invited: string[] = ['ada'], { issues = true } = {}) {
+function fakeGitHub(invited: string[] = ['ada'], { issues = true, publishers = [] as string[], mergeStatus = 200 } = {}) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object }[] = [];
   let jwtSeen = '';
-  const experts = { experts: invited.map((github) => ({ github, name: 'Ada', verified: true })) };
+  const experts = {
+    experts: invited.map((github) => ({ github, name: 'Ada', verified: true, ...(publishers.includes(github) ? { publish: true } : {}) })),
+  };
   const reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
   const fetchImpl = async (input: string, init: RequestInit = {}) => {
     const url = new URL(input);
@@ -86,6 +88,8 @@ function fakeGitHub(invited: string[] = ['ada'], { issues = true } = {}) {
       return reply({ number, html_url: `https://github.com/atlas-org/atlas-test/pull/${number}` });
     }
     if (/\/issues\/\d+\/labels$/.test(path)) return reply([]);
+    if (/\/pulls\/\d+\/merge$/.test(path) && method === 'PUT')
+      return mergeStatus === 200 ? reply({ merged: true, sha: 'merge-sha' }) : reply({ message: 'Pull Request is not mergeable' }, mergeStatus);
     if (path === `${r}/issues` && method === 'POST')
       return issues
         ? reply({ number: 40, html_url: 'https://github.com/atlas-org/atlas-test/issues/40' }, 201)
@@ -126,12 +130,23 @@ const submit = (
   proposal: Proposal,
   origin = ORIGIN,
   uploads?: { path: string; data: string }[],
+  { publish = false, e = env }: { publish?: boolean; e?: Env } = {},
 ) =>
-  call(gh, '/api/proposals', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin, ...(session ? { cookie: session } : {}) },
-    body: JSON.stringify({ proposal, description: `# ${proposal.title}\n\nWhat it adds.`, ...(uploads ? { uploads } : {}) }),
-  });
+  call(
+    gh,
+    '/api/proposals',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin, ...(session ? { cookie: session } : {}) },
+      body: JSON.stringify({
+        proposal,
+        description: `# ${proposal.title}\n\nWhat it adds.`,
+        ...(uploads ? { uploads } : {}),
+        ...(publish ? { publish } : {}),
+      }),
+    },
+    e,
+  );
 
 beforeEach(() => resetCaches());
 
@@ -250,7 +265,8 @@ describe('submitting a proposal', () => {
     const p = draftProposal(jeans(), alone(jeans()));
     const res = await submit(gh, session, p);
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ number: 12, url: 'https://github.com/atlas-org/atlas-test/pull/12' });
+    expect(await res.json()).toEqual({ number: 12, url: 'https://github.com/atlas-org/atlas-test/pull/12', published: false });
+    expect(gh.writes.some((w) => w.path.endsWith('/merge'))).toBe(false);
     const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { base_tree: string; tree: { path: string; content?: string }[] };
     expect(tree.base_tree).toBe('base-tree');
     expect(tree.tree.map((t) => t.path)).toEqual([
@@ -332,6 +348,74 @@ describe('submitting a proposal', () => {
     const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { tree: { path: string; sha?: null }[] };
     expect(tree.tree).toContainEqual({ path: 'content/concepts/nodes/vlasov_equation.json', mode: '100644', type: 'blob', content: expect.any(String) });
     expect(tree.tree).toContainEqual({ path: 'content/concepts/edges/e62.json', mode: '100644', type: 'blob', sha: null });
+  });
+});
+
+describe('publishing directly (Decision 43)', () => {
+  const publishNow = (gh: ReturnType<typeof fakeGitHub>, session: string, p: Proposal, e = env) =>
+    submit(gh, session, p, ORIGIN, undefined, { publish: true, e });
+
+  it('is offered to experts marked "publish", unless it is switched off', async () => {
+    const gh = fakeGitHub(['ada'], { publishers: ['ada'] });
+    const session = await signIn(gh);
+    expect(await (await call(gh, '/api/me', { headers: { cookie: session } })).json()).toMatchObject({ invited: true, canPublish: true });
+    const off = { ...env, DIRECT_PUBLISH: 'off' };
+    expect(await (await call(gh, '/api/me', { headers: { cookie: session } }, off)).json()).toMatchObject({ canPublish: false });
+    resetCaches();
+    const gh2 = fakeGitHub(['ada']);
+    const session2 = await signIn(gh2);
+    expect(await (await call(gh2, '/api/me', { headers: { cookie: session2 } })).json()).toMatchObject({ invited: true, canPublish: false });
+  });
+
+  it('opens the pull request and merges it at once, saying so in its description', async () => {
+    const gh = fakeGitHub(['ada'], { publishers: ['ada'] });
+    const session = await signIn(gh);
+    const res = await publishNow(gh, session, draftProposal(jeans(), alone(jeans())));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ number: 12, url: 'https://github.com/atlas-org/atlas-test/pull/12', published: true });
+    const merge = gh.writes.find((w) => w.path === '/repos/atlas-org/atlas-test/pulls/12/merge')!;
+    expect(merge).toMatchObject({ method: 'PUT', body: { merge_method: 'merge' } });
+    expect(gh.pulls[0].body).toContain('They published it directly');
+  });
+
+  it('refuses it to everyone else, and to everyone when switched off — nothing is written', async () => {
+    const gh = fakeGitHub(['ada']);
+    const session = await signIn(gh);
+    const p = draftProposal(jeans(), alone(jeans()));
+    expect((await publishNow(gh, session, p)).status).toBe(403);
+    resetCaches();
+    const gh2 = fakeGitHub(['ada'], { publishers: ['ada'] });
+    const session2 = await signIn(gh2);
+    expect((await publishNow(gh2, session2, p, { ...env, DIRECT_PUBLISH: 'off' })).status).toBe(403);
+    expect([...gh.writes, ...gh2.writes]).toEqual([]);
+  });
+
+  it('refuses one that depends on an open proposal: main would point at a concept that is only proposed', async () => {
+    const gh = fakeGitHub(['ada'], { publishers: ['ada'] });
+    const session = await signIn(gh);
+    const a = jeans();
+    const b: Draft = {
+      ...newDraft(() => 0.25),
+      label: 'Jeans mass',
+      type: 'property',
+      description: 'Sample.',
+      relations: [{ key: 'r1', source: NEW_CONCEPT, target: `@draft:${a.suffix}`, relationship: 'relates' }],
+    };
+    await submit(gh, session, draftProposal(a, alone(a, b)));
+    const res = await publishNow(gh, session, draftProposal(b, alone(a, b)));
+    expect(res.status).toBe(409);
+    expect((await res.json()).waiting).toEqual([draftProposal(a, alone(a)).id]);
+    expect((await submit(gh, session, draftProposal(b, alone(a, b)))).status).toBe(201);
+  });
+
+  it('leaves the pull request open for review when GitHub will not merge it', async () => {
+    const gh = fakeGitHub(['ada'], { publishers: ['ada'], mergeStatus: 405 });
+    const session = await signIn(gh);
+    const res = await publishNow(gh, session, draftProposal(jeans(), alone(jeans())));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({ number: 12, published: false });
+    const { proposals } = await (await call(gh, '/api/proposals')).json();
+    expect(proposals).toHaveLength(1);
   });
 });
 

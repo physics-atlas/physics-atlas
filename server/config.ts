@@ -15,6 +15,8 @@ export interface Env {
   SESSION_SECRET?: string;
   /** Extra invited GitHub handles, comma-separated, on top of community/experts.json */
   ALLOWED_PROPOSERS?: string;
+  /** "off" turns direct publishing off for everyone, whatever community/experts.json says */
+  DIRECT_PUBLISH?: string;
 }
 
 export interface Config {
@@ -27,6 +29,8 @@ export interface Config {
   clientSecret: string;
   sessionSecret: string;
   extraProposers: string[];
+  /** Experts marked "publish" may merge their proposal at once (Decision 43) */
+  directPublish: boolean;
 }
 
 const REQUIRED = [
@@ -58,5 +62,6 @@ export function readConfig(env: Env): Config | { missing: string[] } {
       .split(',')
       .map((h) => h.trim().toLowerCase())
       .filter(Boolean),
+    directPublish: env.DIRECT_PUBLISH?.trim().toLowerCase() !== 'off',
   };
 }

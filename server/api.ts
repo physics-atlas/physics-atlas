@@ -19,12 +19,12 @@ import type { SessionUser } from './session';
 // submit one as a pull request, send feedback as an issue. Everything a browser can't be trusted with —
 // the App key, the OAuth secret, deciding who may submit — happens here.
 //
-//   GET  /api/me                 { configured, user, invited }
+//   GET  /api/me                 { configured, user, invited, canPublish }
 //   GET  /api/auth/login         → GitHub, then back to ?return=
 //   GET  /api/auth/callback      GitHub sends the browser here → back, with ?signin=<reason> if it failed
 //   POST /api/auth/logout
 //   GET  /api/proposals          { proposals } — open pull requests labelled "proposal"
-//   POST /api/proposals          { proposal, description, uploads? } → { number, url }
+//   POST /api/proposals          { proposal, description, uploads?, publish? } → { number, url, published }
 //   POST /api/feedback           { kind, title, message, page? } → { number, url } — anyone signed in
 
 export const PROPOSAL_LABEL = 'proposal';
@@ -99,6 +99,8 @@ async function experts(config: Config, gh: GitHub, now: number): Promise<Expert[
 }
 
 const expertFor = (list: Expert[], login: string) => list.find((e) => e.github.toLowerCase() === login.toLowerCase());
+/** Direct publishing (Decision 43): marked in community/experts.json, and not switched off with DIRECT_PUBLISH. */
+const mayPublish = (config: Config, expert: Expert | undefined) => Boolean(config.directPublish && expert?.publish);
 
 async function openProposals(config: Config, gh: GitHub, now: number): Promise<Proposal[]> {
   const key = `${config.owner}/${config.repo}`;
@@ -132,8 +134,14 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
   try {
     switch (route) {
       case 'GET /api/me': {
-        const invited = user ? Boolean(expertFor(await experts(config, gh, now), user.login)) : false;
-        return json({ configured: true, user, invited, repo: `${config.owner}/${config.repo}` });
+        const expert = user ? expertFor(await experts(config, gh, now), user.login) : undefined;
+        return json({
+          configured: true,
+          user,
+          invited: Boolean(expert),
+          canPublish: mayPublish(config, expert),
+          repo: `${config.owner}/${config.repo}`,
+        });
       }
 
       case 'GET /api/auth/login': {
@@ -195,8 +203,12 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           proposal?: Proposal;
           description?: string;
           uploads?: FigureUpload[];
+          publish?: boolean;
         } | null;
         if (!body?.proposal || typeof body.proposal !== 'object') return json({ error: 'No proposal in the request.' }, 400);
+        const publish = body.publish === true;
+        if (publish && !mayPublish(config, expert))
+          return json({ error: `@${user.login} may not publish directly. Submit it as a pull request instead.` }, 403);
         const open = await openProposals(config, gh, now);
         // The server decides who proposed it, when, and how the vote stands.
         const proposal: Proposal = {
@@ -213,6 +225,9 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
         const waiting = (proposal.dependsOn ?? []).filter((d) => !open.some((p) => p.id === d));
         if (waiting.length)
           return json({ error: `Submit what it depends on first: ${waiting.join(', ')}.`, waiting }, 409);
+        // Merged now, it would point main at concepts that are still only proposed.
+        if (publish && proposal.dependsOn?.length)
+          return json({ error: 'It depends on open proposals, so it can only be submitted as a pull request until they are merged.', waiting: proposal.dependsOn }, 409);
         const problems = proposalProblems(proposal, concepts, open);
         if (problems.length) return json({ error: 'The proposal does not fit the map.', problems }, 422);
         // Pictures: every new one the concept names is uploaded, and nothing else is.
@@ -240,11 +255,14 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           message: `${proposal.title}\n\nProposed by @${user.login} through Physics Atlas.`,
           author: { name: user.name, email: `${user.id}+${user.login}@users.noreply.github.com` },
           title: proposal.title,
-          body: pullRequestBody(typeof body.description === 'string' ? body.description : proposal.title, proposal, user.login),
+          body: pullRequestBody(typeof body.description === 'string' ? body.description : proposal.title, proposal, user.login, publish),
           labels: [PROPOSAL_LABEL],
         });
+        // Not merged (a conflict, say): it stays open as an ordinary proposal.
+        const published = publish && (await gh.mergePullRequest(pr.number));
+        if (published) console.log(`direct publish: #${pr.number} by @${user.login}`);
         state.list.delete(`${config.owner}/${config.repo}`);
-        return json(pr, 201);
+        return json({ ...pr, published }, 201);
       }
 
       case 'POST /api/feedback': {

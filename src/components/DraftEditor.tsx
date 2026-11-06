@@ -87,8 +87,10 @@ interface DraftEditorProps {
   submission: {
     user: SignedInUser | null;
     invited: boolean;
+    /** May publish directly: the pull request is merged at once (Decision 43) */
+    canPublish: boolean;
     loginHref: string;
-    onSubmit: () => Promise<SubmitResult>;
+    onSubmit: (publish: boolean) => Promise<SubmitResult>;
   } | null;
 }
 
@@ -166,7 +168,8 @@ export default function DraftEditor({
   const [note, setNote] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [pairFrom, setPairFrom] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  /** What is being sent: a pull request for review, or one merged at once */
+  const [sending, setSending] = useState<'review' | 'publish' | null>(null);
   const [sendError, setSendError] = useState<{ error: string; problems?: string[] } | null>(null);
   const exportRef = useRef<HTMLElement>(null);
 
@@ -229,12 +232,12 @@ export default function DraftEditor({
       : ctx.proposals.find((p) => p.nodes.some((n) => n.id === id))?.title;
   // Drafts this one depends on that aren't submitted yet: they go first.
   const unsubmitted = deps.filter((x) => ctx.drafts.some((d) => d.suffix !== draft.suffix && proposalId(d) === x.id));
-  const send = async () => {
+  const send = async (publish: boolean) => {
     if (!submission) return;
-    setSending(true);
+    setSending(publish ? 'publish' : 'review');
     setSendError(null);
-    const result = await submission.onSubmit();
-    setSending(false);
+    const result = await submission.onSubmit(publish);
+    setSending(null);
     if (!result.ok) {
       setSendError({ error: result.error, problems: result.problems });
       setNote(`Not submitted: ${result.error}`);
@@ -946,16 +949,39 @@ export default function DraftEditor({
                       Ready. Submitting opens a pull request for reviewers, as <strong>@{submission.user.login}</strong>
                       ; the draft then shows on the map as a proposal for everyone.
                     </p>
+                    {submission.canPublish &&
+                      (deps.length ? (
+                        <p className="draft-hint">
+                          It depends on open proposals, so it can't be published directly until they are merged.
+                        </p>
+                      ) : (
+                        <p className="draft-hint">
+                          You may also <strong>publish it now</strong>: the pull request is opened and merged at once,
+                          and the map shows it after the site's next build, in a few minutes. The checks run after it's
+                          merged; it can be reverted from its pull request.
+                        </p>
+                      ))}
                     <div className="draft-row-actions">
                       <button
                         type="button"
                         className="draft-button draft-button-primary"
-                        onClick={() => void send()}
-                        disabled={sending}
-                        aria-disabled={sending}
+                        onClick={() => void send(false)}
+                        disabled={sending !== null}
+                        aria-disabled={sending !== null}
                       >
-                        {sending ? 'Submitting…' : 'Submit as a pull request'}
+                        {sending === 'review' ? 'Submitting…' : 'Submit as a pull request'}
                       </button>
+                      {submission.canPublish && deps.length === 0 && (
+                        <button
+                          type="button"
+                          className="draft-button"
+                          onClick={() => void send(true)}
+                          disabled={sending !== null}
+                          aria-disabled={sending !== null}
+                        >
+                          {sending === 'publish' ? 'Publishing…' : 'Publish now'}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
