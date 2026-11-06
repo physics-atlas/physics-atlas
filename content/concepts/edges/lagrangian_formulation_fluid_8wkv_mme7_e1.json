@@ -1,6 +1,0 @@
-{
-  "id": "lagrangian_formulation_fluid_8wkv_mme7_e1",
-  "source": "zeldovich_approximation",
-  "target": "lagrangian_formulation_fluid_8wkv",
-  "relationship": "is derived from"
-}
