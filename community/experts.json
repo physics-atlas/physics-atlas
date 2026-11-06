@@ -1,6 +1,7 @@
 {
-  "experts": [{ "github": "gdaudt", "name": "Guilherme Daudt", "verified": true },
-              { "github": "sophelsa", "name": "Sophie Ashworth", "verified": true },
-              { "github": "mhardtke", "name": "Max Hardtke", "verified": true },
-            {"github": "subutayebru", "name": "Ebru Subutay", "verified": true}]
+  "experts": [{ "github": "gdaudt", "name": "Guilherme Daudt", "verified": true, "publish": true },
+              { "github": "sophelsa", "name": "Sophie Ashworth", "verified": true, "publish": true },
+              { "github": "mhardtke", "name": "Max Hardtke", "verified": true, "publish": true },
+              { "github": "onedandelion", "name": "Daniel ", "verified": true, "publish": true },
+            {"github": "subutayebru", "name": "Ebru Subutay", "verified": true, "publish": true}]
 }
