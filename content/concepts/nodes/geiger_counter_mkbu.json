@@ -1,0 +1,10 @@
+{
+  "id": "geiger_counter_mkbu",
+  "label": "Geiger counter",
+  "type": "experiment",
+  "importance": 2,
+  "generality": 1,
+  "attrs": {
+    "description": "A device that can measure presence of certain types of radiation"
+  }
+}

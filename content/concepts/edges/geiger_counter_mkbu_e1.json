@@ -1,0 +1,6 @@
+{
+  "id": "geiger_counter_mkbu_e1",
+  "source": "geiger_counter_mkbu",
+  "target": "alpha_particle",
+  "relationship": "relates"
+}
