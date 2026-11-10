@@ -1,0 +1,6 @@
+{
+  "id": "predict_the_changes_in_nucleons_numbers_hxi4_e1",
+  "source": "predict_the_changes_in_nucleons_numbers_hxi4",
+  "target": "alpha_decay",
+  "relationship": "is a learning goal of"
+}

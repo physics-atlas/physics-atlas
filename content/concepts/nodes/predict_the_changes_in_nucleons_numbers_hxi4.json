@@ -1,0 +1,10 @@
+{
+  "id": "predict_the_changes_in_nucleons_numbers_hxi4",
+  "label": "predict the changes in nucleons numbers after an alpha decay",
+  "type": "learning_goal",
+  "importance": 3,
+  "generality": 2,
+  "attrs": {
+    "description": "when you understand the basic premise of alpha decay you can predict how proton and neutron numbers of a nuclei change after a decay."
+  }
+}
