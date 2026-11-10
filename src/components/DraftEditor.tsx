@@ -10,6 +10,7 @@ import { OTHER_RELATION } from '../community/relationTypes';
 import { prepareImage } from '../lib/prepareImage';
 import {
   EVIDENCE_LABELS,
+  MEDIA_TYPES,
   PROPOSABLE_TYPES,
   draftDependencies,
   draftProblems,
@@ -395,7 +396,11 @@ export default function DraftEditor({
           </div>
         )}
 
-        <Field id={fieldId('description')} label="Description" hint="A sentence or two in plain words.">
+        <Field
+          id={fieldId('description')}
+          label="Description"
+          hint={draft.type === 'resource' ? 'What it covers, and who it suits — a sentence or two.' : 'A sentence or two in plain words.'}
+        >
           <textarea
             id={fieldId('description')}
             className="draft-input"
@@ -408,29 +413,33 @@ export default function DraftEditor({
 
         {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
         {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'resource' && <ResourceFields draft={draft} update={update} fieldId={fieldId} />}
 
-        <fieldset className="draft-domains">
-          <legend className="draft-label">
-            Field <span className="draft-optional">optional</span>
-          </legend>
-          {CONCEPT_DOMAINS.map((domain) => (
-            <label key={domain} className="draft-check">
-              <input
-                type="checkbox"
-                checked={draft.domains.includes(domain)}
-                onChange={(e) =>
-                  set(
-                    'domains',
-                    e.target.checked
-                      ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
-                      : draft.domains.filter((d) => d !== domain),
-                  )
-                }
-              />
-              {domain}
-            </label>
-          ))}
-        </fieldset>
+        {/* A resource has no field of physics of its own: what it helps understand does. */}
+        {draft.type !== 'resource' && (
+          <fieldset className="draft-domains">
+            <legend className="draft-label">
+              Field <span className="draft-optional">optional</span>
+            </legend>
+            {CONCEPT_DOMAINS.map((domain) => (
+              <label key={domain} className="draft-check">
+                <input
+                  type="checkbox"
+                  checked={draft.domains.includes(domain)}
+                  onChange={(e) =>
+                    set(
+                      'domains',
+                      e.target.checked
+                        ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
+                        : draft.domains.filter((d) => d !== domain),
+                    )
+                  }
+                />
+                {domain}
+              </label>
+            ))}
+          </fieldset>
+        )}
 
         <Field
           id={fieldId('generality')}
@@ -1642,6 +1651,74 @@ function FigureFields({
     </fieldset>
   );
 }
+
+/**
+ * An educational resource: where it is, what kind it is, and how long it
+ * takes. Connect it with "helps understand" to what it teaches — that's how
+ * it joins a learning path.
+ */
+function ResourceFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  return (
+    <>
+      <Field id={fieldId('link')} label="Link" hint="Where to find it: a web address starting with https://.">
+        <input
+          id={fieldId('link')}
+          className="draft-input"
+          type="url"
+          inputMode="url"
+          value={draft.link}
+          placeholder="https://"
+          onChange={(e) => update((d) => ({ ...d, link: e.target.value }))}
+          aria-describedby={fieldId('link-hint')}
+          autoComplete="off"
+        />
+      </Field>
+      <Field id={fieldId('mediaType')} label="Kind of resource">
+        <select
+          id={fieldId('mediaType')}
+          className="draft-input"
+          value={draft.mediaType}
+          onChange={(e) => update((d) => ({ ...d, mediaType: e.target.value }))}
+        >
+          <option value="">Choose…</option>
+          {MEDIA_TYPES.map((m) => (
+            <option key={m} value={m}>
+              {MEDIA_TYPE_NAMES[m] ?? m}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field id={fieldId('minutes')} label="Time to work through it, in minutes" hint="Roughly: a reader's first time through.">
+        <input
+          id={fieldId('minutes')}
+          className="draft-input draft-number"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={draft.minutes ?? ''}
+          onChange={(e) => update((d) => ({ ...d, minutes: e.target.value === '' ? undefined : Number(e.target.value) }))}
+          aria-describedby={fieldId('minutes-hint')}
+        />
+      </Field>
+      <p className="draft-hint">
+        Connect it under Connections with <strong>helps understand</strong> to the concepts it teaches: that's how it
+        appears on their learning paths.
+      </p>
+    </>
+  );
+}
+
+/** How a kind of resource reads in the editor (conceptVocabulary.json "mediaTypes"). */
+const MEDIA_TYPE_NAMES: Record<string, string> = { text: 'Text', video: 'Video', quiz: 'Quiz' };
 
 /** A mathematical formalism's formulas: how it works, each typeset, named and with its variables. */
 function FormulaFields({

@@ -6,6 +6,22 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-72: Educational resources in the editor
+
+**Status:** ✅ Implemented <!-- status-line: feature-72 -->
+**Planned:** 2026-11-10 — requested: "Educational Resource" as a node category
+**Implemented:** 2026-11-10
+
+### Implemented
+- `draft.ts`: `resource` proposable (`PROPOSABLE_TYPES`), `link` / `mediaType` / `minutes` on a draft, checks, an edit keeps the rating; `proposals.ts` checks a proposed resource and lists its changes
+- `DraftEditor.tsx`: `ResourceFields` (link, kind, minutes; "helps understand" pointer); no Field of physics for a resource
+- `types.ts` / validator: `description` allowed on a resource; `rating`, `reviewCount` optional
+- Tests: proposing one, its problems, editing one keeps its rating; browser: the kind offered, its fields, the export, axe
+- Decision 44
+
+### Review
+Not run — direct session.
+
 ## feature-72: Curators may publish directly
 
 **Status:** ✅ Implemented <!-- status-line: feature-72 -->

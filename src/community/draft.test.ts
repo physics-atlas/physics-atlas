@@ -460,7 +460,7 @@ describe('storage', () => {
     expect(parseDraft({ ...jeans(), version: 4 })).toBeNull();
     expect(parseDraft({ ...jeans(), variables: [{ symbol: 'x' }] })).toBeNull();
     expect(parseDraft({ ...jeans(), representations: [{ name: 'x' }] })).toBeNull();
-    expect(parseDraft({ ...jeans(), type: 'resource' })).toBeNull();
+    expect(parseDraft({ ...jeans(), type: 'not_a_kind' })).toBeNull();
     expect(parseDraft({ ...jeans(), relations: [{ key: 'r1' }] })).toBeNull();
     expect(parseDraft({ ...jeans(), evidence: [{ kind: 'tweet', ref: 'x' }] })).toBeNull();
     expect(parseDraft({ ...jeans(), generality: 'big' })).toBeNull();
@@ -602,5 +602,37 @@ describe('pictures in drafts', () => {
     const { figures: _f, ...old } = jeans();
     void _f;
     expect(parseDraft(old)?.figures).toEqual([]);
+  });
+});
+
+describe('educational resources', () => {
+  const resource = (): Draft => ({
+    ...jeans(),
+    label: 'Sample lecture',
+    type: 'resource',
+    description: 'Sample: a lecture on the topic.',
+    link: ' https://sample.example/lecture ',
+    mediaType: 'video',
+    minutes: 40,
+    relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'helps understand' }],
+  });
+  it('can be proposed, with its link, kind and time — and no rating yet', () => {
+    const d = resource();
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const node = draftNode(d, concepts);
+    expect(node.type).toBe('resource');
+    expect(node.attrs).toEqual({ description: 'Sample: a lecture on the topic.', link: 'https://sample.example/lecture', mediaType: 'video', estimatedMinutes: 40 });
+    expect(proposalProblems(draftProposal(d, alone(d)), concepts)).toEqual([]);
+  });
+  it('asks for what a resource needs', () => {
+    const d: Draft = { ...resource(), link: 'lecture', mediaType: '', minutes: undefined };
+    expect(draftProblems(d, alone(d)).map((p) => p.field)).toEqual(['link', 'mediaType', 'minutes']);
+  });
+  it('keeps a curated rating when a resource is edited', () => {
+    const before = concepts.nodes.find((n) => n.type === 'resource')!;
+    const d = newEditDraft(before, fixed, at);
+    expect(d.type).toBe('resource');
+    const after = draftNode({ ...d, description: 'Sample: what it covers.' }, concepts);
+    expect((after.attrs as { rating?: number }).rating).toBe((before.attrs as { rating?: number }).rating);
   });
 });

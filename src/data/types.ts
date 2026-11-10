@@ -106,11 +106,15 @@ export interface LearningGoalAttrs {
 }
 
 export interface ResourceAttrs {
+  /** What it covers, in a sentence or two */
+  description?: string;
   link: string;
+  /** One of conceptVocabulary.json "mediaTypes" (text, video, quiz) */
   mediaType: string;
   estimatedMinutes: number;
-  rating: number;
-  reviewCount: number;
+  /** 0–5, from the original curated list; a proposed resource has none yet */
+  rating?: number;
+  reviewCount?: number;
 }
 
 interface GraphNodeBase {

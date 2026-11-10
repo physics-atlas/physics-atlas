@@ -1,5 +1,6 @@
 import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
-import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
+import type { ConceptGraph, GraphEdge, GraphNode, ResourceAttrs } from '../data/types';
+import vocab from '../data/conceptVocabulary.json';
 import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
 import { figureProblems } from './figures';
 import { relationPhrase, relationTypeProblems } from './relationTypes';
@@ -21,6 +22,14 @@ function nodeProblems(where: string, n: GraphNode): string[] {
     problems.push(`${where}: concept "${n.id}" generality must be a whole number 1–${GENERALITY_MAX}`);
   if (n.importance !== undefined && !inRange(n.importance, IMPORTANCE_MAX))
     problems.push(`${where}: concept "${n.id}" importance must be a whole number 1–${IMPORTANCE_MAX}`);
+  if (n.type === 'resource') {
+    const a = n.attrs as Partial<ResourceAttrs>;
+    if (typeof a.link !== 'string' || !/^https?:\/\//.test(a.link)) problems.push(`${where}: resource "${n.id}" needs an http(s) link`);
+    if (typeof a.mediaType !== 'string' || !vocab.mediaTypes.includes(a.mediaType))
+      problems.push(`${where}: resource "${n.id}" has an unknown kind "${a.mediaType}"`);
+    if (typeof a.estimatedMinutes !== 'number' || !(a.estimatedMinutes > 0))
+      problems.push(`${where}: resource "${n.id}" needs the minutes it takes`);
+  }
   return problems;
 }
 
@@ -205,6 +214,9 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['Description', attr(before, 'description'), attr(after, 'description')],
     ['Field', attr(before, 'domain'), attr(after, 'domain')],
     ['Equation', attr(before, 'equation'), attr(after, 'equation')],
+    ['Link', attr(before, 'link'), attr(after, 'link')],
+    ['Kind of resource', attr(before, 'mediaType'), attr(after, 'mediaType')],
+    ['Minutes', attr(before, 'estimatedMinutes'), attr(after, 'estimatedMinutes')],
     ['Generality', String(before.generality ?? ''), String(after.generality ?? '')],
     ['Importance', String(before.importance ?? ''), String(after.importance ?? '')],
     ['Assumes', assumptionsText(before), assumptionsText(after)],

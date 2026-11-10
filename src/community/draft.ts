@@ -1,4 +1,5 @@
 import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
+import vocab from '../data/conceptVocabulary.json';
 import { pageLinkTargets, parsePage } from '../lib/pageText';
 import type {
   Assumption,
@@ -38,8 +39,11 @@ export const draftRef = (suffix: string): string => `@draft:${suffix}`;
 export const isDraftRef = (ref: string): boolean => ref.startsWith('@draft:');
 const refSuffix = (ref: string) => ref.slice('@draft:'.length);
 
-/** Educational resources are curated links, not concepts — they're not proposed here. */
-export const PROPOSABLE_TYPES: NodeType[] = TYPE_ORDER.filter((t) => t !== 'resource');
+/** Every kind can be proposed — an educational resource too (with its link, kind and time). */
+export const PROPOSABLE_TYPES: NodeType[] = [...TYPE_ORDER];
+
+/** The kinds of educational resource (conceptVocabulary.json "mediaTypes"). */
+export const MEDIA_TYPES: string[] = vocab.mediaTypes;
 
 export interface DraftRelation {
   /** Stable while editing (list keys); the exported id comes from the order */
@@ -109,6 +113,10 @@ export interface Draft {
   representations: DraftRepresentation[];
   /** Mathematical formalisms: formulas that show how it works (name optional) */
   formulas: DraftRepresentation[];
+  /** Educational resources: where it is, what kind it is, and how long it takes (minutes) */
+  link: string;
+  mediaType: string;
+  minutes?: number;
   /** What it takes for granted, in words — each may point to a confirmed concept; no line on the map */
   assumes: DraftAssumption[];
   /** Pictures of it, on its card and page */
@@ -160,6 +168,8 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     variables: [],
     representations: [],
     formulas: [],
+    link: '',
+    mediaType: '',
     assumes: [],
     figures: [],
     page: [],
@@ -181,8 +191,11 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
     ...newDraft(random, now),
     editOf: node.id,
     label: node.label,
-    type: node.type === 'resource' ? '' : node.type,
+    type: node.type,
     description: typeof attrs.description === 'string' ? attrs.description : '',
+    link: typeof attrs.link === 'string' ? attrs.link : '',
+    mediaType: typeof attrs.mediaType === 'string' ? attrs.mediaType : '',
+    ...(typeof attrs.estimatedMinutes === 'number' ? { minutes: attrs.estimatedMinutes } : {}),
     domains: domain ? domain.split(' / ').map((d) => d.trim()) : [],
     equation: typeof attrs.equation === 'string' ? attrs.equation : '',
     variables: Array.isArray(attrs.variables) ? (attrs.variables as EquationVariable[]).map((v) => ({ ...v })) : [],
@@ -241,6 +254,9 @@ const clamp = (v: number, max: number) => Math.min(max, Math.max(1, Math.round(v
 const inRange = (v: number, max: number) => Number.isInteger(v) && v >= 1 && v <= max;
 const EQUATION_ONLY = ['equation', 'variables', 'conditions', 'representations'];
 const FORMALISM_ONLY = ['formulas'];
+/** A resource's fields the form edits, and the ones it keeps (a curated rating) */
+const RESOURCE_EDITED = ['link', 'mediaType', 'estimatedMinutes'];
+const RESOURCE_ONLY = ['rating', 'reviewCount'];
 
 /** A stored representation (or, before representations had formulas, just its name) as the form edits it. */
 const toDraftRepresentation = (r: EquationRepresentation | string): DraftRepresentation =>
@@ -315,7 +331,6 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const description = d.description.trim();
   const domain = d.domains.length ? d.domains.join(' / ') : undefined;
   const type = d.type || 'property';
-  if (type === 'resource') throw new Error('resources are not proposed through the editor');
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
   const { importance: _i, generality: _g, assumes: _a, figures: _f, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
   void _i;
@@ -326,9 +341,10 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, review notes) is kept.
       ([k]) =>
-        !['description', 'domain', 'equation', 'variables', 'representations', 'formulas'].includes(k) &&
+        !['description', 'domain', 'equation', 'variables', 'representations', 'formulas', ...RESOURCE_EDITED].includes(k) &&
         (type === 'equation' || !EQUATION_ONLY.includes(k)) &&
-        (type === 'formalism' || !FORMALISM_ONLY.includes(k)),
+        (type === 'formalism' || !FORMALISM_ONLY.includes(k)) &&
+        (type === 'resource' || !RESOURCE_ONLY.includes(k)),
     ),
   );
   const scales = {
@@ -349,6 +365,14 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
           ...kept,
           ...(domain ? { domain } : {}),
         }
+      : type === 'resource'
+        ? {
+            ...(description ? { description } : {}),
+            link: d.link.trim(),
+            mediaType: d.mediaType,
+            estimatedMinutes: d.minutes ?? 0,
+            ...kept,
+          }
       : type === 'learning_goal'
         ? { description }
         : type === 'formalism'
@@ -564,6 +588,9 @@ export type DraftField =
   | 'formulas'
   | 'assumes'
   | 'figures'
+  | 'link'
+  | 'mediaType'
+  | 'minutes'
   | 'page'
   | 'generality'
   | 'importance'
@@ -590,7 +617,18 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
   const out: DraftProblem[] = [];
   if (!d.label.trim()) out.push({ field: 'label', message: 'Give the concept a name.' });
   if (!d.type) out.push({ field: 'type', message: 'Choose what kind of concept it is.' });
-  if (!d.description.trim()) out.push({ field: 'description', message: 'Describe the concept in a sentence or two.' });
+  if (!d.description.trim())
+    out.push({
+      field: 'description',
+      message: d.type === 'resource' ? 'Say in a sentence or two what the resource covers.' : 'Describe the concept in a sentence or two.',
+    });
+  if (d.type === 'resource') {
+    if (!/^https?:\/\/\S+\.\S+/.test(d.link.trim()))
+      out.push({ field: 'link', message: 'Give the address of the resource (starting with https://).' });
+    if (!MEDIA_TYPES.includes(d.mediaType)) out.push({ field: 'mediaType', message: 'Choose what kind of resource it is.' });
+    if (d.minutes === undefined || !Number.isInteger(d.minutes) || d.minutes < 1)
+      out.push({ field: 'minutes', message: 'Say roughly how many minutes it takes to work through.' });
+  }
   if (d.type === 'equation') {
     if (!d.equation.trim()) out.push({ field: 'equation', message: 'Write the equation.' });
     const halfFilled = (vs: EquationVariable[]) => cleanVariables(vs).some((v) => !v.symbol || !v.meaning);
@@ -967,6 +1005,10 @@ export function parseDraft(raw: unknown): Draft | null {
   const assumes = (rawAssumes as (string | DraftAssumption)[]).map((a) =>
     isString(a) ? { label: '', description: '', concept: a } : a,
   );
+  // Added 2026-11: an educational resource's fields — older drafts have none.
+  if (d.link !== undefined && !isString(d.link)) return null;
+  if (d.mediaType !== undefined && !isString(d.mediaType)) return null;
+  if (d.minutes !== undefined && typeof d.minutes !== 'number') return null;
   // Added 2026-10: its page — older drafts have none.
   const page = d.page === undefined ? (d.editOf ? null : []) : d.page;
   if (page !== null && (!Array.isArray(page) || !page.every(isString))) return null;
@@ -999,6 +1041,8 @@ export function parseDraft(raw: unknown): Draft | null {
     representations: representations as DraftRepresentation[],
     formulas: formulas as DraftRepresentation[],
     assumes,
+    link: (d.link as string | undefined) ?? '',
+    mediaType: (d.mediaType as string | undefined) ?? '',
     figures: figures as DraftFigure[],
     page: page as string[] | null,
     pageBefore,

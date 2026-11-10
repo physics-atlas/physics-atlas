@@ -97,7 +97,7 @@ The 17 types (key → what it means), from `src/data/conceptVocabulary.json`:
 | `claim` | Claim/hypothesis — a proposition that can be tested (a dark-matter mass range is excluded). |
 | `finding` | Finding/result — a reported outcome (a measured Hubble constant, a detected spectral line). |
 | `learning_goal` | Learning goal — a "can do X" outcome; a small, minimal node (no `domain`). |
-| `resource` | Educational resource — a book/video/quiz (no `description`/`domain`). |
+| `resource` | Educational resource — a text, video or quiz (no `domain`); proposable in the editor. |
 | `misconception` | Misconception — a common wrong idea, linked to the concept it's about. |
 | `fluff` | Fluff — a joke, pun or fun fact, not physics content. Only shown in **fun mode** (below). |
 
@@ -153,7 +153,7 @@ it. Every type currently has one.
 | `formalism` | `description`, `formulas` (optional: `{equation, name?, variables?}[]` — how the formalism works, LaTeX), `domain` (optional) |
 | `equation` | `description`, `equation` (the main formula, LaTeX), `variables` (`{symbol, meaning}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
 | `learning_goal` | `description` only — **no `domain`** |
-| `resource` | `link` (http/https), `mediaType`, `estimatedMinutes` (number), `rating` (0–5), `reviewCount` (integer) — **no `description`/`domain`** |
+| `resource` | `link` (http/https), `mediaType` (`mediaTypes` in conceptVocabulary.json: text, video, quiz), `estimatedMinutes` (number), `description` (optional: what it covers), `rating` (0–5) and `reviewCount` (integer) — both optional, from the curated list; a proposed resource has none — **no `domain`** |
 
 ### Equations: LaTeX, and more than one way to write them
 

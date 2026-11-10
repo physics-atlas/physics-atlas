@@ -802,6 +802,17 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 44 — Educational resources can be proposed (2026-11)
+
+"Educational resource" (`resource`, in the Learning family) was a kind on the map but left
+out of the editor, as curated links rather than concepts. It's now in **Kind of concept**
+like the rest, with its own fields: **Link** (http/https), **Kind of resource** (text, video,
+quiz — `mediaTypes` in the vocabulary) and **Time to work through it, in minutes**; a
+description says what it covers; no field of physics. Connected with **helps understand**,
+it joins the learning paths of what it teaches. `rating` and `reviewCount` became
+optional: they came with the curated sample list, and a proposer has none to give; an edit
+keeps a resource's rating.
+
 ## Decision 43 — Curators may publish directly, for now (2026-11)
 
 | Piece | Rule |

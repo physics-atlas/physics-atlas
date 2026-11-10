@@ -106,7 +106,7 @@ const ALLOWED_ATTRS = {
   equation: ['description', 'equation', 'variables', 'conditions', 'representations', 'domain'],
   formalism: ['description', 'formulas', 'domain'],
   learning_goal: ['description'],
-  resource: ['link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
+  resource: ['description', 'link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
 };
 const DEFAULT_ALLOWED_ATTRS = ['description', 'domain'];
 
@@ -141,9 +141,12 @@ function checkNodeAttrs(where, node) {
       warn.push(`${where}: unknown mediaType "${attrs.mediaType}" — add it to conceptVocabulary.json if this is a new kind`);
     if (typeof attrs.estimatedMinutes !== 'number' || !Number.isFinite(attrs.estimatedMinutes))
       errors.push(`${where}: attrs.estimatedMinutes must be a number`);
-    if (typeof attrs.rating !== 'number' || attrs.rating < 0 || attrs.rating > 5)
+    if (attrs.description !== undefined && (typeof attrs.description !== 'string' || !attrs.description.trim()))
+      errors.push(`${where}: attrs.description must be text, or left out`);
+    // A rating comes with the curated list; a resource proposed through the editor has none yet.
+    if (attrs.rating !== undefined && (typeof attrs.rating !== 'number' || attrs.rating < 0 || attrs.rating > 5))
       errors.push(`${where}: attrs.rating must be a number in [0, 5]`);
-    if (!Number.isInteger(attrs.reviewCount))
+    if (attrs.reviewCount !== undefined && !Number.isInteger(attrs.reviewCount))
       errors.push(`${where}: attrs.reviewCount must be an integer`);
     return;
   }
