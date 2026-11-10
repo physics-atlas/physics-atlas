@@ -1,0 +1,10 @@
+{
+  "id": "electroweak_theory_163a",
+  "label": "Electroweak theory",
+  "type": "theory",
+  "importance": 5,
+  "generality": 3,
+  "attrs": {
+    "description": "The framework describing systems dominated by the weak and electric forces from the standard model. Part of Quantum Field Theory.\n Describes the forces as fields and fundamental particle level events as a correlation of field configurations."
+  }
+}
