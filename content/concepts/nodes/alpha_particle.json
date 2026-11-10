@@ -1,6 +1,6 @@
 {
   "id": "alpha_particle",
-  "type": "property",
+  "type": "physical_system",
   "label": "alpha particle",
   "importance": 4,
   "generality": 4,
