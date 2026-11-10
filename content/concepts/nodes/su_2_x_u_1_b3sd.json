@@ -1,0 +1,10 @@
+{
+  "id": "su_2_x_u_1_b3sd",
+  "label": "SU(2) X U(1)",
+  "type": "property",
+  "importance": 4,
+  "generality": 3,
+  "attrs": {
+    "description": "A symmetry group found in fundamental particles. A lie group (continuous symmetry) which has representations that correspond to flavours of quarks and electrons. This is broken by the higgs field, but has a relation to the quantum numbers, mass, charge and isospin"
+  }
+}
