@@ -143,6 +143,7 @@
     }
   },
   "edgeTemplates": {
+    "is involved in": "{s} is involved in {t}.",
     "strict prerequisite for": "{s} is a strict prerequisite for {t}.",
     "relates": "{s} relates to {t}.",
     "helps understand": "{s} helps understand {t}.",
@@ -184,7 +185,7 @@
     { "key": "classification", "label": "Classification and parts", "description": "What a concept is a kind of, what it has, and what it is a property of.", "types": ["is a", "is a class of", "has a", "is one property of"], "nests": true },
     { "key": "occurrence", "label": "Occurrence", "description": "Where a concept shows up: what exhibits it, where it happens, what it applies to.", "types": ["exhibits", "happens in", "applies to"] },
     { "key": "conditions", "label": "Conditions", "description": "What must hold for a concept to apply.", "types": ["is a condition of", "valid under", "under"] },
-    { "key": "association", "label": "Association", "description": "A connection without a more specific kind — use one of the other categories when one fits.", "types": ["relates", "links"] }
+    { "key": "association", "label": "Association", "description": "A connection without a more specific kind — use one of the other categories when one fits.", "types": ["relates", "links", "is involved in"] }
   ],
   "mediaTypes": ["text", "video", "quiz"],
   "epistemicStatuses": ["Candidate"],
