@@ -1,6 +1,0 @@
-{
-  "id": "e13",
-  "source": "einstein_eq",
-  "target": "newtonian_gravity",
-  "relationship": "Leads to"
-}
