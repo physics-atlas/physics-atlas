@@ -1,0 +1,10 @@
+{
+  "id": "n_body_simulation_itvq",
+  "label": "N-body simulation",
+  "type": "method",
+  "importance": 5,
+  "generality": 4,
+  "attrs": {
+    "description": "A computational method to model many-body systems  under the actions of forces like gravity and electromagnetism. N represents the number of bodies, this can range from 3 to billions."
+  }
+}
