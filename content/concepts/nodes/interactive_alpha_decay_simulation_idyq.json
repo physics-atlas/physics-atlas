@@ -1,0 +1,13 @@
+{
+  "id": "interactive_alpha_decay_simulation_idyq",
+  "label": "Interactive alpha decay simulation",
+  "type": "resource",
+  "importance": 3,
+  "generality": 3,
+  "attrs": {
+    "description": "For initial explorations into alpha decay can help with the following learning goals:\n\nAccessibility rating:\n- allows alternate input\n- allows pan and zoom\nnot accessible for...\nPredict how a nucleus changes when it emits an alpha particle.\nExplain the concept of a half-life, including the random nature of it. Compare decay for a single atom versus a large sample.\nDescribe how an alpha particle can escape the nucleus despite a potential-energy barrier.\nPredict how much radioactive substance remains after a given time, or how much time has passed based on the amount remaining.",
+    "link": "https://phet.colorado.edu/en/simulations/alpha-decay",
+    "mediaType": "video",
+    "estimatedMinutes": 20
+  }
+}
