@@ -1,0 +1,12 @@
+{
+  "id": "zeldovich_approximation_6dst_e1",
+  "source": "zeldovich_approximation",
+  "target": "schrodinger_poisson_equation",
+  "relationship": "approximates",
+  "assumes": [
+    {
+      "label": "before paths of particles start crossing/ there is interference",
+      "description": "how is there interference if just one wavefunction describes all particles?"
+    }
+  ]
+}
