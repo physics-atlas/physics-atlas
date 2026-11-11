@@ -1,0 +1,10 @@
+{
+  "id": "point_mechanics_2hbo",
+  "label": "Point Mechanics",
+  "type": "theory",
+  "importance": 5,
+  "generality": 5,
+  "attrs": {
+    "description": "A sub-field of Classical mechanics where bodies are approximated/ idealised as points ie. they have no size."
+  }
+}
