@@ -6,8 +6,8 @@
   "generality": 4,
   "assumes": [
     {
-      "label": "Linear potential",
-      "description": "The assumption that the gravitational potential keeps its initial, linear-theory form instead of being updated as structures grow."
+      "label": "Particles travel with constant velocity determined  by the forces in the inital density field",
+      "description": "The assumption that the gravitational potential keeps its initial form instead of being updated as structures grow."
     }
   ],
   "attrs": {
