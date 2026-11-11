@@ -1,0 +1,11 @@
+{
+  "id": "schrodinger_poisson_equation_hsfj_e1",
+  "source": "wave_function_condensate_d85q",
+  "target": "schrodinger_poisson_equation",
+  "relationship": "described by",
+  "assumes": [
+    {
+      "label": "a self-gravitating system with no external potential"
+    }
+  ]
+}
