@@ -3,7 +3,7 @@
   "label": "Newtonian (Classical) Mechanics",
   "type": "theory",
   "importance": 10,
-  "generality": 9,
+  "generality": 10,
   "assumes": [
     {
       "label": "relative velocities are much less than the speed of light"
