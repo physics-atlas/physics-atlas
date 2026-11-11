@@ -1,0 +1,6 @@
+{
+  "id": "point_particle_jgrz_e1",
+  "source": "point_particle_jgrz",
+  "target": "point_mechanics_2hbo",
+  "relationship": "relates"
+}

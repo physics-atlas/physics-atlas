@@ -1,0 +1,10 @@
+{
+  "id": "point_particle_jgrz",
+  "label": "Point particle",
+  "type": "model_regime",
+  "importance": 7,
+  "generality": 6,
+  "attrs": {
+    "description": "Bodies are modelled/idealised as having no size or shape (point), they can be described just by one position coordinate."
+  }
+}
