@@ -1,0 +1,6 @@
+{
+  "id": "newtonian_gravity_8ckf_e1",
+  "source": "time_classical_parameter_cgll",
+  "target": "newtonian_gravity",
+  "relationship": "is involved in"
+}

@@ -1,6 +1,6 @@
 {
-  "id": "e16",
+  "id": "newtonian_gravity_8ckf_e2",
   "source": "newtonian_gravity",
   "target": "gravity_goal",
-  "relationship": "Strict Prerequisite for"
+  "relationship": "relates"
 }
