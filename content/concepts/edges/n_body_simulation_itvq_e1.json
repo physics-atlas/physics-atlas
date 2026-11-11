@@ -1,0 +1,6 @@
+{
+  "id": "n_body_simulation_itvq_e1",
+  "source": "n_body_simulation_itvq",
+  "target": "structure_formation",
+  "relationship": "relates"
+}
