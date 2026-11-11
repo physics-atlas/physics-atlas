@@ -1,0 +1,6 @@
+{
+  "id": "general_relativity_zeco_030a_e1",
+  "source": "newtonian_gravity",
+  "target": "general_relativity_zeco",
+  "relationship": "approximates"
+}
