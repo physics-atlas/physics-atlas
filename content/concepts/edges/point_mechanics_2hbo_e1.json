@@ -1,0 +1,11 @@
+{
+  "id": "point_mechanics_2hbo_e1",
+  "source": "point_mechanics_2hbo",
+  "target": "newtonian_classical_mechanics_d0e1",
+  "relationship": "uses",
+  "assumes": [
+    {
+      "label": "particles approximated as points"
+    }
+  ]
+}
