@@ -4,12 +4,6 @@
   "label": "Einstein Field Equations",
   "importance": 9,
   "generality": 8,
-  "assumes": [
-    {
-      "label": "Weak-field low-velocity limit",
-      "description": "The regime where gravitational fields are weak and velocities are much smaller than the speed of light, so spacetime curvature can be treated as a small perturbation on flat space."
-    }
-  ],
   "attrs": {
     "description": "Relate the curvature of spacetime directly to the energy and momentum of whatever matter and radiation are present, forming the core field equation of general relativity.",
     "equation": "G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}",
