@@ -1,6 +1,6 @@
 {
   "id": "special_relativity",
-  "type": "model_regime",
+  "type": "theory",
   "label": "Special Relativity",
   "importance": 10,
   "generality": 10,
