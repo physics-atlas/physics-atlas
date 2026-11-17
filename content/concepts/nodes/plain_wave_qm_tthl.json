@@ -1,0 +1,39 @@
+{
+  "id": "plain_wave_qm_tthl",
+  "label": "Plain wave (QM)",
+  "type": "formalism",
+  "importance": 7,
+  "generality": 6,
+  "assumes": [
+    {
+      "label": "No potential background"
+    }
+  ],
+  "attrs": {
+    "description": "The basis of solutions for the schrodinger equation with no potential. (To find a solution basis states should be linearly combined considering boundary conditions)",
+    "formulas": [
+      {
+        "name": "How the plain wave is represented in position space",
+        "equation": "\\psi(x,t) = A e^{i(kx-\\omega t)}",
+        "variables": [
+          {
+            "symbol": "\\psi",
+            "meaning": "Wave function"
+          },
+          {
+            "symbol": "A",
+            "meaning": "Amplitude"
+          },
+          {
+            "symbol": "k",
+            "meaning": "Wave number"
+          },
+          {
+            "symbol": "\\omega",
+            "meaning": "Frequency"
+          }
+        ]
+      }
+    ]
+  }
+}
