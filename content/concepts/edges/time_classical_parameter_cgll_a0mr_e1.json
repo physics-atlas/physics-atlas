@@ -1,0 +1,6 @@
+{
+  "id": "time_classical_parameter_cgll_a0mr_e1",
+  "source": "atomic_clock_okw4",
+  "target": "time_classical_parameter_cgll",
+  "relationship": "measures"
+}
