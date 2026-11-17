@@ -1,0 +1,10 @@
+{
+  "id": "rydberg_state_886i",
+  "label": "Rydberg state",
+  "type": "physical_system",
+  "importance": 3,
+  "generality": 2,
+  "attrs": {
+    "description": "A state of an atom that can behave as if it only has 1 electron. These are constructed by choosing elements that have 1 electron in the \"outer shell\" then exciting it so that it is at a very high energy. We can then approximate all the nucleus and core electrons as a point with charge +1"
+  }
+}
