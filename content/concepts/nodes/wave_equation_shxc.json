@@ -1,0 +1,19 @@
+{
+  "id": "wave_equation_shxc",
+  "label": "Wave equation",
+  "type": "equation",
+  "importance": 9,
+  "generality": 8,
+  "attrs": {
+    "description": "Equation describing wave propagation",
+    "equation": "\\frac{\\partial^2 \\psi}{\\partial t^2} = c^2 \\frac{\\partial^2 \\psi}{\\partial x^2}",
+    "variables": [
+      {
+        "symbol": "\\psi",
+        "meaning": "Some field (NOT a quantum one"
+      }
+    ],
+    "conditions": [],
+    "representations": []
+  }
+}
