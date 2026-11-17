@@ -1,0 +1,6 @@
+{
+  "id": "wave_equation_shxc_e1",
+  "source": "wave_equation_shxc",
+  "target": "schrodinger_equation_833a",
+  "relationship": "relates"
+}
