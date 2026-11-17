@@ -1,0 +1,11 @@
+{
+  "id": "hydrogen_atom_v7fq",
+  "label": "Hydrogen atom",
+  "type": "physical_system",
+  "importance": 8,
+  "generality": 6,
+  "attrs": {
+    "description": "The simplest atom. With only 1 proton and one electron. The most abundant element in the universe. The only atom-Type that can be solved analytically",
+    "domain": "Quantum mechanics"
+  }
+}
