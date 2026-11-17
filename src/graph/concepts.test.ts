@@ -4,6 +4,7 @@ import type { GraphEdge, GraphNode } from '../data/types';
 import {
   buildConceptIndex,
   assumptionsOf,
+  conceptPathFor,
   domainsOf,
   edgeWeight,
   effectiveGenerality,
@@ -20,6 +21,7 @@ import {
   sentenceParts,
   splitFluff,
 } from './concepts';
+import { goalRating, learningGoalsOf } from './cardSections';
 
 const concept = (id: string, extra: Partial<GraphNode> = {}, domain?: string): GraphNode =>
   ({ id, label: id.toUpperCase(), type: 'property', attrs: { description: id, domain }, ...extra }) as GraphNode;
@@ -30,6 +32,46 @@ const rel = (id: string, source: string, target: string, relationship: string, e
   target,
   relationship,
   ...extra,
+});
+
+describe('a goal\'s learning path', () => {
+  const goal = (id: string) => concept(id, { type: 'learning_goal', attrs: { description: id } } as Partial<GraphNode>);
+  const resource = (id: string) =>
+    concept(id, { type: 'resource', attrs: { link: 'https://sample.example', mediaType: 'other', estimatedTime: '5 min' } } as Partial<GraphNode>);
+  const graph = {
+    version: 1,
+    nodes: [concept('nucleus'), concept('alpha_decay'), goal('predict'), resource('sim'), concept('aside')],
+    edges: [
+      rel('e1', 'nucleus', 'alpha_decay', 'Strict Prerequisite for'),
+      rel('e2', 'predict', 'alpha_decay', 'is a learning goal of', { importance: 8, generality: 3 }),
+      rel('e3', 'sim', 'predict', 'relates'),
+      rel('e4', 'sim', 'alpha_decay', 'helps understand'),
+      rel('e5', 'aside', 'alpha_decay', 'relates'),
+    ],
+  };
+  const index = buildConceptIndex(graph);
+
+  it('reads "is a learning goal of" backwards: the concept is on its goal\'s path', () => {
+    expect(conceptPathFor('predict', index)?.order).toEqual(['nucleus', 'alpha_decay', 'predict']);
+  });
+
+  it('lists the resources linked to a step by any relation', () => {
+    const path = conceptPathFor('predict', index)!;
+    expect(path.resourcesByStep.get('predict')?.map((r) => r.id)).toEqual(['sim']);
+    expect(path.resourcesByStep.get('alpha_decay')?.map((r) => r.id)).toEqual(['sim']);
+    expect(path.highlight.has('aside')).toBe(false);
+  });
+
+  it("lists a concept's learning goals, the most important for it first, with what the relation rates them", () => {
+    const g = buildConceptIndex({
+      ...graph,
+      nodes: [...graph.nodes, goal('explain'), goal('derive')],
+      edges: [...graph.edges, rel('e6', 'explain', 'alpha_decay', 'is a learning goal of', { importance: 9 }), rel('e7', 'alpha_decay', 'derive', 'strict prerequisite for')],
+    });
+    const goals = learningGoalsOf('alpha_decay', g);
+    expect(goals.map((x) => x.node.id)).toEqual(['explain', 'predict', 'derive']);
+    expect(goals.map((x) => goalRating(x.edge))).toEqual(['importance 9/10', 'importance 8/10 · generality 3/10', '']);
+  });
 });
 
 describe('normalizeRelationship', () => {

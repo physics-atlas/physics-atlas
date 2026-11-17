@@ -4,8 +4,11 @@ import type { GraphEdge, GraphNode } from '../data/types';
 // would join the confirmed graph if experts agree (plan: one proposal = one
 // pull request). It never carries positions — placement is the map's job.
 
-/** `open`: under review. `contested`: experts disagree; kept visible with its dispute. */
-export type ProposalState = 'open' | 'contested';
+/**
+ * `open`: under review. `changes`: a reviewer asked for changes on its pull
+ * request (GitHub's review state, Decision 45) — kept visible, marked.
+ */
+export type ProposalState = 'open' | 'changes';
 
 export type EvidenceKind = 'arxiv' | 'doi' | 'url' | 'equation';
 
@@ -25,10 +28,15 @@ export interface ProposalAuthor {
   verified?: boolean;
 }
 
-export interface VoteTally {
-  verify: number;
-  dispute: number;
-  clarify: number;
+/**
+ * How the pull request's review stands on GitHub: each reviewer's latest
+ * verdict, and the comments on it. Read by the backend when it lists the
+ * open proposals; a draft or a sample has none.
+ */
+export interface GitHubReview {
+  approvals: number;
+  changesRequested: number;
+  comments: number;
 }
 
 /** A relation type a proposal adds to the vocabulary, in one of the broader categories. */
@@ -87,9 +95,8 @@ export interface Proposal {
    * at it are dropped (`dropped`) and the rest of this proposal stands.
    */
   dependsOn?: string[];
-  tally: VoteTally;
-  /** Why it's contested — required when state is `contested` */
-  dispute?: { summary: string };
+  /** Its pull request's review on GitHub, once submitted */
+  review?: GitHubReview;
   /** The pull request it lives in, once submitted (Phase 3) */
   pr?: { number: number; url: string };
   /** Computed when loading, never authored: relations dropped because a dependency is no longer open */

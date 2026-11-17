@@ -21,21 +21,15 @@ interface ProposalCardProps {
   onPick: (id: string) => void;
 }
 
-const VOTES = [
-  { key: 'verify', label: 'Verify', mark: '✓' },
-  { key: 'dispute', label: 'Dispute', mark: '✗' },
-  { key: 'clarify', label: 'Needs clarification', mark: '?' },
-] as const;
-
 /**
  * A proposed concept's card: what's being claimed, by whom, on what
- * evidence, and how the vote stands. Loaded lazily with KaTeX, only in
- * community mode.
+ * evidence, and how its review on GitHub stands. Loaded lazily with KaTeX,
+ * only in community mode.
  */
 export default function ProposalCard({ proposal: p, node, byId, confirmed, proposals, onPick }: ProposalCardProps) {
   const description = 'description' in node.attrs ? node.attrs.description : undefined;
   const domain = 'domain' in node.attrs ? node.attrs.domain : undefined;
-  const contested = p.state === 'contested';
+  const changesAsked = p.state === 'changes';
   const others = p.nodes.filter((n) => n.id !== node.id);
   const before = p.edits?.length ? confirmed.nodes.find((n) => n.id === node.id) : undefined;
   const changes = before ? nodeChanges(before, node) : [];
@@ -45,9 +39,10 @@ export default function ProposalCard({ proposal: p, node, byId, confirmed, propo
 
   return (
     <>
-      <p className={`proposal-status ${contested ? 'proposal-status-contested' : ''}`}>
-        <span aria-hidden>{contested ? '⚑ ' : ''}</span>
-        {contested ? `Contested ${kind.toLowerCase()}` : kind} · not yet confirmed
+      <p className={`proposal-status ${changesAsked ? 'proposal-status-changes' : ''}`}>
+        <span aria-hidden>{changesAsked ? '⚑ ' : ''}</span>
+        {kind}
+        {changesAsked ? ' · changes requested' : ''} · not yet confirmed
       </p>
       <h2 className="map-card-title" id={CONCEPT_CARD_TITLE_ID}>
         <TypeBadge type={node.type} />
@@ -81,13 +76,6 @@ export default function ProposalCard({ proposal: p, node, byId, confirmed, propo
           </p>
         )}
       </section>
-
-      {contested && p.dispute && (
-        <section className="rel-block proposal-dispute">
-          <h3 className="block-heading">Why it's contested</h3>
-          <p>{p.dispute.summary}</p>
-        </section>
-      )}
 
       {before && (
         <section className="rel-block">
@@ -243,19 +231,39 @@ export default function ProposalCard({ proposal: p, node, byId, confirmed, propo
       </section>
 
       <section className="rel-block">
-        <h3 className="block-heading">Votes so far</h3>
-        <ul className="proposal-tally">
-          {VOTES.map((v) => (
-            <li key={v.key}>
+        <h3 className="block-heading">Review on GitHub</h3>
+        {p.review ? (
+          <ul className="proposal-tally">
+            <li>
               <span className="proposal-tally-count">
-                <span aria-hidden>{v.mark} </span>
-                {p.tally[v.key]}
+                <span aria-hidden>✓ </span>
+                {p.review.approvals}
               </span>{' '}
-              {v.label}
+              {p.review.approvals === 1 ? 'approval' : 'approvals'}
             </li>
-          ))}
-        </ul>
-        <p className="concept-empty">Voting opens in a later phase.</p>
+            <li>
+              <span className="proposal-tally-count">
+                <span aria-hidden>⚑ </span>
+                {p.review.changesRequested}
+              </span>{' '}
+              {p.review.changesRequested === 1 ? 'reviewer asks for changes' : 'reviewers ask for changes'}
+            </li>
+            <li>
+              <span className="proposal-tally-count">{p.review.comments}</span>{' '}
+              {p.review.comments === 1 ? 'comment' : 'comments'}
+            </li>
+          </ul>
+        ) : (
+          <p className="concept-empty">Not reviewed yet.</p>
+        )}
+        {p.pr && (
+          <p className="proposal-meta">
+            Review and discuss it on{' '}
+            <a className="concept-resource-link" href={`${p.pr.url}/files`} target="_blank" rel="noreferrer">
+              its pull request ↗
+            </a>
+          </p>
+        )}
       </section>
     </>
   );

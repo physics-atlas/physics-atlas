@@ -71,7 +71,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   | Relation name on the map | italic on a background plate (concept names are upright) |
   | Big concept's name (generality 6+) | inside its circle, on a plate (surface colour, 78%) so it reads over the type colour |
   | Zoomed past a concept | its circle fades to a faint outline; the concept is still in the list, search and cards |
-  | Proposed / contested concept | dashed / double outline + the status and tally in words in its label ("Proposed · ✓2 ✗0 ?1"); never a status colour |
+  | Proposed concept / changes requested | dashed / double outline + the status and its GitHub review in words in its label ("Proposed · ✓2 approvals · 1 comment", "⚑ Changes requested · …"); never a status colour |
   | Draft (editor) | dashed outline with a steady glow + "Draft · not submitted"; concepts offered or flagged say "＋ Connect?" / "≈ Similar name"; warnings carry ⚠ / ≈ and a gold border, not gold text |
   | The open draft (of several) | a heavier, larger glow on the map; in the editor's draft list a solid, heavier border plus the word "open" |
   | Edit (yours / someone else's) | dashed glowing outline + "✎ Editing · draft" / dashed ink outline + "✎ Edit proposed · ✓…" on the confirmed concept |

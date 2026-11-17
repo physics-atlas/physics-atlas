@@ -34,6 +34,12 @@ export interface GitHubUser {
   avatar_url?: string;
 }
 
+/** One review on a pull request, as GitHub lists them (oldest first). */
+interface PullRequestReview {
+  user: { login: string } | null;
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+}
+
 export interface PullRequestSummary {
   number: number;
   html_url: string;
@@ -41,6 +47,8 @@ export interface PullRequestSummary {
   body: string | null;
   created_at: string;
   user: { login: string } | null;
+  /** Comments on the conversation (the issues API counts them) */
+  comments?: number;
 }
 
 export interface FileChange {
@@ -122,6 +130,32 @@ export class GitHub {
       if (e instanceof GitHubError && e.status === 404) return null;
       throw e;
     }
+  }
+
+  /**
+   * How a pull request's review stands: each reviewer's latest verdict
+   * (approved, or changes requested — a later comment doesn't undo either,
+   * a dismissal does), and its comments: those on the conversation plus
+   * reviews left as comments.
+   */
+  async reviewOf(number: number, conversationComments: number): Promise<{ approvals: number; changesRequested: number; comments: number }> {
+    const { owner, repo } = this.config;
+    const reviews = await this.call<PullRequestReview[]>(`/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`, {
+      token: await this.appToken(),
+    });
+    const verdict = new Map<string, PullRequestReview['state']>();
+    let commented = 0;
+    for (const r of reviews) {
+      const who = r.user?.login ?? '';
+      if (r.state === 'COMMENTED') commented++;
+      if (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'DISMISSED') verdict.set(who, r.state);
+    }
+    const states = [...verdict.values()];
+    return {
+      approvals: states.filter((s) => s === 'APPROVED').length,
+      changesRequested: states.filter((s) => s === 'CHANGES_REQUESTED').length,
+      comments: conversationComments + commented,
+    };
   }
 
   /** Open pull requests carrying `label` (the issues API filters by label; pulls doesn't). */

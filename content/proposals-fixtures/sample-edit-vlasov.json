@@ -52,9 +52,9 @@
   "removals": [
     "e62"
   ],
-  "tally": {
-    "verify": 1,
-    "dispute": 0,
-    "clarify": 0
+  "review": {
+    "approvals": 1,
+    "changesRequested": 0,
+    "comments": 2
   }
 }

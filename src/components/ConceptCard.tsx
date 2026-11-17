@@ -6,6 +6,8 @@ import {
   CONDITION_SECTIONS,
   HAS_LEARNING_GOALS,
   conditionItems,
+  goalRating,
+  learningGoalsOf,
   sectionItems,
 } from '../graph/cardSections';
 import { assumptionsOf } from '../graph/concepts';
@@ -108,15 +110,36 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
         );
       })}
 
-      {HAS_LEARNING_GOALS.has(node.type) && (
-        <section className="rel-block">
-          <h3 className="block-heading">Learning goals</h3>
-          <p className="concept-empty">
-            <Todo label="TBD" />
-          </p>
-        </section>
-      )}
+      {HAS_LEARNING_GOALS.has(node.type) && <LearningGoals id={node.id} index={index} onPick={onPick} />}
     </>
+  );
+}
+
+/** The goals linked to a concept, the most important for it first, each with what its relation rates it. */
+function LearningGoals({ id, index, onPick }: { id: string; index: ConceptIndex; onPick: (id: string) => void }) {
+  const goals = learningGoalsOf(id, index);
+  return (
+    <section className="rel-block">
+      <h3 className="block-heading">
+        Learning goals
+        {goals.length > 0 && <span className="rel-count">{goals.length}</span>}
+      </h3>
+      {goals.length === 0 ? (
+        <p className="concept-empty">None linked yet.</p>
+      ) : (
+        <ul className="concept-section-list">
+          {goals.map(({ node: goal, edge }) => (
+            <li key={goal.id}>
+              <TypeBadge type={goal.type} />
+              <button className="concept-relation-link" onClick={() => onPick(goal.id)}>
+                {goal.label}
+              </button>
+              {goalRating(edge) && <span className="concept-via">{goalRating(edge)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

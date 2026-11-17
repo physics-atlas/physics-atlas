@@ -18,7 +18,6 @@ import {
   exportFiles,
   isDraftRef,
   mapId,
-  proposalFile,
   proposalId,
   proposalTitle,
   pullRequestText,
@@ -276,7 +275,6 @@ export default function DraftEditor({
   const files = problems.length ? [] : exportFiles(draft, ctx, vocabularyText);
   const deletions = problems.length ? [] : removedFiles(draft, ctx.confirmed);
   const prText = problems.length ? '' : pullRequestText(draft, ctx);
-  const bundle = problems.length ? null : proposalFile(draft, ctx);
 
   return (
     <div className="draft-editor">
@@ -388,8 +386,9 @@ export default function DraftEditor({
             <TypeBadge type={draft.type} />
             <p>
               <strong>{definition?.term ?? NODE_TYPE_LABELS[draft.type]}</strong>
-              {definition ? ` — ${definition.definition}` : ' — not defined yet.'}
+              {definition ? ` — ${definition.plain ?? definition.definition}` : ' — not defined yet.'}
             </p>
+            {definition?.plain && <p className="draft-hint">{definition.definition}</p>}
             {definition && definition.examples.length > 0 && (
               <p className="draft-hint">Examples: {definition.examples.join(', ')}</p>
             )}
@@ -677,6 +676,36 @@ export default function DraftEditor({
                       </select>
                     </Field>
                   </div>
+                )}
+                {[edge.source, edge.target].some((x) => (x === own ? draft.type : byId.get(x)?.type) === 'learning_goal') && (
+                  <fieldset className="draft-variables">
+                    <legend className="draft-label">
+                      For this goal <span className="draft-optional">optional</span>
+                    </legend>
+                    <p className="draft-hint" id={fieldId(`rel-${r.key}-goal-hint`)}>
+                      How central the learning goal is for the concept at the other end (importance), and how broad it is
+                      there (generality), 1–10. A goal linked to two concepts can rate differently for each; its card
+                      lists goals by importance.
+                    </p>
+                    {(['importance', 'generality'] as const).map((key) => (
+                      <Field key={key} id={fieldId(`rel-${r.key}-${key}`)} label={key === 'importance' ? 'Importance, 1–10' : 'Generality, 1–10'}>
+                        <input
+                          id={fieldId(`rel-${r.key}-${key}`)}
+                          className="draft-input draft-number"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={10}
+                          step={1}
+                          value={r[key] ?? ''}
+                          onChange={(e) =>
+                            setRelation(r.key, (x) => ({ ...x, [key]: e.target.value === '' ? undefined : Number(e.target.value) }))
+                          }
+                          aria-describedby={fieldId(`rel-${r.key}-goal-hint`)}
+                        />
+                      </Field>
+                    ))}
+                  </fieldset>
                 )}
                 <details className="draft-relation-more" open={Boolean(r.assumes?.length)}>
                   <summary>Under the assumption of… — when the relation holds only then (optional)</summary>
@@ -1042,22 +1071,10 @@ export default function DraftEditor({
               <button type="button" className="draft-button" onClick={() => void copy(prText, 'pull-request text')}>
                 Copy pull-request text
               </button>
-              {bundle && (
-                <button
-                  type="button"
-                  className="draft-button"
-                  onClick={() => {
-                    download(bundle);
-                    setNote('Downloading the proposal file.');
-                  }}
-                >
-                  Download as one proposal file
-                </button>
-              )}
             </div>
             <details className="draft-files">
               <summary>Show the files</summary>
-              {[...files, ...(bundle ? [bundle] : [])].map((f) => (
+              {files.map((f) => (
                 <div key={f.path}>
                   <p className="draft-label">{f.path}</p>
                   {f.encoding === 'base64' ? (
@@ -1226,6 +1243,18 @@ function VariableRows({
                   value={v.meaning}
                   placeholder="Einstein tensor (spacetime curvature)"
                   onChange={(e) => setRow(i, { meaning: e.target.value })}
+                />
+              </div>
+              <div className="draft-variable-field draft-variable-meaning draft-variable-plain">
+                <label className="draft-variable-label" htmlFor={`${idBase}-${i}-plain`}>
+                  In plain words <span className="draft-optional">optional</span>
+                </label>
+                <input
+                  id={`${idBase}-${i}-plain`}
+                  className="draft-input"
+                  value={v.plain ?? ''}
+                  placeholder="How much spacetime bends at that point"
+                  onChange={(e) => setRow(i, { plain: e.target.value })}
                 />
               </div>
               <button
@@ -1696,17 +1725,44 @@ function ResourceFields({
           ))}
         </select>
       </Field>
-      <Field id={fieldId('minutes')} label="Time to work through it, in minutes" hint="Roughly: a reader's first time through.">
-        <input
-          id={fieldId('minutes')}
-          className="draft-input draft-number"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          step={1}
-          value={draft.minutes ?? ''}
-          onChange={(e) => update((d) => ({ ...d, minutes: e.target.value === '' ? undefined : Number(e.target.value) }))}
-          aria-describedby={fieldId('minutes-hint')}
+      <fieldset className="draft-variables">
+        <legend className="draft-label">How long it takes</legend>
+        <p className="draft-hint">
+          Roughly, for a first time through — as you'd say it: “20 min”, “20–30 min”, “about 1 h”. Give at least one.
+        </p>
+        {(
+          [
+            ['estimatedTime', 'Time to work through it', '20–30 min'],
+            ['readingTime', 'Reading time', '15 min'],
+            ['listeningTime', 'Listening time', '45 min'],
+          ] as const
+        ).map(([key, label, placeholder]) => (
+          <Field key={key} id={fieldId(key === 'estimatedTime' ? 'time' : key)} label={label} optional>
+            <input
+              id={fieldId(key === 'estimatedTime' ? 'time' : key)}
+              className="draft-input"
+              value={draft[key]}
+              placeholder={placeholder}
+              onChange={(e) => update((d) => ({ ...d, [key]: e.target.value }))}
+              autoComplete="off"
+            />
+          </Field>
+        ))}
+      </fieldset>
+      <Field
+        id={fieldId('accessibility')}
+        label="Accessibility"
+        hint="Who it works for and who it doesn't: keyboard or other input, zoom, captions or a transcript, screen readers, colour. Markdown."
+        optional
+      >
+        <textarea
+          id={fieldId('accessibility')}
+          className="draft-input"
+          rows={4}
+          value={draft.accessibility}
+          placeholder={'- Works with the keyboard\n- Captions, no transcript'}
+          onChange={(e) => update((d) => ({ ...d, accessibility: e.target.value }))}
+          aria-describedby={fieldId('accessibility-hint')}
         />
       </Field>
       <p className="draft-hint">
@@ -1718,7 +1774,7 @@ function ResourceFields({
 }
 
 /** How a kind of resource reads in the editor (conceptVocabulary.json "mediaTypes"). */
-const MEDIA_TYPE_NAMES: Record<string, string> = { text: 'Text', video: 'Video', quiz: 'Quiz' };
+const MEDIA_TYPE_NAMES: Record<string, string> = { text: 'Text', video: 'Video', quiz: 'Quiz', other: 'Other' };
 
 /** A mathematical formalism's formulas: how it works, each typeset, named and with its variables. */
 function FormulaFields({
@@ -1760,6 +1816,11 @@ function FormulaFields({
               onChange={(e) => setFormula(i, { name: e.target.value })}
             />
           </Field>
+          <PlainWords
+            id={fieldId(`formula-plain-${i}`)}
+            value={f.plain}
+            onChange={(plain) => setFormula(i, { plain })}
+          />
           <VariableRows
             title="Its variables"
             equation={f.equation}
@@ -1783,7 +1844,7 @@ function FormulaFields({
         type="button"
         className="draft-button"
         id={draft.formulas.length ? undefined : fieldId('formulas')}
-        onClick={() => update((d) => ({ ...d, formulas: [...d.formulas, { name: '', equation: '', variables: [] }] }))}
+        onClick={() => update((d) => ({ ...d, formulas: [...d.formulas, { name: '', equation: '', plain: '', variables: [] }] }))}
       >
         Add a formula
       </button>
@@ -1812,6 +1873,12 @@ function EquationFields({
           onChange={(equation) => update((d) => ({ ...d, equation }))}
         />
       </Field>
+      <PlainWords
+        id={fieldId('equation-plain')}
+        value={draft.equationPlain}
+        placeholder="How matter and energy curve spacetime, and how that curvature tells matter how to move."
+        onChange={(equationPlain) => update((d) => ({ ...d, equationPlain }))}
+      />
       <VariableRows
         title="Its variables"
         equation={draft.equation}
@@ -1847,6 +1914,7 @@ function EquationFields({
                 onChange={(equation) => setRep(i, { equation })}
               />
             </Field>
+            <PlainWords id={fieldId(`representation-plain-${i}`)} value={r.plain} onChange={(plain) => setRep(i, { plain })} />
             <VariableRows
               title="Its variables"
               equation={r.equation}
@@ -1870,13 +1938,40 @@ function EquationFields({
           type="button"
           className="draft-button"
           onClick={() =>
-            update((d) => ({ ...d, representations: [...d.representations, { name: '', equation: '', variables: [] }] }))
+            update((d) => ({ ...d, representations: [...d.representations, { name: '', equation: '', plain: '', variables: [] }] }))
           }
         >
           Add a representation
         </button>
       </fieldset>
     </>
+  );
+}
+
+/** An equation, representation or formula in plain words — no symbols. */
+function PlainWords({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <Field id={id} label="In plain words" hint="What it says without symbols, for someone new to it. Markdown." optional>
+      <textarea
+        id={id}
+        className="draft-input"
+        rows={2}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        aria-describedby={`${id}-hint`}
+      />
+    </Field>
   );
 }
 

@@ -40,9 +40,9 @@
       "relationship": "is a condition of"
     }
   ],
-  "tally": {
-    "verify": 2,
-    "dispute": 0,
-    "clarify": 1
+  "review": {
+    "approvals": 0,
+    "changesRequested": 0,
+    "comments": 1
   }
 }

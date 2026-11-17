@@ -1194,24 +1194,32 @@ body {
   color: var(--muted);
 }
 
-.concept-review {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--hairline);
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--muted);
+/* An equation in plain words, under its formula; a variable's, under what it stands for. */
+.concept-plain {
+  margin: 4px 0 10px;
+  line-height: 1.5;
 }
 
-.concept-review p {
-  margin: 0 0 4px;
-}
-
-.concept-review .concept-review-title {
+.concept-plain-label {
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  font-size: 12px;
+}
+
+.concept-variable-plain {
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* Who a resource works for — a box of its own, so it's found before opening the link. */
+.resource-access {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+
+.resource-access .block-heading {
+  margin-top: 0;
 }
 
 /* Concept card (ConceptCard) — description, type sections, collapsed relation
@@ -1924,7 +1932,7 @@ input[type='checkbox'] {
   text-transform: uppercase;
 }
 
-.proposal-status-contested {
+.proposal-status-changes {
   border-style: double;
   border-width: 4px;
 }
@@ -1968,16 +1976,6 @@ input[type='checkbox'] {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-}
-
-.proposal-dispute {
-  padding: 10px 12px;
-  border: 3px double var(--ink);
-  border-radius: 8px;
-}
-
-.proposal-dispute p {
-  margin: 0;
 }
 
 .proposal-evidence {
@@ -2043,7 +2041,7 @@ input[type='checkbox'] {
   border-style: dashed;
 }
 
-.status-swatch-contested {
+.status-swatch-changes {
   border: 4px double var(--ink);
 }
 

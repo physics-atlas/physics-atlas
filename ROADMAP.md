@@ -6,6 +6,42 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-74: Model, goals rated per concept, resources described, plain words, path fix
+
+**Status:** ✅ Implemented <!-- status-line: feature-74 -->
+**Planned:** 2026-11-14 — requested: replace Model/Behavior with Model; importance and generality for learning goals on their relation; accessibility box, "other" kind and free-text times for resources; delete the sample resources and the questions for the author; plain words on equations, representations and variables; fix "Show path to this"
+**Implemented:** 2026-11-14
+
+### Implemented
+- `conceptVocabulary.json`: Model (`plain` + extended definition, examples); `mediaTypes` + other; Legend and editor show the learner-friendly definition first
+- `GraphEdge.importance/generality` on a learning goal's relation: validator, `proposalProblems`, editor ("For this goal"), card's Learning goals (`learningGoalsOf`), relation card
+- `conceptPathFor`: `is a learning goal of` read backwards; resources by any relation; validator cycle check and goal warning
+- `ResourceAttrs`: `estimatedTime`, `readingTime`, `listeningTime`, `accessibility` (`ResourceInfo.tsx`); `estimatedMinutes` migrated
+- `plain` on equations, representations, formulas, variables (`EquationView`, editor `PlainWords`)
+- Removed: four sample resources + e17, e32–e34; `review` on 5 concepts and 7 relations, its type, card boxes and styles
+- Tests: path via goal-of, resources by any relation, goal list order, plain words round-trip, goal relation numbers, resource times; smoke: "Show path to this" on a goal-of goal
+- Decision 46
+
+### Review
+Not run — direct session.
+
+## feature-73: GitHub's review state instead of votes; leftovers removed
+
+**Status:** ✅ Implemented <!-- status-line: feature-73 -->
+**Planned:** 2026-11-14 — requested (after a graphify pass over the backend): remove the `ALLOWED_PROPOSERS` setting and the "one proposal file" download; show the pull request's GitHub review state in place of the votes and *contested*
+**Implemented:** 2026-11-14
+
+### Implemented
+- `server/github.ts` `reviewOf`, `server/api.ts`: each open proposal carries `review` and `state` (`changes` when a reviewer asks for changes); a submission can't set either
+- `types.ts`: `GitHubReview` in place of `VoteTally` / `dispute`; `ProposalState` `open` | `changes`; `reviewText`, `badgeText`
+- `ProposalCard.tsx` **Review on GitHub**; legend and map styles `changes`; sample proposals with sample review numbers
+- `ALLOWED_PROPOSERS` removed (`server/config.ts`, docs); `proposalFile` and its download removed
+- Tests: the review read from GitHub (latest verdict per reviewer, comments), the badge, a submission can't forge a review; smoke test updated
+- Decision 45
+
+### Review
+Not run — direct session.
+
 ## feature-72: Educational resources in the editor
 
 **Status:** ✅ Implemented <!-- status-line: feature-72 -->

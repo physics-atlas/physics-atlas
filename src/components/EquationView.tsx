@@ -1,10 +1,21 @@
 import type { EquationAttrs, EquationVariable, Formula } from '../data/types';
-import { MathText } from './RichText';
+import { InlineText, MathText } from './RichText';
 
 // An equation on the concept card, typeset like the editor's preview: the main
 // form with its variables, then every other representation with its own.
 // Loaded on demand (KaTeX is large), so the card shows the LaTeX source until
 // it arrives — see ConceptMapView.
+
+/** What a formula says without symbols; `empty` says so when it isn't written yet. */
+function PlainWords({ text, empty = false }: { text?: string; empty?: boolean }) {
+  if (!text?.trim() && !empty) return null;
+  return (
+    <p className="concept-plain">
+      <span className="concept-plain-label">In plain words: </span>
+      {text?.trim() ? <InlineText source={text} /> : <span className="concept-empty">not written yet.</span>}
+    </p>
+  );
+}
 
 function Variables({ variables }: { variables: EquationVariable[] }) {
   return (
@@ -14,7 +25,10 @@ function Variables({ variables }: { variables: EquationVariable[] }) {
           <dt>
             <MathText tex={v.symbol} />
           </dt>
-          <dd>{v.meaning}</dd>
+          <dd>
+            {v.meaning}
+            {v.plain && <span className="concept-variable-plain">{v.plain}</span>}
+          </dd>
         </div>
       ))}
     </dl>
@@ -27,6 +41,7 @@ export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
       <div className="concept-equation-formula">
         <MathText tex={attrs.equation} display />
       </div>
+      <PlainWords text={attrs.plain} empty />
       {attrs.variables.length > 0 && (
         <>
           <h3 className="block-heading">Variables</h3>
@@ -55,6 +70,7 @@ export default function EquationView({ attrs }: { attrs: EquationAttrs }) {
                     <MathText tex={r.equation} display />
                   </div>
                 )}
+                <PlainWords text={r.plain} />
                 {r.variables && r.variables.length > 0 && <Variables variables={r.variables} />}
               </li>
             ))}
@@ -83,6 +99,7 @@ export function FormulaView({ formulas }: { formulas: Formula[] }) {
               <div className="concept-equation-formula">
                 <MathText tex={f.equation} display />
               </div>
+              <PlainWords text={f.plain} />
               {f.variables && f.variables.length > 0 && <Variables variables={f.variables} />}
             </li>
           ))}

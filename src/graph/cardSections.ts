@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphNode, NodeType } from '../data/types';
+import type { GraphEdge, GraphNode, NodeType, ResourceAttrs } from '../data/types';
 import { assumptionsOf } from './concepts';
 import type { AssumptionItem, ConceptIndex } from './concepts';
 
@@ -160,6 +160,52 @@ export function sectionItems(id: string, section: CardSection, index: ConceptInd
     }
   }
   return items;
+}
+
+export interface GoalItem {
+  node: GraphNode;
+  /** The relation that links the goal here — it carries the goal's importance and generality for this concept */
+  edge: GraphEdge;
+}
+
+/**
+ * The learning goals linked to a concept, in either direction, by any
+ * relation: the most important for it first (unrated last), then by name.
+ */
+export function learningGoalsOf(id: string, index: ConceptIndex): GoalItem[] {
+  const seen = new Set<string>();
+  const items: GoalItem[] = [];
+  for (const edge of incident(id, index)) {
+    const other = index.byId.get(edge.source === id ? edge.target : edge.source);
+    if (other?.type !== 'learning_goal' || seen.has(other.id)) continue;
+    seen.add(other.id);
+    items.push({ node: other, edge });
+  }
+  return items.sort(
+    (a, b) => (b.edge.importance ?? 0) - (a.edge.importance ?? 0) || a.node.label.localeCompare(b.node.label),
+  );
+}
+
+/** "importance 7/10 · generality 3/10" — what a goal's relation rates it, or nothing. */
+export function goalRating(edge: GraphEdge): string {
+  return [
+    edge.importance !== undefined && `importance ${edge.importance}/10`,
+    edge.generality !== undefined && `generality ${edge.generality}/10`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** "Video · 20–30 min · reading: 15 min · listening: 1 h" — the times as written, free text. */
+export function resourceMeta(a: ResourceAttrs): string {
+  return [
+    a.mediaType,
+    a.estimatedTime,
+    a.readingTime && `reading: ${a.readingTime}`,
+    a.listeningTime && `listening: ${a.listeningTime}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /** What the concept assumes, then what its `via` neighbours assume. */

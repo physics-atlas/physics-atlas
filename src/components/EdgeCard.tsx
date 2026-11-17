@@ -4,6 +4,7 @@ import type { ConceptMap } from '../graph/concepts';
 import { EDGE_CARD_TITLE_ID } from './ConceptCard';
 import RelationSentence from './RelationSentence';
 import RichText from './RichText';
+import { goalRating } from '../graph/cardSections';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, relationHref } from '../lib/pageLinks';
 
@@ -88,6 +89,13 @@ export default function EdgeCard({
         </section>
       )}
 
+      {goalRating(edge) && (
+        <section className="rel-block">
+          <h3 className="block-heading">For this goal</h3>
+          <p>{goalRating(edge)}</p>
+        </section>
+      )}
+
       <section className="rel-block">
         <h3 className="block-heading">How they connect</h3>
         {edge.description ? <RichText source={edge.description} /> : <p className="concept-empty">Not described yet.</p>}
@@ -115,12 +123,6 @@ export default function EdgeCard({
         </div>
       )}
 
-      {edge.review && (
-        <section className="rel-block">
-          <h3 className="block-heading">Open question</h3>
-          <p className="topic-description">{edge.review}</p>
-        </section>
-      )}
     </>
   );
 }

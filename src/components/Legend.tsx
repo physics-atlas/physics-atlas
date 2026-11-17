@@ -9,11 +9,11 @@ const DEFINITION_ID = 'type-definition';
 const BODY_ID = 'legend-body';
 const SHOWN_KEY = 'physics-atlas-legend-shown-v1';
 
-/** Outline swatches matching the canvas: solid, dashed (proposed), double (contested). */
+/** Outline swatches matching the canvas: solid, dashed (proposed), double (changes requested on GitHub). */
 const STATUSES = [
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'proposed', label: 'Proposed — dashed outline' },
-  { key: 'contested', label: '⚑ Contested — double outline' },
+  { key: 'changes', label: '⚑ Changes requested — double outline' },
   { key: 'draft', label: 'Your draft — dashed, glowing' },
 ] as const;
 
@@ -56,7 +56,15 @@ function TypeLegend({ statuses, draft, fun }: { statuses: boolean; draft: boolea
               {def.term !== NODE_TYPE_LABELS[open] && (
                 <p className="type-definition-term">Ontology term: {def.term}</p>
               )}
-              <p className="type-definition-text">{def.definition}</p>
+              {def.plain ? (
+                <>
+                  <p className="type-definition-text">{def.plain}</p>
+                  <h3 className="block-heading">In more detail</h3>
+                  <p className="type-definition-text">{def.definition}</p>
+                </>
+              ) : (
+                <p className="type-definition-text">{def.definition}</p>
+              )}
               {def.examples.length > 0 && (
                 <>
                   <h3 className="block-heading">Examples</h3>

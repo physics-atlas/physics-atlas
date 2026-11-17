@@ -63,6 +63,9 @@ export interface DraftRelation {
    * its phrase, and this the category it goes in (relationTypes.ts).
    */
   newCategory?: string;
+  /** With a learning goal at one end: how central and how broad the goal is for the other end, 1–10 */
+  importance?: number;
+  generality?: number;
 }
 
 /**
@@ -85,6 +88,8 @@ export interface DraftFigure {
 export interface DraftRepresentation {
   name: string;
   equation: string;
+  /** What it says, in plain words */
+  plain: string;
   variables: EquationVariable[];
 }
 
@@ -109,14 +114,19 @@ export interface Draft {
   domains: string[];
   /** LaTeX, for equations only: the main form, its variables, and other ways of writing it */
   equation: string;
+  /** The equation in plain words */
+  equationPlain: string;
   variables: EquationVariable[];
   representations: DraftRepresentation[];
   /** Mathematical formalisms: formulas that show how it works (name optional) */
   formulas: DraftRepresentation[];
-  /** Educational resources: where it is, what kind it is, and how long it takes (minutes) */
+  /** Educational resources: where it is, what kind it is, how long it takes (free text, a range fits) and who it works for */
   link: string;
   mediaType: string;
-  minutes?: number;
+  estimatedTime: string;
+  readingTime: string;
+  listeningTime: string;
+  accessibility: string;
   /** What it takes for granted, in words — each may point to a confirmed concept; no line on the map */
   assumes: DraftAssumption[];
   /** Pictures of it, on its card and page */
@@ -165,11 +175,16 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     description: '',
     domains: [],
     equation: '',
+    equationPlain: '',
     variables: [],
     representations: [],
     formulas: [],
     link: '',
     mediaType: '',
+    estimatedTime: '',
+    readingTime: '',
+    listeningTime: '',
+    accessibility: '',
     assumes: [],
     figures: [],
     page: [],
@@ -195,7 +210,11 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
     description: typeof attrs.description === 'string' ? attrs.description : '',
     link: typeof attrs.link === 'string' ? attrs.link : '',
     mediaType: typeof attrs.mediaType === 'string' ? attrs.mediaType : '',
-    ...(typeof attrs.estimatedMinutes === 'number' ? { minutes: attrs.estimatedMinutes } : {}),
+    estimatedTime: typeof attrs.estimatedTime === 'string' ? attrs.estimatedTime : '',
+    readingTime: typeof attrs.readingTime === 'string' ? attrs.readingTime : '',
+    listeningTime: typeof attrs.listeningTime === 'string' ? attrs.listeningTime : '',
+    accessibility: typeof attrs.accessibility === 'string' ? attrs.accessibility : '',
+    equationPlain: typeof attrs.plain === 'string' ? attrs.plain : '',
     domains: domain ? domain.split(' / ').map((d) => d.trim()) : [],
     equation: typeof attrs.equation === 'string' ? attrs.equation : '',
     variables: Array.isArray(attrs.variables) ? (attrs.variables as EquationVariable[]).map((v) => ({ ...v })) : [],
@@ -255,14 +274,14 @@ const inRange = (v: number, max: number) => Number.isInteger(v) && v >= 1 && v <
 const EQUATION_ONLY = ['equation', 'variables', 'conditions', 'representations'];
 const FORMALISM_ONLY = ['formulas'];
 /** A resource's fields the form edits, and the ones it keeps (a curated rating) */
-const RESOURCE_EDITED = ['link', 'mediaType', 'estimatedMinutes'];
+const RESOURCE_EDITED = ['link', 'mediaType', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility'];
 const RESOURCE_ONLY = ['rating', 'reviewCount'];
 
 /** A stored representation (or, before representations had formulas, just its name) as the form edits it. */
 const toDraftRepresentation = (r: EquationRepresentation | string): DraftRepresentation =>
   typeof r === 'string'
-    ? { name: r, equation: '', variables: [] }
-    : { name: r.name, equation: r.equation ?? '', variables: (r.variables ?? []).map((v) => ({ ...v })) };
+    ? { name: r, equation: '', plain: '', variables: [] }
+    : { name: r.name, equation: r.equation ?? '', plain: r.plain ?? '', variables: (r.variables ?? []).map((v) => ({ ...v })) };
 
 /** Variables with both a symbol and a meaning; rows left completely empty are dropped. */
 /** The longest a depth of a page may be. */
@@ -287,27 +306,32 @@ export function cleanAssumptions(list: DraftAssumption[]): Assumption[] {
 }
 
 const cleanVariables = (vs: EquationVariable[]): EquationVariable[] =>
-  vs.map((v) => ({ symbol: v.symbol.trim(), meaning: v.meaning.trim() })).filter((v) => v.symbol || v.meaning);
+  vs
+    .map((v) => ({ symbol: v.symbol.trim(), meaning: v.meaning.trim(), plain: v.plain?.trim() ?? '' }))
+    .filter((v) => v.symbol || v.meaning || v.plain)
+    .map(({ plain, ...v }) => (plain ? { ...v, plain } : v));
 
 /** Representations as stored: a name, and a formula and variables when there are any. */
 const cleanRepresentations = (rs: DraftRepresentation[]): EquationRepresentation[] =>
   rs
-    .map((r) => ({ name: r.name.trim(), equation: r.equation.trim(), variables: cleanVariables(r.variables) }))
-    .filter((r) => r.name || r.equation || r.variables.length)
+    .map((r) => ({ name: r.name.trim(), equation: r.equation.trim(), plain: r.plain.trim(), variables: cleanVariables(r.variables) }))
+    .filter((r) => r.name || r.equation || r.plain || r.variables.length)
     .map((r) => ({
       name: r.name,
       ...(r.equation ? { equation: r.equation } : {}),
+      ...(r.plain ? { plain: r.plain } : {}),
       ...(r.variables.length ? { variables: r.variables } : {}),
     }));
 
 /** A formalism's formulas as stored: the formula, its name and variables when given. */
 const cleanFormulas = (fs: DraftRepresentation[]) =>
   fs
-    .map((f) => ({ name: f.name.trim(), equation: f.equation.trim(), variables: cleanVariables(f.variables) }))
-    .filter((f) => f.name || f.equation || f.variables.length)
+    .map((f) => ({ name: f.name.trim(), equation: f.equation.trim(), plain: f.plain.trim(), variables: cleanVariables(f.variables) }))
+    .filter((f) => f.name || f.equation || f.plain || f.variables.length)
     .map((f) => ({
       ...(f.name ? { name: f.name } : {}),
       equation: f.equation,
+      ...(f.plain ? { plain: f.plain } : {}),
       ...(f.variables.length ? { variables: f.variables } : {}),
     }));
 
@@ -323,8 +347,8 @@ function inOrderOf<T extends object>(base: object | undefined, next: T): T {
 
 /**
  * The concept as it would be merged, under `id`. An edit starts from the
- * confirmed concept, so fields the form doesn't show (review notes, equation
- * conditions, epistemic status) are kept.
+ * confirmed concept, so fields the form doesn't show (equation conditions,
+ * epistemic status) are kept.
  */
 export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)): GraphNode {
   const label = d.label.trim();
@@ -339,9 +363,9 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   void _f;
   const kept = Object.fromEntries(
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
-      // What the form edits comes from the draft; the rest (conditions, review notes) is kept.
+      // What the form edits comes from the draft; the rest (conditions, a curated rating) is kept.
       ([k]) =>
-        !['description', 'domain', 'equation', 'variables', 'representations', 'formulas', ...RESOURCE_EDITED].includes(k) &&
+        !['description', 'domain', 'equation', 'plain', 'variables', 'representations', 'formulas', ...RESOURCE_EDITED].includes(k) &&
         (type === 'equation' || !EQUATION_ONLY.includes(k)) &&
         (type === 'formalism' || !FORMALISM_ONLY.includes(k)) &&
         (type === 'resource' || !RESOURCE_ONLY.includes(k)),
@@ -359,6 +383,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
       ? {
           description,
           equation: d.equation.trim(),
+          ...(d.equationPlain.trim() ? { plain: d.equationPlain.trim() } : {}),
           variables: cleanVariables(d.variables),
           conditions: [],
           representations: cleanRepresentations(d.representations),
@@ -370,7 +395,11 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
             ...(description ? { description } : {}),
             link: d.link.trim(),
             mediaType: d.mediaType,
-            estimatedMinutes: d.minutes ?? 0,
+            ...Object.fromEntries(
+              (['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'] as const)
+                .map((k) => [k, d[k].trim()] as const)
+                .filter(([, v]) => v),
+            ),
             ...kept,
           }
       : type === 'learning_goal'
@@ -405,6 +434,8 @@ function edgesWith(d: Draft, end: (ref: string) => string | null, prefix: string
       ...(description ? { description } : {}),
       ...(derivation ? { derivation } : {}),
       ...(assumes.length ? { assumes } : {}),
+      ...(r.importance !== undefined ? { importance: r.importance } : {}),
+      ...(r.generality !== undefined ? { generality: r.generality } : {}),
     });
   });
   return out;
@@ -568,7 +599,6 @@ export function draftProposal(d: Draft, ctx: DraftContext): Proposal {
     ...(page ? { pages: [page] } : {}),
     ...(relationTypes.length ? { relationTypes } : {}),
     ...(deps.length ? { dependsOn: deps } : {}),
-    tally: { verify: 0, dispute: 0, clarify: 0 },
   };
 }
 
@@ -590,7 +620,7 @@ export type DraftField =
   | 'figures'
   | 'link'
   | 'mediaType'
-  | 'minutes'
+  | 'time'
   | 'page'
   | 'generality'
   | 'importance'
@@ -626,8 +656,8 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
     if (!/^https?:\/\/\S+\.\S+/.test(d.link.trim()))
       out.push({ field: 'link', message: 'Give the address of the resource (starting with https://).' });
     if (!MEDIA_TYPES.includes(d.mediaType)) out.push({ field: 'mediaType', message: 'Choose what kind of resource it is.' });
-    if (d.minutes === undefined || !Number.isInteger(d.minutes) || d.minutes < 1)
-      out.push({ field: 'minutes', message: 'Say roughly how many minutes it takes to work through.' });
+    if (![d.estimatedTime, d.readingTime, d.listeningTime].some((t) => t.trim()))
+      out.push({ field: 'time', message: 'Say roughly how long it takes — a time or a range, or the reading or listening time.' });
   }
   if (d.type === 'equation') {
     if (!d.equation.trim()) out.push({ field: 'equation', message: 'Write the equation.' });
@@ -730,6 +760,11 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
         out.push({ field: 'relations', index, message: `Relation ${n}: "${phrase}" is in another kind on an earlier relation — give it one kind.` });
       newTypes.set(phrase, r.newCategory);
     }
+    for (const key of ['importance', 'generality'] as const) {
+      const v = r[key];
+      if (v !== undefined && !inRange(v, key === 'importance' ? IMPORTANCE_MAX : GENERALITY_MAX))
+        out.push({ field: 'relations', index, message: `Relation ${n}: ${key} is a whole number from 1 to 10.` });
+    }
     (r.assumes ?? []).forEach((a) => {
       if (!a.label.trim() && !a.concept && a.description.trim())
         out.push({ field: 'relations', index, message: `Relation ${n}: give what it assumes a name — a few words.` });
@@ -809,12 +844,6 @@ export const removedFiles = (d: Draft, confirmed?: ConceptGraph): string[] => {
   const dropped = page ? Array.from({ length: Math.max(0, (page.replaces ?? 0) - page.depths.length) }, (_, i) => pageFile(page.concept, page.depths.length + i + 1)) : [];
   return [...d.removals.map((id) => `content/concepts/edges/${id}.json`), ...dropped, ...droppedFigures(d, confirmed)];
 };
-
-/** The whole proposal as one file, readable by the proposed layer (content/proposals-fixtures/). */
-export function proposalFile(d: Draft, ctx: DraftContext): ExportFile {
-  const p = draftProposal(d, ctx);
-  return { path: `content/proposals-fixtures/${p.id}.json`, content: formatEntity(p) };
-}
 
 const sentenceText = (e: GraphEdge, byId: ConceptMap) =>
   sentenceParts(e, byId)
@@ -971,6 +1000,8 @@ export function parseDraft(raw: unknown): Draft | null {
       (x.description === undefined || isString(x.description)) &&
       (x.derivation === undefined || isString(x.derivation)) &&
       (x.newCategory === undefined || isString(x.newCategory)) &&
+      (x.importance === undefined || typeof x.importance === 'number') &&
+      (x.generality === undefined || typeof x.generality === 'number') &&
       (x.assumes === undefined || (Array.isArray(x.assumes) && x.assumes.every(assumptionRowOk)))
     );
   };
@@ -989,7 +1020,14 @@ export function parseDraft(raw: unknown): Draft | null {
   const representations = d.representations ?? [];
   const representationOk = (r: unknown) => {
     const x = r as Record<string, unknown>;
-    return Boolean(x) && isString(x.name) && isString(x.equation) && Array.isArray(x.variables) && x.variables.every(variableOk);
+    return (
+      Boolean(x) &&
+      isString(x.name) &&
+      isString(x.equation) &&
+      (x.plain === undefined || isString(x.plain)) &&
+      Array.isArray(x.variables) &&
+      x.variables.every(variableOk)
+    );
   };
   if (!Array.isArray(representations) || !representations.every(representationOk)) return null;
   const formulas = d.formulas ?? [];
@@ -1009,6 +1047,13 @@ export function parseDraft(raw: unknown): Draft | null {
   if (d.link !== undefined && !isString(d.link)) return null;
   if (d.mediaType !== undefined && !isString(d.mediaType)) return null;
   if (d.minutes !== undefined && typeof d.minutes !== 'number') return null;
+  // Added 2026-11: times as free text (a range fits), who a resource works for, an
+  // equation in plain words. A draft's minutes become its estimated time.
+  for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'equationPlain'] as const)
+    if (d[key] !== undefined && !isString(d[key])) return null;
+  const text = (key: string) => (d[key] as string | undefined) ?? '';
+  const estimatedTime = d.estimatedTime === undefined && typeof d.minutes === 'number' ? `${d.minutes} min` : text('estimatedTime');
+  const withPlain = (rs: unknown[]) => (rs as DraftRepresentation[]).map((r) => ({ ...r, plain: r.plain ?? '' }));
   // Added 2026-10: its page — older drafts have none.
   const page = d.page === undefined ? (d.editOf ? null : []) : d.page;
   if (page !== null && (!Array.isArray(page) || !page.every(isString))) return null;
@@ -1033,13 +1078,20 @@ export function parseDraft(raw: unknown): Draft | null {
   // Before version 3, importance ran 1–50: the same depth is a fifth of it now.
   const importance =
     d.version !== 3 && typeof d.importance === 'number' ? Math.max(1, Math.round(d.importance / 5)) : (d.importance as number | undefined);
+  const { minutes: _m, ...stored } = raw as Draft & { minutes?: number };
+  void _m;
   return {
-    ...(raw as Draft),
+    ...stored,
     version: 3,
+    equationPlain: text('equationPlain'),
+    estimatedTime,
+    readingTime: text('readingTime'),
+    listeningTime: text('listeningTime'),
+    accessibility: text('accessibility'),
     removals: removals as string[],
     variables: variables as EquationVariable[],
-    representations: representations as DraftRepresentation[],
-    formulas: formulas as DraftRepresentation[],
+    representations: withPlain(representations),
+    formulas: withPlain(formulas),
     assumes,
     link: (d.link as string | undefined) ?? '',
     mediaType: (d.mediaType as string | undefined) ?? '',

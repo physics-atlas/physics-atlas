@@ -57,7 +57,6 @@ ones (their values can't be read back afterwards — keep the originals somewher
 | `GITHUB_CLIENT_SECRET` | the client secret | **Secret** |
 | `GITHUB_APP_PRIVATE_KEY` | the whole `.pem` file, including the `-----BEGIN …-----` and `-----END …-----` lines | **Secret** |
 | `SESSION_SECRET` | a long random string, e.g. from `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"` | **Secret** |
-| `ALLOWED_PROPOSERS` | optional: invited GitHub handles, comma-separated (on top of `community/experts.json`) | Text |
 | `GITHUB_BASE` | optional: the branch proposals start from (default `main`) | Text |
 | `DIRECT_PUBLISH` | optional: `off` turns direct publishing off for everyone, whatever `experts.json` says (Decision 43) | Text |
 
@@ -74,13 +73,9 @@ While the repository is private, only invited GitHub handles can submit. Either:
   { "experts": [{ "github": "<handle>", "name": "Display name", "verified": false }] }
   ```
 
-- or, for a first test, put your handle in `ALLOWED_PROPOSERS` (comma-separated, e.g.
-  `gdaudt,sophelsa`).
-
 Someone marked `"publish": true` in `experts.json` may also **publish directly**: the app
 opens the pull request and merges it at once (Decision 43). Merging needs nothing beyond
-the App's existing **Contents** and **Pull requests** write permissions. `ALLOWED_PROPOSERS`
-never grants it.
+the App's existing **Contents** and **Pull requests** write permissions.
 
 The backend reads `experts.json` from GitHub (the `main` branch), not from the deployed site,
 and re-reads it within five minutes. The list only decides who may **submit**: anyone can sign
@@ -110,7 +105,7 @@ If something fails, the Worker's **Logs** tab shows the backend's errors (loggin
 | Back on the site: *Not signed in. You cancelled…* | They chose *Cancel* on GitHub | Try again |
 | *…took too long, or was started in another tab* | The sign-in state expired (10 minutes) or cookies are blocked | Try again in one tab; allow cookies for the site |
 | *GitHub stopped the sign-in* / *didn't confirm who you are*, with a reason like `redirect_uri_mismatch` or `incorrect_client_credentials` | GitHub's own error code | `redirect_uri_mismatch`: add `https://<your-site>/api/auth/callback` to the App's callback URLs. `incorrect_client_credentials`: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` don't match the App. |
-| Signed in, but *not on the invite list* | Their handle isn't in `experts.json` on `main` (or `ALLOWED_PROPOSERS`) | Add it; wait up to five minutes |
+| Signed in, but *not on the invite list* | Their handle isn't in `experts.json` on `main` | Add it; wait up to five minutes |
 
 Every failed sign-in also leaves a line in the **Logs** tab (`sign-in failed: <reason> (<code>)`),
 and every successful one `sign-in: @<handle>`.

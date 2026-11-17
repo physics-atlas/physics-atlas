@@ -168,9 +168,12 @@ if (coveredNames.length) errors.push(`relation names covered by a circle: ${cove
 await page.evaluate(() => window.__cy.$id('einstein_eq').emit('tap'));
 await page.waitForSelector('.map-card');
 const conceptCard = await page.$eval('.map-card', (el) => el.textContent ?? '');
-console.log('concept card has "leads to Newtonian Gravity":', conceptCard.includes('leads to Newtonian Gravity'));
-if (!conceptCard.includes('leads to Newtonian Gravity'))
-  errors.push('concept card is missing the einstein_eq → newtonian gravity relation sentence');
+// One of its relations, from the data (content changes, so it isn't named here): the other end shows in the card's sentences.
+const einsteinEdge = seriousEdges.find((e) => e.source === 'einstein_eq' || e.target === 'einstein_eq');
+const otherEnd = einsteinEdge && compiled.nodes.find((n) => n.id === (einsteinEdge.source === 'einstein_eq' ? einsteinEdge.target : einsteinEdge.source));
+console.log(`concept card names a related concept (${otherEnd?.label}):`, Boolean(otherEnd && conceptCard.includes(otherEnd.label)));
+if (!otherEnd || !conceptCard.includes(otherEnd.label))
+  errors.push(`concept card is missing the sentence of its relation ${einsteinEdge?.id ?? '(none found)'}`);
 await page.screenshot({ path: `${OUT}/concepts.png` });
 
 // The equation is typeset (KaTeX), and clicking off the concept keeps the view.
@@ -252,6 +255,21 @@ if (!conceptProgress.includes(`"concept:${goalPath[0]}"`))
   errors.push(`ticking the first concept step did not store concept:${goalPath[0]}`);
 await page.screenshot({ path: `${OUT}/concepts-goal.png` });
 
+// "Show path to this" on a goal that is "a learning goal of" a concept: the
+// concept is on its path (read backwards), so the path is more than the goal.
+const goalOf = compiled.edges.find((e) => e.relationship.trim().toLowerCase() === 'is a learning goal of' && serious.has(e.source));
+if (goalOf) {
+  await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+  await page.evaluate((id) => window.__cy.$id(id).emit('tap'), goalOf.source);
+  await page.waitForSelector('.map-card-goal');
+  await page.click('.map-card-goal');
+  await page.waitForSelector('.concept-path-step');
+  const steps = await page.$$eval('.concept-path-step', (els) => els.length);
+  const onPath = await page.evaluate((id) => window.__cy.$id(id).hasClass('path-node'), goalOf.target);
+  console.log(`show path to ${goalOf.source}: ${steps} steps, ${goalOf.target} on it: ${onPath}`);
+  if (steps < 2 || !onPath) errors.push(`"Show path to this" on ${goalOf.source} left out ${goalOf.target}`);
+}
+
 // --- Community preview, Phase 1: proposed layer from the sample fixtures ---
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const confirmedPositions = () =>
@@ -290,7 +308,7 @@ const layer = await page.evaluate(() => {
   return {
     nodes: cy.nodes('.overlay').map((n) => n.id()),
     edges: cy.edges('.overlay').length,
-    contested: cy.nodes('.status-contested').map((n) => n.id()),
+    changes: cy.nodes('.status-changes').map((n) => n.id()),
     jeansLabel: cy.$id('jeans_scale_s1').data('label'),
     url: window.location.search,
     // A proposal that depends on another one relates to its proposed concept.
@@ -316,7 +334,7 @@ console.log('rank of each proposal\'s anchor among the nearest confirmed concept
 if (layer.anchorRanks.some((r) => r < 1 || r > 3))
   errors.push(`a proposal was placed away from its connection (anchor ranks ${layer.anchorRanks})`);
 console.log(
-  `proposed layer: ${layer.nodes.length} concepts, ${layer.edges} relations, contested ${layer.contested}; confirmed nodes moved: ${moved.length}`,
+  `proposed layer: ${layer.nodes.length} concepts, ${layer.edges} relations, changes requested on ${layer.changes}; confirmed nodes moved: ${moved.length}`,
 );
 console.log('dependent proposal and edit:', { dependent: layer.dependent, editLabel: layer.editLabel, removal: layer.removal });
 if (layer.nodes.length !== 4 || layer.edges !== 7)
@@ -324,9 +342,9 @@ if (layer.nodes.length !== 4 || layer.edges !== 7)
 if (!layer.dependent) errors.push('the dependent sample lost its relation to the proposal it depends on');
 if (!layer.editLabel?.includes('✎ Edit proposed') || !layer.removal)
   errors.push(`the edit sample isn't marked on the map: ${layer.editLabel}, removal ${layer.removal}`);
-if (layer.contested.join() !== 'ultralight_bound_s3') errors.push(`expected one contested proposal, got ${layer.contested}`);
+if (layer.changes.join() !== 'ultralight_bound_s3') errors.push(`expected one proposal with changes requested, got ${layer.changes}`);
 if (moved.length) errors.push(`proposals moved confirmed concepts: ${moved.slice(0, 5).join(', ')}`);
-if (!layer.jeansLabel?.includes('Proposed · ✓2 ✗0 ?1')) errors.push(`proposal badge missing: ${layer.jeansLabel}`);
+if (!layer.jeansLabel?.includes('Proposed · 1 comment')) errors.push(`proposal badge missing its GitHub review: ${layer.jeansLabel}`);
 if (layer.url !== '?mode=community') errors.push(`the old community address didn't open the community view: ${layer.url}`);
 await page.screenshot({ path: `${OUT}/community-layer.png` });
 
@@ -336,7 +354,7 @@ const proposalCard = await page.$eval('.map-card', (el) => el.textContent ?? '')
 const cardChecks = {
   proposedBy: proposalCard.includes('Proposed by Sample contributor A'),
   sentence: proposalCard.includes('Jeans scale is a condition of Structure Formation'),
-  tally: proposalCard.includes('Needs clarification'),
+  review: proposalCard.includes('Review on GitHub'),
 };
 console.log('proposal card:', cardChecks);
 if (!Object.values(cardChecks).every(Boolean)) errors.push(`proposal card incomplete: ${JSON.stringify(cardChecks)}`);

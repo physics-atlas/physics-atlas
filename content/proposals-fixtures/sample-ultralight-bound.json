@@ -1,7 +1,7 @@
 {
   "id": "sample-ultralight-bound",
   "title": "Sample: ultralight mass above 10⁻²² eV",
-  "state": "contested",
+  "state": "changes",
   "author": {
     "name": "Sample contributor C"
   },
@@ -35,12 +35,9 @@
       "relationship": "concerns"
     }
   ],
-  "tally": {
-    "verify": 1,
-    "dispute": 2,
-    "clarify": 0
-  },
-  "dispute": {
-    "summary": "Sample dispute: the bound depends on which observations are trusted, so experts disagree on whether it should be stated without conditions."
+  "review": {
+    "approvals": 0,
+    "changesRequested": 1,
+    "comments": 3
   }
 }

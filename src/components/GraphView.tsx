@@ -369,7 +369,7 @@ const styleFor = (light: boolean) => {
       'background-opacity': 0.3,
     },
   },
-  { selector: 'node.overlay.status-contested', style: { 'border-style': 'double', 'border-width': 6 } },
+  { selector: 'node.overlay.status-changes', style: { 'border-style': 'double', 'border-width': 6 } },
   {
     selector: 'edge.overlay',
     style: {
@@ -381,7 +381,7 @@ const styleFor = (light: boolean) => {
       'line-opacity': 0.75,
     },
   },
-  { selector: 'edge.overlay.status-contested', style: { 'line-style': 'dotted' } },
+  { selector: 'edge.overlay.status-changes', style: { 'line-style': 'dotted' } },
   // The proposer's draft: dashed outline with a steady glow (it never pulses —
   // nothing here animates on its own), and the badge "Draft · not submitted".
   {
@@ -893,7 +893,7 @@ function overlayElements(overlay: ConceptOverlay, iconColor: string): cytoscape.
       return { ...el, data: { ...el.data, proposalId } };
     }),
     ...overlay.edges.map(({ edge, status, proposalId }) => {
-      const el = conceptEdgeElement(edge, `overlay status-${status}`, status === 'contested' ? 'contested' : 'proposed');
+      const el = conceptEdgeElement(edge, `overlay status-${status}`, status === 'changes' ? 'changes' : 'proposed');
       return { ...el, data: { ...el.data, proposalId } };
     }),
   ];

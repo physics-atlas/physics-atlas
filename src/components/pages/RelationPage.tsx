@@ -136,13 +136,6 @@ export default function RelationPage({
         {edge.derivation ? <RichText source={edge.derivation} /> : <p className="atlas-empty">No derivation yet.</p>}
       </section>
 
-      {edge.review && (
-        <section aria-labelledby="atlas-relation-review">
-          <h2 id="atlas-relation-review">Open question</h2>
-          <p>{edge.review}</p>
-        </section>
-      )}
-
       {others.length > 0 && source && (
         <section aria-labelledby="atlas-relation-others">
           <h2 id="atlas-relation-others">Also between these two</h2>

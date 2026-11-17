@@ -5,8 +5,8 @@
 // conceptVocabulary.json, domains from the controlled vocabulary, resolvable
 // edges, and acyclicity of "strict prerequisite for" edges. Also surfaces the
 // data-quality issues from docs/physics-atlas-migration-brief.md §3 as
-// warnings (never auto-fixed): casing variants, open `review` items, orphan
-// nodes/learning goals, and example-domain resource links.
+// warnings (never auto-fixed): casing variants, orphan nodes/learning goals,
+// and example-domain resource links.
 // normalizeRelationship mirrors src/graph/concepts.ts — keep in sync.
 // Run via `npm run validate`.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -23,6 +23,7 @@ const VOCAB_PATH = join(ROOT, 'src/data/conceptVocabulary.json');
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 const STRICT_PREREQ = 'strict prerequisite for';
+const GOAL_OF = 'is a learning goal of';
 const EXAMPLE_DOMAIN = /^https?:\/\/([^/]*\.)?example\.(com|org|net)(\/|$)/i;
 
 const errors = [];
@@ -79,6 +80,8 @@ for (const [type, def] of Object.entries(TYPE_DEFINITIONS)) {
   if (!NODE_TYPES.includes(type)) errors.push(`${where}: "${type}" is not a node type in nodeTypes`);
   for (const key of ['term', 'definition'])
     if (typeof def?.[key] !== 'string' || !def[key].trim()) errors.push(`${where}: "${key}" must be a non-empty string`);
+  if (def?.plain !== undefined && (typeof def.plain !== 'string' || !def.plain.trim()))
+    errors.push(`${where}: "plain" (the learner-friendly definition) must be text, or left out`);
   for (const key of ['examples', 'distinctions'])
     if (!Array.isArray(def?.[key]) || def[key].some((v) => typeof v !== 'string'))
       errors.push(`${where}: "${key}" must be an array of strings`);
@@ -103,10 +106,10 @@ if (!Array.isArray(data.edges)) {
 if (typeof data.version !== 'number') errors.push('top-level "version" must be a number');
 
 const ALLOWED_ATTRS = {
-  equation: ['description', 'equation', 'variables', 'conditions', 'representations', 'domain'],
+  equation: ['description', 'equation', 'plain', 'variables', 'conditions', 'representations', 'domain'],
   formalism: ['description', 'formulas', 'domain'],
   learning_goal: ['description'],
-  resource: ['description', 'link', 'mediaType', 'estimatedMinutes', 'rating', 'reviewCount'],
+  resource: ['description', 'link', 'mediaType', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'rating', 'reviewCount'],
 };
 const DEFAULT_ALLOWED_ATTRS = ['description', 'domain'];
 
@@ -139,8 +142,13 @@ function checkNodeAttrs(where, node) {
       errors.push(`${where}: missing "attrs.mediaType"`);
     else if (!MEDIA_TYPES.includes(attrs.mediaType))
       warn.push(`${where}: unknown mediaType "${attrs.mediaType}" — add it to conceptVocabulary.json if this is a new kind`);
-    if (typeof attrs.estimatedMinutes !== 'number' || !Number.isFinite(attrs.estimatedMinutes))
-      errors.push(`${where}: attrs.estimatedMinutes must be a number`);
+    if (attrs.estimatedMinutes !== undefined)
+      errors.push(`${where}: attrs.estimatedMinutes is now "estimatedTime", as text — "20 min", "20–30 min"`);
+    for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'])
+      if (attrs[key] !== undefined && (typeof attrs[key] !== 'string' || !attrs[key].trim()))
+        errors.push(`${where}: attrs.${key} must be text, or left out`);
+    if (!['estimatedTime', 'readingTime', 'listeningTime'].some((k) => typeof attrs[k] === 'string' && attrs[k].trim()))
+      errors.push(`${where}: say how long it takes — attrs.estimatedTime (or readingTime, listeningTime), as text: "20–30 min"`);
     if (attrs.description !== undefined && (typeof attrs.description !== 'string' || !attrs.description.trim()))
       errors.push(`${where}: attrs.description must be text, or left out`);
     // A rating comes with the curated list; a resource proposed through the editor has none yet.
@@ -164,6 +172,7 @@ function checkNodeAttrs(where, node) {
     if (typeof attrs.equation !== 'string' || !attrs.equation.trim())
       errors.push(`${where}: attrs.equation is required`);
     else checkLatex(where, 'attrs.equation', attrs.equation);
+    checkPlain(where, 'attrs.plain', attrs.plain);
     checkVariables(where, 'attrs.variables', attrs.variables);
     checkStringArray(where, 'conditions', attrs.conditions);
     if (!Array.isArray(attrs.representations)) errors.push(`${where}: attrs.representations must be an array`);
@@ -173,7 +182,8 @@ function checkNodeAttrs(where, node) {
         if (!r || typeof r !== 'object' || typeof r.name !== 'string' || !r.name.trim())
           return errors.push(`${where}: ${at} needs a "name" (what this form of the equation is called)`);
         for (const key of Object.keys(r))
-          if (!['name', 'equation', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+          if (!['name', 'equation', 'plain', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+        checkPlain(where, `${at}.plain`, r.plain);
         if (r.equation !== undefined) {
           if (typeof r.equation !== 'string' || !r.equation.trim()) errors.push(`${where}: ${at}.equation must be LaTeX text`);
           else checkLatex(where, `${at}.equation`, r.equation);
@@ -191,7 +201,8 @@ function checkNodeAttrs(where, node) {
           return errors.push(`${where}: ${at} needs an "equation" (the formula, in LaTeX)`);
         checkLatex(where, `${at}.equation`, f.equation);
         for (const key of Object.keys(f))
-          if (!['name', 'equation', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+          if (!['name', 'equation', 'plain', 'variables'].includes(key)) warn.push(`${where}: unknown key "${key}" in ${at}`);
+        checkPlain(where, `${at}.plain`, f.plain);
         if (f.name !== undefined && (typeof f.name !== 'string' || !f.name.trim()))
           errors.push(`${where}: ${at}.name must be text (or left out)`);
         if (f.variables !== undefined) checkVariables(where, `${at}.variables`, f.variables);
@@ -202,7 +213,15 @@ function checkNodeAttrs(where, node) {
 function checkVariables(where, at, variables) {
   if (!Array.isArray(variables) || variables.some((v) => !v || typeof v.symbol !== 'string' || typeof v.meaning !== 'string'))
     return errors.push(`${where}: ${at} must be an array of {symbol, meaning}`);
-  variables.forEach((v, i) => checkLatex(where, `${at}[${i}].symbol`, v.symbol));
+  variables.forEach((v, i) => {
+    checkLatex(where, `${at}[${i}].symbol`, v.symbol);
+    checkPlain(where, `${at}[${i}].plain`, v.plain);
+  });
+}
+
+/** "plain": what an equation, a representation or a variable says, in plain words — text, or left out. */
+function checkPlain(where, at, value) {
+  if (value !== undefined && (typeof value !== 'string' || !value.trim())) errors.push(`${where}: ${at} must be text in plain words, or left out`);
 }
 
 /** Equations and symbols are LaTeX, typeset by KaTeX on the card — say so when one won't typeset. */
@@ -242,7 +261,7 @@ for (const n of data.nodes) {
     else if (!EPISTEMIC_STATUSES.includes(n.epistemicStatus))
       warn.push(`${where}: unknown epistemicStatus "${n.epistemicStatus}" — add it to conceptVocabulary.json if this is a new status`);
   }
-  if (n.review !== undefined) warn.push(`${where}: open review — ${n.review}`);
+  if (n.review !== undefined) errors.push(`${where}: "review" (an open question for the author) is no longer a field — delete it`);
 }
 
 const edgeIds = new Set();
@@ -250,6 +269,7 @@ const degree = new Map([...ids].map((id) => [id, 0]));
 const casingByType = new Map();
 const tripleSeen = new Set();
 const strictPrereqsByNode = new Map([...ids].map((id) => [id, []]));
+const goalOfByNode = new Map([...ids].map((id) => [id, []]));
 
 for (const e of data.edges) {
   const where = `edge "${e.id ?? '<unnamed>'}"`;
@@ -287,6 +307,8 @@ for (const e of data.edges) {
         else tripleSeen.add(triple);
 
         if (type === STRICT_PREREQ) strictPrereqsByNode.get(e.target)?.push(e.source);
+        // "G is a learning goal of C" puts C on G's path, like "C is a strict prerequisite for G".
+        if (type === GOAL_OF) goalOfByNode.get(e.source)?.push(e.target);
         // Fluff is fun mode only: it must never pull a joke into a learning path.
         if (type === STRICT_PREREQ && [e.source, e.target].some((id) => byId.get(id)?.type === 'fluff'))
           errors.push(`${where}: a fluff node can't be part of a "${STRICT_PREREQ}" relation — use "relates" or another relation`);
@@ -301,7 +323,14 @@ for (const e of data.edges) {
   for (const key of ['description', 'derivation'])
     if (e[key] !== undefined && (typeof e[key] !== 'string' || !e[key].trim()))
       errors.push(`${where}: "${key}" must be text (Markdown + LaTeX), or left out`);
-  if (e.review !== undefined) warn.push(`${where}: open review — ${e.review}`);
+  if (e.review !== undefined) errors.push(`${where}: "review" (an open question for the author) is no longer a field — delete it`);
+  // A learning goal's importance and generality for the concept at the other end.
+  for (const key of ['importance', 'generality']) {
+    if (e[key] === undefined) continue;
+    if (![e.source, e.target].some((id) => byId.get(id)?.type === 'learning_goal'))
+      errors.push(`${where}: "${key}" is only for a relation with a learning goal at one end`);
+    else if (!Number.isInteger(e[key]) || e[key] < 1 || e[key] > 10) errors.push(`${where}: ${key} must be an integer 1–10`);
+  }
 }
 
 for (const [type, variants] of casingByType) {
@@ -413,13 +442,15 @@ for (const id of ids) {
   if (degree.get(id) === 0 && !inAssumption) warn.push(`node "${id}" has no edges`);
 }
 for (const n of data.nodes) {
-  if (n.type === 'learning_goal' && ids.has(n.id) && (strictPrereqsByNode.get(n.id) ?? []).length === 0)
-    warn.push(`learning goal "${n.id}" has no incoming strict prerequisite`);
+  if (n.type === 'learning_goal' && ids.has(n.id) && !strictPrereqsByNode.get(n.id)?.length && !goalOfByNode.get(n.id)?.length)
+    warn.push(`learning goal "${n.id}" has no path: nothing is a strict prerequisite for it, and it isn't "a learning goal of" anything`);
 }
 
 if (errors.length === 0) {
-  const stuck = findCycle(strictPrereqsByNode);
-  if (stuck.length) errors.push(`cycle among "strict prerequisite for" edges involving: ${stuck.join(', ')}`);
+  // A path follows both, so neither may loop back through the other.
+  const pathPrereqs = new Map([...strictPrereqsByNode].map(([id, ps]) => [id, [...ps, ...goalOfByNode.get(id)]]));
+  const stuck = findCycle(pathPrereqs);
+  if (stuck.length) errors.push(`cycle among "strict prerequisite for" and "is a learning goal of" edges involving: ${stuck.join(', ')}`);
 }
 
 const noImportance = data.nodes.filter((n) => n.importance === undefined).length;

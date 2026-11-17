@@ -89,11 +89,7 @@ async function experts(config: Config, gh: GitHub, now: number): Promise<Expert[
   const key = `${config.owner}/${config.repo}`;
   const hit = state.experts.get(key);
   if (hit && hit.until > now) return hit.value;
-  const fromRepo = parseExperts(await gh.readFile('community/experts.json'));
-  const extra = config.extraProposers
-    .filter((h) => !fromRepo.some((e) => e.github.toLowerCase() === h))
-    .map((github) => ({ github }));
-  const value = [...fromRepo, ...extra];
+  const value = parseExperts(await gh.readFile('community/experts.json'));
   state.experts.set(key, { value, until: now + EXPERTS_TTL });
   return value;
 }
@@ -107,10 +103,20 @@ async function openProposals(config: Config, gh: GitHub, now: number): Promise<P
   const hit = state.list.get(key);
   if (hit && hit.until > now) return hit.value;
   const prs = await gh.openPullRequests(PROPOSAL_LABEL);
-  const raw = prs.flatMap((pr) => {
-    const p = decodeProposal(pr.body);
-    return p ? [{ ...p, createdAt: pr.created_at, pr: { number: pr.number, url: pr.html_url } }] : [];
-  });
+  // Each one's review on GitHub (Decision 45): a reviewer asking for changes marks it on the map.
+  const raw = (
+    await Promise.all(
+      prs.map(async (pr) => {
+        const p = decodeProposal(pr.body);
+        if (!p) return [];
+        const review = await gh.reviewOf(pr.number, pr.comments ?? 0);
+        const { tally: _t, dispute: _d, ...rest } = p as Proposal & { tally?: unknown; dispute?: unknown };
+        void _t;
+        void _d;
+        return [{ ...rest, state: review.changesRequested ? ('changes' as const) : ('open' as const), review, createdAt: pr.created_at, pr: { number: pr.number, url: pr.html_url } }];
+      }),
+    )
+  ).flat();
   // The same rules the map applies: proposals that no longer fit are left
   // out, and relations into proposals that were closed are dropped.
   const valid = raw.filter((p) => proposalProblems(p, concepts, raw).length === 0);
@@ -216,8 +222,7 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           state: 'open',
           author: { name: user.name, handle: user.login, ...(expert.verified ? { verified: true } : {}) },
           createdAt: new Date(now).toISOString(),
-          tally: { verify: 0, dispute: 0, clarify: 0 },
-          dispute: undefined,
+          review: undefined,
           dropped: undefined,
         };
         if (open.some((p) => p.id === proposal.id))

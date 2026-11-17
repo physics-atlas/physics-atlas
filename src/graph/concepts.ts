@@ -268,6 +268,11 @@ export function neighborsOf(id: string, index: ConceptIndex): string[] {
  * narrow — widening it (e.g. to `depends on`) is a pedagogy call for the author.
  */
 export const CURRICULUM_EDGE_TYPES: EdgeType[] = ['strict prerequisite for'];
+/**
+ * Read the other way round: "G is a learning goal of C" puts C on G's path,
+ * as "C is a strict prerequisite for G" would.
+ */
+export const GOAL_EDGE_TYPES: EdgeType[] = ['is a learning goal of'];
 
 export type ResourceNode = Extract<GraphNode, { type: 'resource' }>;
 
@@ -281,18 +286,20 @@ export interface ConceptPath {
 }
 
 /**
- * A goal's learning path: the closure over CURRICULUM_EDGE_TYPES, in
- * kahnOrder() — prerequisites first, ties by depth then id.
+ * A goal's learning path: the closure over CURRICULUM_EDGE_TYPES (and
+ * GOAL_EDGE_TYPES, read backwards), in kahnOrder() — prerequisites first,
+ * ties by depth then id. Each step lists the resources linked to it, by any
+ * relation.
  */
 export function conceptPathFor(goalId: string, index: ConceptIndex): ConceptPath | null {
   if (!index.byId.has(goalId)) return null;
-  const prereqsOf = (id: string) =>
-    (index.incoming.get(id) ?? [])
-      .filter((e) => {
-        const type = normalizeRelationship(e.relationship);
-        return type !== null && CURRICULUM_EDGE_TYPES.includes(type);
-      })
-      .map((e) => e.source);
+  const typeOf = (e: GraphEdge) => normalizeRelationship(e.relationship);
+  const prereqsOf = (id: string) => [
+    ...new Set([
+      ...(index.incoming.get(id) ?? []).filter((e) => CURRICULUM_EDGE_TYPES.includes(typeOf(e)!)).map((e) => e.source),
+      ...(index.outgoing.get(id) ?? []).filter((e) => GOAL_EDGE_TYPES.includes(typeOf(e)!)).map((e) => e.target),
+    ]),
+  ];
   const closure = dfsClosure(goalId, prereqsOf);
   const order = kahnOrder(
     new Map([...closure].map((id) => [id, prereqsOf(id).filter((p) => closure.has(p))])),
@@ -300,9 +307,13 @@ export function conceptPathFor(goalId: string, index: ConceptIndex): ConceptPath
   const highlight = new Set(order);
   const resourcesByStep = new Map<string, ResourceNode[]>();
   for (const id of order) {
-    const resources = (index.incoming.get(id) ?? [])
-      .filter((e) => normalizeRelationship(e.relationship) === 'helps understand')
-      .map((e) => index.byId.get(e.source))
+    const resources = [
+      ...new Set([
+        ...(index.incoming.get(id) ?? []).map((e) => e.source),
+        ...(index.outgoing.get(id) ?? []).map((e) => e.target),
+      ]),
+    ]
+      .map((x) => index.byId.get(x))
       .filter((n): n is ResourceNode => n?.type === 'resource');
     for (const r of resources) highlight.add(r.id);
     resourcesByStep.set(id, resources);

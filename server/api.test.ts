@@ -39,7 +39,8 @@ const env: Env = {
 /** A stand-in for GitHub: records what the backend writes, serves what it reads. */
 function fakeGitHub(invited: string[] = ['ada'], { issues = true, publishers = [] as string[], mergeStatus = 200 } = {}) {
   const writes: { method: string; path: string; body: unknown }[] = [];
-  const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object }[] = [];
+  const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object; comments?: number }[] = [];
+  const reviews = new Map<number, { user: { login: string }; state: string }[]>();
   let jwtSeen = '';
   const experts = {
     experts: invited.map((github) => ({ github, name: 'Ada', verified: true, ...(publishers.includes(github) ? { publish: true } : {}) })),
@@ -67,6 +68,8 @@ function fakeGitHub(invited: string[] = ['ada'], { issues = true, publishers = [
     if (path === `${r}/contents/src/data/conceptVocabulary.json`)
       return reply({ content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(vocabulary, null, 2)))) });
     if (path === `${r}/issues` && method === 'GET') return reply(pulls);
+    const reviewList = /\/pulls\/(\d+)\/reviews$/.exec(path);
+    if (reviewList && method === 'GET') return reply(reviews.get(Number(reviewList[1])) ?? []);
     if (path === `${r}/git/ref/heads/main`) return reply({ object: { sha: 'base-sha' } });
     if (path === `${r}/git/commits/base-sha`) return reply({ tree: { sha: 'base-tree' } });
     writes.push({ method, path, body });
@@ -96,7 +99,7 @@ function fakeGitHub(invited: string[] = ['ada'], { issues = true, publishers = [
         : reply({ message: 'Resource not accessible by integration' }, 403);
     return reply({ message: 'Not Found' }, 404);
   };
-  return { fetchImpl, writes, pulls, jwt: () => jwtSeen };
+  return { fetchImpl, writes, pulls, reviews, jwt: () => jwtSeen };
 }
 
 const call = (gh: ReturnType<typeof fakeGitHub>, path: string, init: RequestInit = {}, e: Env = env) =>
@@ -286,14 +289,20 @@ describe('submitting a proposal', () => {
     expect(labels.labels).toEqual(['proposal']);
   });
 
-  it('decides itself who proposed it and how the vote stands', async () => {
+  it('decides itself who proposed it, and leaves the review to GitHub', async () => {
     const gh = fakeGitHub();
     const session = await signIn(gh);
-    const forged = { ...draftProposal(jeans(), alone(jeans())), author: { name: 'Someone else', verified: true }, tally: { verify: 99, dispute: 0, clarify: 0 } };
+    const forged = {
+      ...draftProposal(jeans(), alone(jeans())),
+      author: { name: 'Someone else', verified: true },
+      state: 'changes' as const,
+      review: { approvals: 99, changesRequested: 0, comments: 0 },
+    };
     await submit(gh, session, forged);
     const stored = decodeProposal(gh.pulls[0].body)!;
     expect(stored.author).toEqual({ name: 'Ada L', handle: 'ada', verified: true });
-    expect(stored.tally).toEqual({ verify: 0, dispute: 0, clarify: 0 });
+    expect(stored.state).toBe('open');
+    expect(stored.review).toBeUndefined();
   });
 
   it('then shows up in the list, with its pull request, for everyone', async () => {
@@ -307,7 +316,26 @@ describe('submitting a proposal', () => {
       author: { handle: 'ada' },
       pr: { number: 12, url: 'https://github.com/atlas-org/atlas-test/pull/12' },
       createdAt: '2026-10-21T10:00:00Z',
+      state: 'open',
+      review: { approvals: 0, changesRequested: 0, comments: 0 },
     });
+  });
+
+  it("shows each pull request's review: latest verdict per reviewer, and its comments", async () => {
+    const gh = fakeGitHub();
+    const session = await signIn(gh);
+    await submit(gh, session, draftProposal(jeans(), alone(jeans())));
+    gh.pulls[0].comments = 2;
+    gh.reviews.set(12, [
+      { user: { login: 'bea' }, state: 'APPROVED' },
+      { user: { login: 'cy' }, state: 'COMMENTED' },
+      { user: { login: 'cy' }, state: 'CHANGES_REQUESTED' },
+      { user: { login: 'bea' }, state: 'COMMENTED' },
+    ]);
+    resetCaches();
+    const { proposals } = await (await call(gh, '/api/proposals')).json();
+    expect(proposals[0].state).toBe('changes');
+    expect(proposals[0].review).toEqual({ approvals: 1, changesRequested: 1, comments: 4 });
   });
 
   it('refuses one that depends on a proposal that is not open yet', async () => {

@@ -14,6 +14,5 @@
   "attrs": {
     "description": "Bosonic matter which behaves like a wave on sub-galactic scales due to coherence of wave functions at cold temperatures with a small mass.",
     "domain": "Cosmology"
-  },
-  "review": "The assumption \"Ultralight mass\" came from relation e66 (Wave Dark Matter exhibits Interference): the long de Broglie wavelength is what makes interference visible. Sophie to confirm it belongs here rather than with \"is a class of Dark Matter\"."
+  }
 }

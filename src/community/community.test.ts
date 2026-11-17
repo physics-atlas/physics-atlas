@@ -37,7 +37,7 @@ const proposal = (extra: Partial<Proposal> = {}): Proposal => ({
   evidence: [],
   nodes: [newNode('n')],
   edges: [{ id: 'p1_e1', source: 'n', target: 'a', relationship: 'relates' }],
-  tally: { verify: 2, dispute: 1, clarify: 0 },
+  review: { approvals: 2, changesRequested: 0, comments: 1 },
   ...extra,
 });
 
@@ -68,9 +68,9 @@ describe('proposalProblems', () => {
     expect(problems).toMatch(/unknown relationship "teleports to"/);
   });
 
-  it('requires a dispute summary on a contested proposal', () => {
-    expect(proposalProblems(proposal({ state: 'contested' }), confirmed).join()).toMatch(/dispute summary/);
-    expect(proposalProblems(proposal({ state: 'contested', dispute: { summary: 'Why' } }), confirmed)).toEqual([]);
+  it('takes the two review states, and nothing else', () => {
+    expect(proposalProblems(proposal({ state: 'changes' }), confirmed)).toEqual([]);
+    expect(proposalProblems(proposal({ state: 'contested' as never }), confirmed).join()).toMatch(/unknown state/);
   });
 
   it('checks evidence references', () => {
@@ -95,10 +95,13 @@ describe('proposalProblems', () => {
 
 describe('overlay and merging', () => {
   it('marks every proposed concept and relation with its status and badge', () => {
-    const overlay = overlayFor([proposal(), proposal({ id: 'p2', state: 'contested', nodes: [newNode('m')], edges: [] })]);
+    const overlay = overlayFor([
+      proposal(),
+      proposal({ id: 'p2', state: 'changes', review: { approvals: 0, changesRequested: 1, comments: 3 }, nodes: [newNode('m')], edges: [] }),
+    ]);
     expect(overlay.nodes.map((n) => [n.node.id, n.status, n.badge])).toEqual([
-      ['n', 'open', 'Proposed · ✓2 ✗1 ?0'],
-      ['m', 'contested', '⚑ Contested · ✓2 ✗1 ?0'],
+      ['n', 'open', 'Proposed · ✓2 approvals · 1 comment'],
+      ['m', 'changes', '⚑ Changes requested · 3 comments'],
     ]);
     expect(overlay.edges.map((e) => e.proposalId)).toEqual(['p1']);
   });
@@ -116,7 +119,8 @@ describe('overlay and merging', () => {
 
   it('says the status in words', () => {
     expect(badgeText(proposal())).toMatch(/^Proposed/);
-    expect(badgeText(proposal({ state: 'contested' }))).toMatch(/^⚑ Contested/);
+    expect(badgeText(proposal({ state: 'changes' }))).toMatch(/^⚑ Changes requested/);
+    expect(badgeText(proposal({ review: undefined }))).toBe('Proposed · awaiting review');
   });
 
   it('links evidence to its source', () => {
@@ -159,7 +163,7 @@ describe('the sample fixtures', () => {
     const list = await new FixtureStore(concepts).list();
     const overlay = overlayFor(list);
     expect(overlay.edits).toEqual([expect.objectContaining({ id: 'vlasov_equation', proposalId: 'sample-edit-vlasov' })]);
-    expect(overlay.edits[0].badge).toBe('✎ Edit proposed · ✓1 ✗0 ?0');
+    expect(overlay.edits[0].badge).toBe('✎ Edit proposed · ✓1 approval · 2 comments');
     expect(overlay.removals.map((m) => m.id)).toEqual(['e62']);
     expect(proposalsAbout('vlasov_equation', list, concepts.edges).map((p) => p.id)).toEqual(['sample-edit-vlasov']);
     const edit = list.find((p) => p.id === 'sample-edit-vlasov')!;
@@ -171,7 +175,7 @@ describe('the sample fixtures', () => {
   it('come out of the store oldest first, covering both states', async () => {
     const list = await new FixtureStore(concepts).list();
     expect(list.map((p) => p.createdAt)).toEqual([...list.map((p) => p.createdAt)].sort());
-    expect(new Set(list.map((p) => p.state))).toEqual(new Set(['open', 'contested']));
+    expect(new Set(list.map((p) => p.state))).toEqual(new Set(['open', 'changes']));
   });
 
   it('leaves a proposal out of the store when it does not fit', async () => {

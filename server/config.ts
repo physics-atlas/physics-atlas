@@ -13,8 +13,6 @@ export interface Env {
   GITHUB_CLIENT_SECRET?: string;
   /** A long random string that signs the session cookie */
   SESSION_SECRET?: string;
-  /** Extra invited GitHub handles, comma-separated, on top of community/experts.json */
-  ALLOWED_PROPOSERS?: string;
   /** "off" turns direct publishing off for everyone, whatever community/experts.json says */
   DIRECT_PUBLISH?: string;
 }
@@ -28,7 +26,6 @@ export interface Config {
   clientId: string;
   clientSecret: string;
   sessionSecret: string;
-  extraProposers: string[];
   /** Experts marked "publish" may merge their proposal at once (Decision 43) */
   directPublish: boolean;
 }
@@ -58,10 +55,6 @@ export function readConfig(env: Env): Config | { missing: string[] } {
     clientId: env.GITHUB_CLIENT_ID!.trim(),
     clientSecret: env.GITHUB_CLIENT_SECRET!.trim(),
     sessionSecret: env.SESSION_SECRET!,
-    extraProposers: (env.ALLOWED_PROPOSERS ?? '')
-      .split(',')
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean),
     directPublish: env.DIRECT_PUBLISH?.trim().toLowerCase() !== 'off',
   };
 }

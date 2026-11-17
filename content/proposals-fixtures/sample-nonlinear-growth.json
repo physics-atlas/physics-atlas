@@ -43,9 +43,9 @@
       "relationship": "relates"
     }
   ],
-  "tally": {
-    "verify": 1,
-    "dispute": 0,
-    "clarify": 0
+  "review": {
+    "approvals": 2,
+    "changesRequested": 0,
+    "comments": 0
   }
 }

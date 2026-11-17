@@ -87,7 +87,7 @@ The 17 types (key → what it means), from `src/data/conceptVocabulary.json`:
 | `property` | Property/quantity — an attribute of a system (curvature, half-life, four-velocity). |
 | `phenomenon` | Phenomenon — an observed effect (gravitational lensing, alpha decay). |
 | `process` | Process/dynamics — a change or evolution over time or space (diffusion, radioactive decay). |
-| `model_regime` | Model/behaviour regime — a simplified theory valid in some limit (Newtonian gravity, special relativity). |
+| `model_regime` | Model — a simplified representation of a physical system or phenomenon that helps us understand or predict its behaviour (ideal gas, Bohr model, ΛCDM). The id stays `model_regime`; its name and definition are in conceptVocabulary.json. |
 | `theory` | Theory/framework — an organised body of concepts and principles (general relativity, quantum field theory). |
 | `formalism` | Mathematical formalism — the math machinery used (linear algebra, differential geometry). |
 | `equation` | Law/equation — a named equation, with its own attribute shape (below). |
@@ -151,9 +151,9 @@ it. Every type currently has one.
 |---|---|
 | Every type except `equation`, `learning_goal`, `resource` | `description` (required), `domain` (optional) |
 | `formalism` | `description`, `formulas` (optional: `{equation, name?, variables?}[]` — how the formalism works, LaTeX), `domain` (optional) |
-| `equation` | `description`, `equation` (the main formula, LaTeX), `variables` (`{symbol, meaning}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
+| `equation` | `description`, `equation` (the main formula, LaTeX), `plain` (optional: what it says in plain words, no symbols), `variables` (`{symbol, meaning, plain?}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
 | `learning_goal` | `description` only — **no `domain`** |
-| `resource` | `link` (http/https), `mediaType` (`mediaTypes` in conceptVocabulary.json: text, video, quiz), `estimatedMinutes` (number), `description` (optional: what it covers), `rating` (0–5) and `reviewCount` (integer) — both optional, from the curated list; a proposed resource has none — **no `domain`** |
+| `resource` | `link` (http/https), `mediaType` (`mediaTypes` in conceptVocabulary.json: text, video, quiz, other), how long it takes as text — `estimatedTime`, `readingTime`, `listeningTime` (at least one; a range fits: `"20–30 min"`), `accessibility` (optional, Markdown: who it works for and who it doesn't — input, zoom, captions, screen readers), `description` (optional: what it covers), `rating` (0–5) and `reviewCount` (integer) — both optional — **no `domain`** |
 
 ### Equations: LaTeX, and more than one way to write them
 
@@ -161,19 +161,24 @@ it. Every type currently has one.
 in the proposal editor's preview (`G_{\mu\nu}`, `\frac{8\pi G}{c^4}` — in the JSON file
 every backslash is doubled: `"G_{\\mu\\nu}"`). `npm run validate`
 warns about any that KaTeX can't typeset. `representations` lists other ways of writing
-the same equation (for, say, `F = ma`) — each with a `name`, and optionally its own `equation` and
-`variables` as they're named in that form:
+the same equation (for, say, `F = ma`) — each with a `name`, and optionally its own `equation`,
+`plain` and `variables` as they're named in that form:
 
 ```json
 "representations": [
   {
     "name": "In terms of momentum",
     "equation": "F = \\frac{dp}{dt}",
-    "variables": [{ "symbol": "p", "meaning": "Momentum" }]
+    "plain": "Force is how fast momentum changes.",
+    "variables": [{ "symbol": "p", "meaning": "Momentum", "plain": "How much motion something carries" }]
   },
   { "name": "In a rotating frame" }
 ]
 ```
+
+`plain` — on the equation, a representation, a formalism's formula, or a variable — says it in
+plain words for someone new to the notation. It's optional; the card shows "In plain words:
+not written yet" under an equation without one.
 
 A name alone is fine while the formula is still to come (the three on Einstein Field
 Equations are names only). The six equations were written as Unicode text before
@@ -396,19 +401,31 @@ That list describes the equation itself.
 ## How the concept curriculum is built
 
 Any concept can be picked as a goal ("★ Show path to this" on its card, or
-`?mode=concepts&goal=<id>`). Only `strict prerequisite for` edges build a
-path: the goal's steps are every concept reachable backwards over those edges,
-in reading order (a concept comes after everything it needs; ties go to the
-shallower concept, then alphabetically by id).
-Resources join a step via `helps understand`; all other relations are shown as
-context on the card but never add a step. If another relation (e.g.
+`?mode=concepts&goal=<id>`). Two relations build a path: `strict prerequisite for`,
+and `is a learning goal of` read backwards (`G is a learning goal of C` puts C on G's
+path, as `C is a strict prerequisite for G` would). The goal's steps are every concept
+reachable backwards over those, in reading order (a concept comes after everything it
+needs; ties go to the shallower concept, then alphabetically by id).
+A resource joins every step it's linked to, by any relation; all other relations are
+shown as context on the card but never add a step. If another relation (e.g.
 `depends on`) should pull concepts into paths, that's a one-line change — ask
 for it.
 
-A goal with no incoming `strict prerequisite for` edge produces a one-step
-path (just the goal) with a "No prerequisites are linked to this goal yet"
-note — currently `lg_alpha_decay_nucleons` and
+A goal with neither produces a one-step path (just the goal) with a "No prerequisites
+are linked to this goal yet" note — currently `lg_alpha_decay_nucleons` and
 `lg_alpha_radiation_properties`.
+
+### A learning goal's importance and generality, per concept
+
+A relation with a learning goal at one end may carry `importance` and `generality`
+(1–10): how central the goal is for the concept at the other end, and how broad it is
+there. A goal linked to two concepts can rate differently for each. The concept's card
+lists its learning goals by that importance; the relation's card shows both. The
+validator refuses them on any other relation.
+
+```json
+{ "id": "…", "source": "predict_…", "target": "alpha_decay", "relationship": "is a learning goal of", "importance": 8, "generality": 3 }
+```
 
 ## `generality` (1–10): the circle's size
 
@@ -531,25 +548,6 @@ concept's card; a missing value shows a **To-do** marker. Known values live in
 the validator warns until you add it there. Leave the field out rather than
 writing an empty string.
 
-## `review` — an open question for you
-
-A `review` field on a node or edge is an open question, not an error —
-delete it once you've decided. Current open items from the migration:
-
-1. `relates`/`Relates` casing (11× `Relates`, 1× `relates` on `e55`) — same
-   edge type once normalized; validator warns, nothing to fix urgently.
-2. `e57` (`exponentials → decay_equation`, "has a") reads backwards compared
-   to the other `has a` edges — source/target may be swapped.
-3. `e7` ("is derived from"), `e39`/`e40` ("is derived by") read in opposite
-   senses for what looks like one relationship — direction and/or type to
-   be decided.
-4. `e35` (`quark_gluon_plasma → rhic`, "Described by") — RHIC is the
-   experimental apparatus; a different edge type might fit better.
-5. `lg_alpha_decay_nucleons` and `lg_alpha_radiation_properties` (learning
-   goals) have no edges at all — no prerequisite links them to any concept.
-6. Four `resource` nodes link to `example.com` placeholder URLs — replace
-   with real links when you have them.
-
 ## Ids
 
 Ids stay **snake_case**, exactly as exported from Sophie's CSVs
@@ -577,8 +575,8 @@ exactly the files a merge adds:
 
 **An edit** (from **✎ Propose an edit** on a concept's card) exports the concept's file under
 its own name: it **replaces** the old one. Its new relations are extra files, and the
-relations it removes are listed as files to **delete**. Fields the form doesn't show (review
-notes, equation variables, epistemic status) are carried over unchanged.
+relations it removes are listed as files to **delete**. Fields the form doesn't show (equation
+conditions, epistemic status, a curated rating) are carried over unchanged.
 
 **A proposal that depends on another one** (its pull-request text has a **Depends on**
 section) relates to a concept that isn't accepted yet. Take in the one it depends on first.
@@ -593,12 +591,13 @@ npm run validate
 
 This compiles `content/concepts/**` into the map, then checks it. Catches:
 duplicate or malformed ids, relations pointing at concepts that don't exist,
-unknown types and relation names, cycles in `strict prerequisite for` (A needs
-B needs A), and missing fields. If it prints `✓ content/concepts valid`, the
+unknown types and relation names, cycles in `strict prerequisite for` and
+`is a learning goal of` (A needs B needs A), and missing fields. If it prints `✓ content/concepts valid`, the
 site will render.
 
 Lines starting with `⚠` are advisories, not failures — for example a learning
-goal with no incoming `strict prerequisite for` relation, or concepts without
+goal with no path (no `strict prerequisite for` into it, not `a learning goal of`
+anything), or concepts without
 an `epistemicStatus` yet.
 
 ## Rules of thumb for good graph shape

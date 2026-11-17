@@ -38,9 +38,9 @@
   "dependsOn": [
     "sample-jeans-scale"
   ],
-  "tally": {
-    "verify": 0,
-    "dispute": 0,
-    "clarify": 0
+  "review": {
+    "approvals": 0,
+    "changesRequested": 0,
+    "comments": 0
   }
 }

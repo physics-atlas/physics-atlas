@@ -18,7 +18,6 @@ import {
   newDraft,
   newEditDraft,
   parseDraft,
-  proposalFile,
   proposalId,
   pullRequestText,
   removedFiles,
@@ -26,6 +25,7 @@ import {
   withoutDraft,
 } from './draft';
 import type { Draft, DraftContext } from './draft';
+import type { GraphNode } from '../data/types';
 import { proposalProblems, resolveDependencies } from './proposals';
 import { fixtureProposals } from './store';
 import vocabulary from '../data/conceptVocabulary.json?raw';
@@ -144,14 +144,14 @@ describe('what a draft becomes', () => {
       ...jeans(),
       type: 'formalism',
       formulas: [
-        { name: ' A vector in a basis ', equation: ' v = v^i e_i ', variables: [{ symbol: 'e_i', meaning: 'Basis vectors' }] },
-        { name: '', equation: '', variables: [] },
+        { name: ' A vector in a basis ', equation: ' v = v^i e_i ', plain: '', variables: [{ symbol: 'e_i', meaning: 'Basis vectors' }] },
+        { name: '', equation: '', plain: '', variables: [] },
       ],
     };
     expect(draftNode(d, concepts).attrs).toMatchObject({
       formulas: [{ name: 'A vector in a basis', equation: 'v = v^i e_i', variables: [{ symbol: 'e_i', meaning: 'Basis vectors' }] }],
     });
-    const nameOnly = { ...d, formulas: [{ name: 'To do', equation: '', variables: [] }] };
+    const nameOnly = { ...d, formulas: [{ name: 'To do', equation: '', plain: '', variables: [] }] };
     expect(draftProblems(nameOnly, alone(nameOnly)).map((p) => [p.field, p.index])).toEqual([['formulas', 0]]);
     // Formulas only belong to formalisms.
     expect('formulas' in draftNode({ ...d, type: 'property' }, concepts).attrs).toBe(false);
@@ -167,9 +167,9 @@ describe('what a draft becomes', () => {
       equation: 'F = ma',
       variables: [{ symbol: ' F ', meaning: ' Force ' }, { symbol: '', meaning: '' }],
       representations: [
-        { name: 'As momentum', equation: 'F = \\dot p', variables: [{ symbol: 'p', meaning: 'Momentum' }] },
-        { name: 'Name only, formula to come', equation: '', variables: [] },
-        { name: '', equation: '', variables: [] },
+        { name: 'As momentum', equation: 'F = \\dot p', plain: '', variables: [{ symbol: 'p', meaning: 'Momentum' }] },
+        { name: 'Name only, formula to come', equation: '', plain: '', variables: [] },
+        { name: '', equation: '', plain: '', variables: [] },
       ],
     };
     expect(draftNode(d, concepts).attrs).toMatchObject({
@@ -180,16 +180,54 @@ describe('what a draft becomes', () => {
       ],
     });
     expect(draftProblems(d, alone(d))).toEqual([]);
-    const half = { ...d, variables: [{ symbol: 'F', meaning: '' }], representations: [{ name: '', equation: 'x', variables: [] }] };
+    const half = { ...d, variables: [{ symbol: 'F', meaning: '' }], representations: [{ name: '', equation: 'x', plain: '', variables: [] }] };
     expect(draftProblems(half, alone(half)).map((p) => [p.field, p.index])).toEqual([
       ['variables', undefined],
       ['representations', 0],
     ]);
   });
+  it('an equation, its representations and variables carry their plain words', () => {
+    const d: Draft = {
+      ...jeans(),
+      type: 'equation',
+      equation: 'F = ma',
+      equationPlain: ' Sample: force is mass times acceleration. ',
+      variables: [{ symbol: 'F', meaning: 'Force', plain: ' Sample: a push or a pull ' }],
+      representations: [{ name: 'As momentum', equation: 'F = \\dot p', plain: 'Sample: force changes momentum.', variables: [] }],
+    };
+    const attrs = draftNode(d, concepts).attrs;
+    expect(attrs).toMatchObject({
+      equation: 'F = ma',
+      plain: 'Sample: force is mass times acceleration.',
+      variables: [{ symbol: 'F', meaning: 'Force', plain: 'Sample: a push or a pull' }],
+      representations: [{ name: 'As momentum', equation: 'F = \\dot p', plain: 'Sample: force changes momentum.' }],
+    });
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const back = newEditDraft({ id: 'f', label: 'F', type: 'equation', attrs } as GraphNode, fixed, at);
+    expect([back.equationPlain, back.representations[0].plain, back.variables[0].plain]).toEqual([
+      'Sample: force is mass times acceleration.',
+      'Sample: force changes momentum.',
+      'Sample: a push or a pull',
+    ]);
+  });
+  it("a relation with a learning goal carries the goal's importance and generality there; no other relation does", () => {
+    const goal: Draft = {
+      ...jeans(),
+      type: 'learning_goal',
+      relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'is a learning goal of', importance: 7, generality: 2 }],
+    };
+    const p = draftProposal(goal, alone(goal));
+    expect(p.edges[0]).toMatchObject({ importance: 7, generality: 2 });
+    expect(draftProblems(goal, alone(goal))).toEqual([]);
+    const off: Draft = { ...goal, relations: [{ ...goal.relations[0], importance: 11 }] };
+    expect(draftProblems(off, alone(off)).map((x) => x.field)).toEqual(['relations']);
+    const notGoal: Draft = { ...goal, type: 'property', relations: [{ ...goal.relations[0], relationship: 'relates' }] };
+    expect(proposalProblems(draftProposal(notGoal, alone(notGoal)), concepts).join()).toMatch(/only a relation with a learning goal/);
+  });
   it('an edit of an equation starts from its variables and representations', () => {
     const e = newEditDraft(concepts.nodes.find((n) => n.id === 'einstein_eq')!, fixed, at);
     expect(e.variables[0]).toEqual({ symbol: 'G_{\\mu\\nu}', meaning: 'Einstein tensor (spacetime curvature)' });
-    expect(e.representations[0]).toEqual({ name: 'Tensor (index) notation', equation: '', variables: [] });
+    expect(e.representations[0]).toEqual({ name: 'Tensor (index) notation', equation: '', plain: '', variables: [] });
     // Unchanged, it changes nothing.
     expect(draftNode(e, concepts)).toEqual(concepts.nodes.find((n) => n.id === 'einstein_eq'));
   });
@@ -236,13 +274,8 @@ describe('export', () => {
     ]);
   });
   it('never carries a position', () => {
-    for (const f of [...files, proposalFile(jeans(), alone(jeans()))])
-      expect(f.content).not.toMatch(/"(x|y|position|positions|renderedPosition)"\s*:/);
-  });
-  it('the proposal file round-trips into a proposal', () => {
-    const f = proposalFile(jeans(), alone(jeans()));
-    expect(f.path).toMatch(/^content\/proposals-fixtures\/proposal-jeans-scale-[a-z0-9]{4}\.json$/);
-    expect(proposalProblems(JSON.parse(f.content), concepts)).toEqual([]);
+    for (const f of files) expect(f.content).not.toMatch(/"(x|y|position|positions|renderedPosition)"\s*:/);
+    expect(JSON.stringify(draftProposal(jeans(), alone(jeans())))).not.toMatch(/"(x|y|position|positions|renderedPosition)"\s*:/);
   });
 });
 
@@ -410,7 +443,7 @@ describe('editing a confirmed concept', () => {
     const before = concepts.nodes.find((n) => n.id === 'lorentz_invariance')!;
     const d = { ...newEditDraft(before, fixed, at), importance: 5 };
     const after = draftNode(d, concepts);
-    expect(after.review).toBe(before.review);
+    expect((after.attrs as { conditions?: string[] }).conditions).toEqual((before.attrs as { conditions?: string[] }).conditions);
     expect(Object.keys(after)).toEqual(Object.keys(before));
   });
   it('can remove confirmed relations; the export lists the files to delete', () => {
@@ -613,7 +646,9 @@ describe('educational resources', () => {
     description: 'Sample: a lecture on the topic.',
     link: ' https://sample.example/lecture ',
     mediaType: 'video',
-    minutes: 40,
+    estimatedTime: '30–40 min',
+    listeningTime: '35 min',
+    accessibility: 'Sample: captions, no transcript.',
     relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'helps understand' }],
   });
   it('can be proposed, with its link, kind and time — and no rating yet', () => {
@@ -621,18 +656,40 @@ describe('educational resources', () => {
     expect(draftProblems(d, alone(d))).toEqual([]);
     const node = draftNode(d, concepts);
     expect(node.type).toBe('resource');
-    expect(node.attrs).toEqual({ description: 'Sample: a lecture on the topic.', link: 'https://sample.example/lecture', mediaType: 'video', estimatedMinutes: 40 });
+    expect(node.attrs).toEqual({
+      description: 'Sample: a lecture on the topic.',
+      link: 'https://sample.example/lecture',
+      mediaType: 'video',
+      estimatedTime: '30–40 min',
+      listeningTime: '35 min',
+      accessibility: 'Sample: captions, no transcript.',
+    });
     expect(proposalProblems(draftProposal(d, alone(d)), concepts)).toEqual([]);
   });
   it('asks for what a resource needs', () => {
-    const d: Draft = { ...resource(), link: 'lecture', mediaType: '', minutes: undefined };
-    expect(draftProblems(d, alone(d)).map((p) => p.field)).toEqual(['link', 'mediaType', 'minutes']);
+    const d: Draft = { ...resource(), link: 'lecture', mediaType: '', estimatedTime: '', listeningTime: '' };
+    expect(draftProblems(d, alone(d)).map((p) => p.field)).toEqual(['link', 'mediaType', 'time']);
+    const reading: Draft = { ...resource(), estimatedTime: '', listeningTime: '', readingTime: '15 min' };
+    expect(draftProblems(reading, alone(reading))).toEqual([]);
+  });
+  it('takes "other" as a kind', () => {
+    const d: Draft = { ...resource(), mediaType: 'other' };
+    expect(draftProblems(d, alone(d))).toEqual([]);
+  });
+  it("reads an older draft's minutes as its time", () => {
+    const { estimatedTime: _t, readingTime: _r, listeningTime: _l, accessibility: _a, ...old } = resource();
+    void [_t, _r, _l, _a];
+    const d = parseDraft({ ...old, minutes: 40 })!;
+    expect(d.estimatedTime).toBe('40 min');
+    expect('minutes' in d).toBe(false);
   });
   it('keeps a curated rating when a resource is edited', () => {
-    const before = concepts.nodes.find((n) => n.type === 'resource')!;
+    const found = concepts.nodes.find((n) => n.type === 'resource')!;
+    const before = { ...found, attrs: { ...found.attrs, rating: 4.5 } } as typeof found;
+    const graph = { ...concepts, nodes: concepts.nodes.map((n) => (n.id === found.id ? before : n)) };
     const d = newEditDraft(before, fixed, at);
     expect(d.type).toBe('resource');
-    const after = draftNode({ ...d, description: 'Sample: what it covers.' }, concepts);
+    const after = draftNode({ ...d, description: 'Sample: what it covers.' }, graph);
     expect((after.attrs as { rating?: number }).rating).toBe((before.attrs as { rating?: number }).rating);
   });
 });

@@ -802,6 +802,33 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 46 — Model, goals rated per concept, resources described, equations in plain words (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Model | *Model/behaviour regime* became **Model**, with a learner-friendly definition (`plain`, shown first in the legend and the editor) and the extended one, and new examples. States and regimes are no longer part of it. The id stays `model_regime`, so the five concepts of that kind and open proposals keep working. |
+| Learning goals | A relation with a learning goal at one end may carry `importance` and `generality` (1–10): how central and how broad the goal is *for the concept at the other end*. A goal linked to two concepts can rate differently for each. The card's **Learning goals** (a "TBD" placeholder until now) lists the linked goals, the most important first; the relation's card shows both. Any other relation refuses them. |
+| Show path to this | Sophie links goals with **is a learning goal of** (goal → concept), which the path didn't follow: her alpha-decay goal's path was the goal alone. The path now reads it backwards, as `strict prerequisite for` into the goal; the cycle check covers both. A resource joins every step it's linked to by any relation, not only **helps understand**. |
+| Educational resources | **Kind**: text, video, quiz, or **other**. **Time** is free text, so a range fits ("20–30 min"), with a reading and a listening time beside it (at least one of the three). An **Accessibility** box on the card says who it works for (Markdown; "Not described yet" until it does). `estimatedMinutes` became `estimatedTime`; a draft's minutes carry over. |
+| Plain words | An equation, each representation, a formalism's formula and each variable may say what it means without symbols (`plain`). The editor has a field for each; the card shows "In plain words: not written yet" under an equation without one. |
+| Removed | The four sample resources (`example.com` links) and their relations; the `review` field ("Open question for the author") on concepts and relations, with its card box — the validator now refuses it. The twelve questions are in git history. |
+
+## Decision 45 — Review happens on GitHub: the map shows the pull request's review (2026-11)
+
+The plan had experts vote on the site (verify, dispute, needs clarification) and mark a
+proposal *contested* with a dispute summary (Phase 4). Review moved to GitHub with the
+pull requests, so none of it was ever fed: every live proposal showed "✓0 ✗0 ?0" and
+"Voting opens in a later phase".
+
+| Piece | Rule |
+|---|---|
+| Review state | The backend reads each open proposal's pull request reviews when it lists them (`GitHub.reviewOf`): each reviewer's latest verdict (approved / changes requested; a dismissal clears it) and the comments (on the conversation, plus reviews left as comments). `Proposal.review = { approvals, changesRequested, comments }`. |
+| On the map | The badge says it in words: "Proposed · ✓2 approvals · 1 comment", or "awaiting review". A proposal a reviewer asked to change is `state: "changes"` — the double outline and **⚑ Changes requested** that *contested* had. The card's **Review on GitHub** lists the three numbers and links the pull request's files. |
+| Gone | The vote tally, `contested`, the dispute summary; the `ALLOWED_PROPOSERS` setting (`community/experts.json` is the only invite list); the editor's **Download as one proposal file** (it only fed the samples). **Download the files** stays: it's the way to propose for someone not on the invite list. |
+
+Phase 4's voting and quorum (epic-community-review.md) stay a deliberate path, should
+reviews on GitHub not be enough.
+
 ## Decision 44 — Educational resources can be proposed (2026-11)
 
 "Educational resource" (`resource`, in the Learning family) was a kind on the map but left

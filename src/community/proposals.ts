@@ -4,7 +4,7 @@ import vocab from '../data/conceptVocabulary.json';
 import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
 import { figureProblems } from './figures';
 import { relationPhrase, relationTypeProblems } from './relationTypes';
-import type { Evidence, Proposal, ProposalState, VoteTally } from './types';
+import type { Evidence, GitHubReview, Proposal, ProposalState } from './types';
 
 const SNAKE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 const ARXIV = /^(\d{4}\.\d{4,5}(v\d+)?|[a-z-]+(\.[A-Z]{2})?\/\d{7}(v\d+)?)$/;
@@ -27,8 +27,11 @@ function nodeProblems(where: string, n: GraphNode): string[] {
     if (typeof a.link !== 'string' || !/^https?:\/\//.test(a.link)) problems.push(`${where}: resource "${n.id}" needs an http(s) link`);
     if (typeof a.mediaType !== 'string' || !vocab.mediaTypes.includes(a.mediaType))
       problems.push(`${where}: resource "${n.id}" has an unknown kind "${a.mediaType}"`);
-    if (typeof a.estimatedMinutes !== 'number' || !(a.estimatedMinutes > 0))
-      problems.push(`${where}: resource "${n.id}" needs the minutes it takes`);
+    for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'] as const)
+      if (a[key] !== undefined && (typeof a[key] !== 'string' || !a[key].trim()))
+        problems.push(`${where}: resource "${n.id}" ${key} must be text, or left out`);
+    if (![a.estimatedTime, a.readingTime, a.listeningTime].some((t) => typeof t === 'string' && t.trim()))
+      problems.push(`${where}: resource "${n.id}" needs the time it takes`);
   }
   return problems;
 }
@@ -49,9 +52,7 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   const problems: string[] = [];
   const where = `proposal "${p.id}"`;
   if (!p.title?.trim()) problems.push(`${where}: missing title`);
-  if (p.state !== 'open' && p.state !== 'contested') problems.push(`${where}: unknown state "${p.state}"`);
-  if (p.state === 'contested' && !p.dispute?.summary?.trim())
-    problems.push(`${where}: a contested proposal needs a dispute summary`);
+  if (p.state !== 'open' && p.state !== 'changes') problems.push(`${where}: unknown state "${p.state}"`);
   if (proposesNothing(p)) problems.push(`${where}: proposes nothing`);
 
   const confirmedNodes = new Set(confirmed.nodes.map((n) => n.id));
@@ -112,7 +113,18 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   const owner = new Map(others.filter((o) => o.id !== p.id).flatMap((o) => o.nodes.map((n) => [n.id, o.id] as const)));
   const depMissing = [...deps].some((d) => !others.some((o) => o.id === d));
   const ownEdges = new Set<string>();
+  const typeOf = new Map(
+    [...confirmed.nodes, ...p.nodes, ...others.flatMap((o) => o.nodes)].map((n) => [n.id, n.type] as const),
+  );
   for (const e of p.edges) {
+    for (const key of ['importance', 'generality'] as const) {
+      const v = e[key];
+      if (v === undefined) continue;
+      if (![e.source, e.target].some((end) => typeOf.get(end) === 'learning_goal'))
+        problems.push(`${where}: relation "${e.id}" has ${key}, which only a relation with a learning goal carries`);
+      else if (!inRange(v, key === 'importance' ? IMPORTANCE_MAX : GENERALITY_MAX))
+        problems.push(`${where}: relation "${e.id}" ${key} must be a whole number 1–10`);
+    }
     if (confirmedEdges.has(e.id) || ownEdges.has(e.id)) problems.push(`${where}: relation id "${e.id}" is taken`);
     ownEdges.add(e.id);
     for (const end of [e.source, e.target]) {
@@ -149,15 +161,17 @@ export function evidenceHref(ev: Evidence): string | null {
   return null;
 }
 
-/** The tally as it reads on the map: "✓2 ✗0 ?1". */
-export function tallyText(t: VoteTally): string {
-  return `✓${t.verify} ✗${t.dispute} ?${t.clarify}`;
+/** The review as it reads on the map: "✓2 approvals · 3 comments", or "awaiting review". */
+export function reviewText(r: GitHubReview | undefined): string {
+  if (!r || (!r.approvals && !r.changesRequested && !r.comments)) return 'awaiting review';
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  return [r.approvals && `✓${plural(r.approvals, 'approval')}`, r.comments && plural(r.comments, 'comment')].filter(Boolean).join(' · ') || 'reviewed';
 }
 
 /** The badge under a proposed concept's name — status in words, never only colour. */
 export function badgeText(p: Proposal): string {
-  const what = p.state === 'contested' ? '⚑ Contested' : p.edits?.length ? '✎ Edit proposed' : 'Proposed';
-  return `${what} · ${tallyText(p.tally)}`;
+  const what = p.state === 'changes' ? '⚑ Changes requested' : p.edits?.length ? '✎ Edit proposed' : 'Proposed';
+  return `${what} · ${reviewText(p.review)}`;
 }
 
 /**
@@ -216,7 +230,11 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['Equation', attr(before, 'equation'), attr(after, 'equation')],
     ['Link', attr(before, 'link'), attr(after, 'link')],
     ['Kind of resource', attr(before, 'mediaType'), attr(after, 'mediaType')],
-    ['Minutes', attr(before, 'estimatedMinutes'), attr(after, 'estimatedMinutes')],
+    ['Time', attr(before, 'estimatedTime'), attr(after, 'estimatedTime')],
+    ['Reading time', attr(before, 'readingTime'), attr(after, 'readingTime')],
+    ['Listening time', attr(before, 'listeningTime'), attr(after, 'listeningTime')],
+    ['Accessibility', attr(before, 'accessibility'), attr(after, 'accessibility')],
+    ['In plain words', attr(before, 'plain'), attr(after, 'plain')],
     ['Generality', String(before.generality ?? ''), String(after.generality ?? '')],
     ['Importance', String(before.importance ?? ''), String(after.importance ?? '')],
     ['Assumes', assumptionsText(before), assumptionsText(after)],

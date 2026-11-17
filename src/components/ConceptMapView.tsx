@@ -31,6 +31,8 @@ import GraphView from './GraphView';
 import type { DraftOverlay } from './GraphView';
 import Legend from './Legend';
 import RelationSentence from './RelationSentence';
+import ResourceInfo from './ResourceInfo';
+import { resourceMeta } from '../graph/cardSections';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, pageHref } from '../lib/pageLinks';
@@ -500,11 +502,6 @@ export default function ConceptMapView({
 
   const outgoing = selected ? (index.outgoing.get(selected.id) ?? []) : [];
   const incoming = selected ? (index.incoming.get(selected.id) ?? []) : [];
-  const reviews = selected
-    ? [selected.review, ...outgoing.map((e) => e.review), ...incoming.map((e) => e.review)].filter(
-        (r): r is string => Boolean(r),
-      )
-    : [];
 
   return (
     <div className="view map-view concept-map-view">
@@ -660,9 +657,7 @@ export default function ConceptMapView({
                               >
                                 {r.label} ↗
                               </a>
-                              <span className="concept-resource-meta">
-                                {r.attrs.mediaType} · {r.attrs.estimatedMinutes} min
-                              </span>
+                              <span className="concept-resource-meta">{resourceMeta(r.attrs)}</span>
                             </li>
                           ))}
                         </ul>
@@ -790,21 +785,7 @@ export default function ConceptMapView({
                 </Suspense>
               )}
 
-              {selected.type === 'resource' && (
-                <div className="rel-block">
-                  <a
-                    className="concept-resource-link"
-                    href={selected.attrs.link}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open resource ↗
-                  </a>
-                  <p className="concept-resource-meta">
-                    {selected.attrs.mediaType} · {selected.attrs.estimatedMinutes} min
-                  </p>
-                </div>
-              )}
+              {selected.type === 'resource' && <ResourceInfo attrs={selected.attrs} headingId="concept-resource-access" />}
             </ConceptCard>
 
             <details className="rel-block concept-all-relations">
@@ -836,15 +817,6 @@ export default function ConceptMapView({
                 />
               )}
             </details>
-
-            {reviews.length > 0 && (
-              <div className="concept-review">
-                <p className="concept-review-title">Open question for the author</p>
-                {[...new Set(reviews)].map((r) => (
-                  <p key={r}>{r}</p>
-                ))}
-              </div>
-            )}
 
             {proposalsHere.length > 0 && (
               <section className="rel-block concept-proposals-here">

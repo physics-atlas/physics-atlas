@@ -238,11 +238,10 @@ npm run lint
      Structure Formation", where *Structure Formation* is a link;
    - **Evidence**: the formula as a display equation, and an *arXiv:0000.00001 ↗* link
      (a placeholder, so the page won't exist);
-   - **Votes so far**: ✓ 2 Verify · ✗ 0 Dispute · ? 1 Needs clarification, and "Voting
-     opens in a later phase."
-2. Click **Ultralight mass > 10⁻²² eV**. The pill has a double outline and reads **⚑
-   CONTESTED PROPOSAL**, and a double-bordered box **Why it's contested** shows the dispute
-   summary.
+   - **Review on GitHub**: approvals, reviewers asking for changes, and comments (sample
+     numbers here; on the live site, from the pull request).
+2. Click **Ultralight mass > 10⁻²² eV**. The pill has a double outline and reads
+   **⚑ PROPOSAL · CHANGES REQUESTED** (Decision 45).
 3. Click **Non-linear structure growth**. It shows "Sample expert B ✓ Verified expert" and
    a display formula.
 4. Click the confirmed **Structure Formation**. Its normal card now ends with **Open
@@ -439,8 +438,6 @@ on the map**.
      once to allow several downloads.
    - **Copy pull-request text**: title, claim, what it adds (as sentences), evidence links,
      the file list.
-   - **Download as one proposal file**: the whole proposal, for
-     `content/proposals-fixtures/`.
    - **Show the files**: exactly what's in each.
 6. Open a downloaded file: there's **no x, y or position** anywhere.
 
@@ -603,8 +600,8 @@ As before, only the two known feature-20 failures.
 - **Submitting** opens one pull request per proposal in the repository, through a **GitHub
   App**: the proposer needs no access to the repository. The commit is authored by them; the
   pull request carries the readable description and, hidden at the end, the proposal itself.
-- **Who may submit:** signed-in GitHub users on the invite list (`community/experts.json`, or
-  the `ALLOWED_PROPOSERS` setting). Everyone can still browse, draft and export.
+- **Who may submit:** signed-in GitHub users on the invite list (`community/experts.json`).
+  Everyone can still browse, draft and export.
 - The **Community** view shows the open pull requests as proposals (refreshed every 45 s), or
   the sample proposals where the backend isn't set up — including `npm run dev`.
 - A **Checks** workflow runs validate, lint, test and build on every push and pull request

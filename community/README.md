@@ -23,5 +23,4 @@ request on their behalf). Anyone can browse, draft and export.
   (used by the quorum rules in Phase 4).
 
 Adding someone is itself a pull request, so the list has its own history. The site re-reads
-it within five minutes. For a quick test, the `ALLOWED_PROPOSERS` setting
-(docs/COMMUNITY-BACKEND-SETUP.md) adds handles without touching this file.
+it within five minutes.

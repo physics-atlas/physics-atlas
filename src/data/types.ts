@@ -12,6 +12,8 @@ export type NodeType = keyof typeof NODE_TYPE_LABELS;
 export interface NodeTypeDefinition {
   /** The ontology's name for the type, when it differs from the short label */
   term: string;
+  /** A learner-friendly definition, shown first; `definition` is the extended one */
+  plain?: string;
   definition: string;
   examples: string[];
   /** Easily-confused neighbouring types, spelled out */
@@ -62,6 +64,8 @@ export interface EquationVariable {
   /** LaTeX, like the equation: `G_{\mu\nu}` */
   symbol: string;
   meaning: string;
+  /** What it stands for, in plain words, for someone new to the notation */
+  plain?: string;
 }
 
 /**
@@ -73,6 +77,8 @@ export interface EquationRepresentation {
   name: string;
   /** LaTeX; left out while only the name is known */
   equation?: string;
+  /** What this form says, in plain words */
+  plain?: string;
   variables?: EquationVariable[];
 }
 
@@ -80,6 +86,8 @@ export interface EquationAttrs {
   description: string;
   /** The main form, in LaTeX */
   equation: string;
+  /** What the equation says, in plain words — no symbols */
+  plain?: string;
   /** The main form's variables */
   variables: EquationVariable[];
   conditions: string[];
@@ -93,6 +101,8 @@ export interface Formula {
   name?: string;
   /** LaTeX */
   equation: string;
+  /** What it says, in plain words */
+  plain?: string;
   variables?: EquationVariable[];
 }
 
@@ -109,9 +119,16 @@ export interface ResourceAttrs {
   /** What it covers, in a sentence or two */
   description?: string;
   link: string;
-  /** One of conceptVocabulary.json "mediaTypes" (text, video, quiz) */
+  /** One of conceptVocabulary.json "mediaTypes" (text, video, quiz, other) */
   mediaType: string;
-  estimatedMinutes: number;
+  /** Free text, so a range fits: "20–30 min" */
+  estimatedTime?: string;
+  /** Free text: "15 min" */
+  readingTime?: string;
+  /** Free text: "about 1 h" */
+  listeningTime?: string;
+  /** Who it works for and who it doesn't: input, zoom, captions, screen readers (Markdown) */
+  accessibility?: string;
   /** 0–5, from the original curated list; a proposed resource has none yet */
   rating?: number;
   reviewCount?: number;
@@ -130,8 +147,6 @@ interface GraphNodeBase {
   generality?: number;
   /** How settled the concept is, e.g. "Candidate"; known values in conceptVocabulary.json */
   epistemicStatus?: string;
-  /** An open question for Sophie — cleared by deleting the field */
-  review?: string;
   /**
    * What this concept takes for granted ("Zel'dovich approximation assumes a
    * linear potential"). Not a relation: no line is drawn; the card lists them.
@@ -193,8 +208,13 @@ export interface GraphEdge {
    * concept; what a concept itself assumes is on the concept.
    */
   assumes?: Assumption[];
-  /** An open question for Sophie — cleared by deleting the field */
-  review?: string;
+  /**
+   * Only on a relation with a learning goal at one end: how central (importance)
+   * and how broad (generality) the goal is for the concept at the other end,
+   * 1–10. A goal linked to two concepts can rate differently for each.
+   */
+  importance?: number;
+  generality?: number;
 }
 
 export interface ConceptGraph {

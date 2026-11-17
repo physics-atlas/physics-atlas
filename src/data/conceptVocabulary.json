@@ -4,7 +4,7 @@
     "property": "Property/quantity",
     "phenomenon": "Phenomenon",
     "process": "Process/dynamics",
-    "model_regime": "Model/behaviour regime",
+    "model_regime": "Model",
     "theory": "Theory/framework",
     "formalism": "Mathematical formalism",
     "equation": "Law/equation",
@@ -80,9 +80,10 @@
       ]
     },
     "model_regime": {
-      "term": "Model · State / regime",
-      "definition": "A model is a deliberately simplified representation of a system, process, or phenomenon used to describe, explain, predict, or calculate its behaviour. A state or regime is a condition or mode of a system characterised by a particular set of properties or dynamical behaviour.",
-      "examples": ["Ising model", "Zel’dovich approximation", "ΛCDM cosmological model", "Lotka–Volterra model", "ideal-gas model", "thermal equilibrium", "superfluid phase", "laminar flow", "chaotic regime", "epidemic phase"],
+      "term": "Model",
+      "plain": "A simplified representation of a physical system or phenomenon that helps us understand or predict its behaviour.",
+      "definition": "A representation of selected aspects of a physical system, phenomenon or process, constructed for a particular purpose. Models involve choices about relevant variables, assumptions, idealisations and approximations. They may be conceptual, mathematical, computational, empirical or pedagogical, and can be used to explain, describe, predict or simulate physical behaviour.",
+      "examples": ["Ideal gas model", "Bohr model of the atom", "Simple pendulum model", "Ising model", "ΛCDM cosmological model", "Point particle model", "Water-flow analogy for electrical circuits"],
       "distinctions": [
         "Model versus theory: a model is a particular representation; a theory or framework can organise multiple models, laws, and explanatory principles. The boundary is not absolute in scientific practice."
       ]
@@ -188,7 +189,7 @@
     { "key": "conditions", "label": "Conditions", "description": "What must hold for a concept to apply.", "types": ["is a condition of", "valid under", "under"] },
     { "key": "association", "label": "Association", "description": "A connection without a more specific kind — use one of the other categories when one fits.", "types": ["relates", "links", "is involved in", "is a learning goal of"] }
   ],
-  "mediaTypes": ["text", "video", "quiz"],
+  "mediaTypes": ["text", "video", "quiz", "other"],
   "epistemicStatuses": ["Candidate"],
   "domains": [
     "Astrophysics",

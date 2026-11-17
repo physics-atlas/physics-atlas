@@ -1,0 +1,2126 @@
+{
+  ".github/workflows/checks.yml": {
+    "mtime": 1792613136.521577,
+    "seen": 1794654050.021579,
+    "ast_hash": "54216c853da2e3a8977b48c018083f73",
+    "semantic_hash": "54216c853da2e3a8977b48c018083f73"
+  },
+  ".mcp.json": {
+    "mtime": 1791996041.0630622,
+    "seen": 1794654050.0215838,
+    "ast_hash": "feacc21498df00af72f4b7d9859c0fdf",
+    "semantic_hash": "feacc21498df00af72f4b7d9859c0fdf"
+  },
+  ".oxlintrc.json": {
+    "mtime": 1791996041.0630622,
+    "seen": 1794654050.0215862,
+    "ast_hash": "1f0703525c59e961c2b7f20e78aa1cd4",
+    "semantic_hash": "1f0703525c59e961c2b7f20e78aa1cd4"
+  },
+  "community/experts.json": {
+    "mtime": 1794001022.6189399,
+    "seen": 1794654050.0215871,
+    "ast_hash": "4badcf6364a2e823bd549f3539671fb9",
+    "semantic_hash": "4badcf6364a2e823bd549f3539671fb9"
+  },
+  "content/concepts/edges/airy_solution_f09e_e1.json": {
+    "mtime": 1793131849.2169645,
+    "seen": 1794654050.0215886,
+    "ast_hash": "df9cc3ea506ef4c84c2def824dc72a86",
+    "semantic_hash": "df9cc3ea506ef4c84c2def824dc72a86"
+  },
+  "content/concepts/edges/alpha_particle_9mzf_e1.json": {
+    "mtime": 1794339506.4016132,
+    "seen": 1794654050.0215895,
+    "ast_hash": "48f341b67d43c74d65506a5496de84b1",
+    "semantic_hash": "48f341b67d43c74d65506a5496de84b1"
+  },
+  "content/concepts/edges/atom_gd2j_e1.json": {
+    "mtime": 1792925386.7886524,
+    "seen": 1794654050.0215905,
+    "ast_hash": "56d836aecf9625839812dde26ee3b0d5",
+    "semantic_hash": "56d836aecf9625839812dde26ee3b0d5"
+  },
+  "content/concepts/edges/atomic_clock_okw4_e1.json": {
+    "mtime": 1792930118.7047198,
+    "seen": 1794654050.0215912,
+    "ast_hash": "a31f2633b60f3bf31c2bd0a1cc8c1738",
+    "semantic_hash": "a31f2633b60f3bf31c2bd0a1cc8c1738"
+  },
+  "content/concepts/edges/e10.json": {
+    "mtime": 1792083989.3098538,
+    "seen": 1794654050.0215924,
+    "ast_hash": "b35a7052e582cedcd9bcf38deb19437d",
+    "semantic_hash": "b35a7052e582cedcd9bcf38deb19437d"
+  },
+  "content/concepts/edges/e11.json": {
+    "mtime": 1792083989.3108525,
+    "seen": 1794654050.021593,
+    "ast_hash": "93be3022597d62d932b5f091fc96e3ba",
+    "semantic_hash": "93be3022597d62d932b5f091fc96e3ba"
+  },
+  "content/concepts/edges/e12.json": {
+    "mtime": 1792083989.3108525,
+    "seen": 1794654050.0215936,
+    "ast_hash": "c3868e9a32921b1ed54f433ca3731f59",
+    "semantic_hash": "c3868e9a32921b1ed54f433ca3731f59"
+  },
+  "content/concepts/edges/e15.json": {
+    "mtime": 1792083989.311852,
+    "seen": 1794654050.0215945,
+    "ast_hash": "a5c7ed89ad480feff5450bf0d627c1b8",
+    "semantic_hash": "a5c7ed89ad480feff5450bf0d627c1b8"
+  },
+  "content/concepts/edges/e17.json": {
+    "mtime": 1792083989.311852,
+    "seen": 1794654050.0215955,
+    "ast_hash": "c1d96ac8508d9858268318653be2636b",
+    "semantic_hash": "c1d96ac8508d9858268318653be2636b"
+  },
+  "content/concepts/edges/e18.json": {
+    "mtime": 1792083989.312851,
+    "seen": 1794654050.021596,
+    "ast_hash": "4115aa8fa962ae0302fbf158bc302abd",
+    "semantic_hash": "4115aa8fa962ae0302fbf158bc302abd"
+  },
+  "content/concepts/edges/e19.json": {
+    "mtime": 1792083989.312851,
+    "seen": 1794654050.0215967,
+    "ast_hash": "69b1f8431dd2043b8129cc0fe2914fab",
+    "semantic_hash": "69b1f8431dd2043b8129cc0fe2914fab"
+  },
+  "content/concepts/edges/e20.json": {
+    "mtime": 1792083989.312851,
+    "seen": 1794654050.0215974,
+    "ast_hash": "f160d061a4916f70a2c87008e03a4245",
+    "semantic_hash": "f160d061a4916f70a2c87008e03a4245"
+  },
+  "content/concepts/edges/e22.json": {
+    "mtime": 1792083989.3138509,
+    "seen": 1794654050.021598,
+    "ast_hash": "767f9c4cfff45241fcb987118c6bfb9c",
+    "semantic_hash": "767f9c4cfff45241fcb987118c6bfb9c"
+  },
+  "content/concepts/edges/e23.json": {
+    "mtime": 1792083989.3138509,
+    "seen": 1794654050.0215988,
+    "ast_hash": "61e89d9d0102acab056cd9583a35e538",
+    "semantic_hash": "61e89d9d0102acab056cd9583a35e538"
+  },
+  "content/concepts/edges/e24.json": {
+    "mtime": 1792083989.3138509,
+    "seen": 1794654050.0215995,
+    "ast_hash": "b47da47784a7388d04ea6d6dfc893633",
+    "semantic_hash": "b47da47784a7388d04ea6d6dfc893633"
+  },
+  "content/concepts/edges/e25.json": {
+    "mtime": 1792083989.3138509,
+    "seen": 1794654050.0216005,
+    "ast_hash": "ad02e6215e3d2cdcce3da6fc20c0cd26",
+    "semantic_hash": "ad02e6215e3d2cdcce3da6fc20c0cd26"
+  },
+  "content/concepts/edges/e26.json": {
+    "mtime": 1792083989.315354,
+    "seen": 1794654050.0216022,
+    "ast_hash": "34454710324b62d5e0d2670454d1685e",
+    "semantic_hash": "34454710324b62d5e0d2670454d1685e"
+  },
+  "content/concepts/edges/e27.json": {
+    "mtime": 1792083989.315354,
+    "seen": 1794654050.0216036,
+    "ast_hash": "e9e15f0990918db5f30bc438cbb8f6eb",
+    "semantic_hash": "e9e15f0990918db5f30bc438cbb8f6eb"
+  },
+  "content/concepts/edges/e28.json": {
+    "mtime": 1792083989.315354,
+    "seen": 1794654050.0216055,
+    "ast_hash": "d8a88e8319f49c8b6684f349c0c8fae3",
+    "semantic_hash": "d8a88e8319f49c8b6684f349c0c8fae3"
+  },
+  "content/concepts/edges/e29.json": {
+    "mtime": 1792083989.3163579,
+    "seen": 1794654050.021607,
+    "ast_hash": "19eb7075877f6a52cbde1cff09b7546f",
+    "semantic_hash": "19eb7075877f6a52cbde1cff09b7546f"
+  },
+  "content/concepts/edges/e30.json": {
+    "mtime": 1792083989.3163579,
+    "seen": 1794654050.0216084,
+    "ast_hash": "505aaa4d601ef0502c11d66faed271f2",
+    "semantic_hash": "505aaa4d601ef0502c11d66faed271f2"
+  },
+  "content/concepts/edges/e31.json": {
+    "mtime": 1792083989.3163579,
+    "seen": 1794654050.0216095,
+    "ast_hash": "05a13655cf9dc102f1ba28e5ad5af7c1",
+    "semantic_hash": "05a13655cf9dc102f1ba28e5ad5af7c1"
+  },
+  "content/concepts/edges/e32.json": {
+    "mtime": 1792083989.3163579,
+    "seen": 1794654050.02161,
+    "ast_hash": "630b2a285fa40c1fa204e2a44bbd6630",
+    "semantic_hash": "630b2a285fa40c1fa204e2a44bbd6630"
+  },
+  "content/concepts/edges/e33.json": {
+    "mtime": 1792083989.317358,
+    "seen": 1794654050.0216107,
+    "ast_hash": "7b5b0a5322fe3f2163d0d5c576d74562",
+    "semantic_hash": "7b5b0a5322fe3f2163d0d5c576d74562"
+  },
+  "content/concepts/edges/e34.json": {
+    "mtime": 1792083989.317358,
+    "seen": 1794654050.0216115,
+    "ast_hash": "ae11408692a224de4ff76d41e3950746",
+    "semantic_hash": "ae11408692a224de4ff76d41e3950746"
+  },
+  "content/concepts/edges/e35.json": {
+    "mtime": 1792083989.317358,
+    "seen": 1794654050.0216124,
+    "ast_hash": "b491bc66f2574a5bf815b4d6f747e6d0",
+    "semantic_hash": "b491bc66f2574a5bf815b4d6f747e6d0"
+  },
+  "content/concepts/edges/e36.json": {
+    "mtime": 1792083989.3183582,
+    "seen": 1794654050.0216131,
+    "ast_hash": "d1c11abd428d930f022951ae17be949f",
+    "semantic_hash": "d1c11abd428d930f022951ae17be949f"
+  },
+  "content/concepts/edges/e37.json": {
+    "mtime": 1792083989.3183582,
+    "seen": 1794654050.0216138,
+    "ast_hash": "9ac0c164ba1a2a6d8a8c0fcadaa54452",
+    "semantic_hash": "9ac0c164ba1a2a6d8a8c0fcadaa54452"
+  },
+  "content/concepts/edges/e38.json": {
+    "mtime": 1792083989.3183582,
+    "seen": 1794654050.0216146,
+    "ast_hash": "9fbc1631997cf7e3d71d23540475ea62",
+    "semantic_hash": "9fbc1631997cf7e3d71d23540475ea62"
+  },
+  "content/concepts/edges/e39.json": {
+    "mtime": 1792083989.3193605,
+    "seen": 1794654050.0216155,
+    "ast_hash": "0a4b7742fd2f526195c1d1202ae33af0",
+    "semantic_hash": "0a4b7742fd2f526195c1d1202ae33af0"
+  },
+  "content/concepts/edges/e4.json": {
+    "mtime": 1792083989.3088527,
+    "seen": 1794654050.0216162,
+    "ast_hash": "ff16afb82d2f1f1e29c64200abc52e1c",
+    "semantic_hash": "ff16afb82d2f1f1e29c64200abc52e1c"
+  },
+  "content/concepts/edges/e40.json": {
+    "mtime": 1792083989.3193605,
+    "seen": 1794654050.021617,
+    "ast_hash": "d19dc8ff36f22c7727203f26d3d050a8",
+    "semantic_hash": "d19dc8ff36f22c7727203f26d3d050a8"
+  },
+  "content/concepts/edges/e41.json": {
+    "mtime": 1792083989.3193605,
+    "seen": 1794654050.0216177,
+    "ast_hash": "6650936c9100c98ab4ef97ed1dd8248c",
+    "semantic_hash": "6650936c9100c98ab4ef97ed1dd8248c"
+  },
+  "content/concepts/edges/e42.json": {
+    "mtime": 1792083989.3193605,
+    "seen": 1794654050.0216184,
+    "ast_hash": "82bbd286bfccdf51e8b4413b65bcd327",
+    "semantic_hash": "82bbd286bfccdf51e8b4413b65bcd327"
+  },
+  "content/concepts/edges/e43.json": {
+    "mtime": 1792083989.3203585,
+    "seen": 1794654050.021619,
+    "ast_hash": "d048287773fa7b545a93ee8294e316f6",
+    "semantic_hash": "d048287773fa7b545a93ee8294e316f6"
+  },
+  "content/concepts/edges/e44.json": {
+    "mtime": 1792083989.3203585,
+    "seen": 1794654050.0216198,
+    "ast_hash": "bc80b79a41eed22fb5bae0ba3b701298",
+    "semantic_hash": "bc80b79a41eed22fb5bae0ba3b701298"
+  },
+  "content/concepts/edges/e45.json": {
+    "mtime": 1792083989.3203585,
+    "seen": 1794654050.0216205,
+    "ast_hash": "c72719bfe666e5c6babeed51d06e54ec",
+    "semantic_hash": "c72719bfe666e5c6babeed51d06e54ec"
+  },
+  "content/concepts/edges/e46.json": {
+    "mtime": 1792083989.321358,
+    "seen": 1794654050.0216212,
+    "ast_hash": "645f5bb9259ce58a0c9d3d661a985747",
+    "semantic_hash": "645f5bb9259ce58a0c9d3d661a985747"
+  },
+  "content/concepts/edges/e47.json": {
+    "mtime": 1792083989.321358,
+    "seen": 1794654050.021622,
+    "ast_hash": "46da4ba4402de3a5db6fc4ee40607391",
+    "semantic_hash": "46da4ba4402de3a5db6fc4ee40607391"
+  },
+  "content/concepts/edges/e49.json": {
+    "mtime": 1792083989.321358,
+    "seen": 1794654050.0216231,
+    "ast_hash": "d26d1f60732075fcc245099c6d0a1a3c",
+    "semantic_hash": "d26d1f60732075fcc245099c6d0a1a3c"
+  },
+  "content/concepts/edges/e5.json": {
+    "mtime": 1792083989.3088527,
+    "seen": 1794654050.0216238,
+    "ast_hash": "8e6b3b9c02e700bf1d0e5bd4f888b03e",
+    "semantic_hash": "8e6b3b9c02e700bf1d0e5bd4f888b03e"
+  },
+  "content/concepts/edges/e50.json": {
+    "mtime": 1792083989.3223581,
+    "seen": 1794654050.0216246,
+    "ast_hash": "ed42fd5251c45f8c34dcb65857d3c243",
+    "semantic_hash": "ed42fd5251c45f8c34dcb65857d3c243"
+  },
+  "content/concepts/edges/e51.json": {
+    "mtime": 1792083989.3223581,
+    "seen": 1794654050.0216253,
+    "ast_hash": "965ed759fe3d458bfcebdfb218e1c3af",
+    "semantic_hash": "965ed759fe3d458bfcebdfb218e1c3af"
+  },
+  "content/concepts/edges/e52.json": {
+    "mtime": 1792083989.3223581,
+    "seen": 1794654050.021626,
+    "ast_hash": "aa5a82e78185f208e9b775f57bd0a3b5",
+    "semantic_hash": "aa5a82e78185f208e9b775f57bd0a3b5"
+  },
+  "content/concepts/edges/e53.json": {
+    "mtime": 1792083989.3233578,
+    "seen": 1794654050.021627,
+    "ast_hash": "c01a5562e9eac2af2c482a1ce6a92a2a",
+    "semantic_hash": "c01a5562e9eac2af2c482a1ce6a92a2a"
+  },
+  "content/concepts/edges/e54.json": {
+    "mtime": 1792083989.3233578,
+    "seen": 1794654050.0216277,
+    "ast_hash": "c29fc2d1efbc5cf7503d83dd54191ef3",
+    "semantic_hash": "c29fc2d1efbc5cf7503d83dd54191ef3"
+  },
+  "content/concepts/edges/e55.json": {
+    "mtime": 1792083989.3233578,
+    "seen": 1794654050.0216284,
+    "ast_hash": "4eda247ccc19b2eb7775a9143adee283",
+    "semantic_hash": "4eda247ccc19b2eb7775a9143adee283"
+  },
+  "content/concepts/edges/e57.json": {
+    "mtime": 1792083989.3233578,
+    "seen": 1794654050.021629,
+    "ast_hash": "dc1177f004ed4db3c32216f43672d316",
+    "semantic_hash": "dc1177f004ed4db3c32216f43672d316"
+  },
+  "content/concepts/edges/e58.json": {
+    "mtime": 1792923367.28241,
+    "seen": 1794654050.02163,
+    "ast_hash": "91a7363443c9b12f54b26e5596c0f85d",
+    "semantic_hash": "91a7363443c9b12f54b26e5596c0f85d"
+  },
+  "content/concepts/edges/e59.json": {
+    "mtime": 1792083989.3243594,
+    "seen": 1794654050.0216308,
+    "ast_hash": "83ca9850aa5aa2290f148e8e77b7cb70",
+    "semantic_hash": "83ca9850aa5aa2290f148e8e77b7cb70"
+  },
+  "content/concepts/edges/e6.json": {
+    "mtime": 1792083989.3088527,
+    "seen": 1794654050.0216315,
+    "ast_hash": "fbb4c1a3db5dbcff4dcc60321771257a",
+    "semantic_hash": "fbb4c1a3db5dbcff4dcc60321771257a"
+  },
+  "content/concepts/edges/e60.json": {
+    "mtime": 1792083989.3243594,
+    "seen": 1794654050.0216322,
+    "ast_hash": "8e9febe84a145b6a2839f3889a4e5444",
+    "semantic_hash": "8e9febe84a145b6a2839f3889a4e5444"
+  },
+  "content/concepts/edges/e61.json": {
+    "mtime": 1792083989.3243594,
+    "seen": 1794654050.021633,
+    "ast_hash": "9e796645892c00a08f0c5ab8e617dfbc",
+    "semantic_hash": "9e796645892c00a08f0c5ab8e617dfbc"
+  },
+  "content/concepts/edges/e62.json": {
+    "mtime": 1792083989.3253577,
+    "seen": 1794654050.0216339,
+    "ast_hash": "eaf04955d914e606c1b6a31bf34ff7b8",
+    "semantic_hash": "eaf04955d914e606c1b6a31bf34ff7b8"
+  },
+  "content/concepts/edges/e63.json": {
+    "mtime": 1792923367.2859168,
+    "seen": 1794654050.0216346,
+    "ast_hash": "3451284b253d2abc1eb1ed46f48b29b5",
+    "semantic_hash": "3451284b253d2abc1eb1ed46f48b29b5"
+  },
+  "content/concepts/edges/e65.json": {
+    "mtime": 1792083989.3253577,
+    "seen": 1794654050.021635,
+    "ast_hash": "28c2e3b969d61fe9f9f4c9e1e6db8d17",
+    "semantic_hash": "28c2e3b969d61fe9f9f4c9e1e6db8d17"
+  },
+  "content/concepts/edges/e66.json": {
+    "mtime": 1792923367.2879167,
+    "seen": 1794654050.0216362,
+    "ast_hash": "78560c9cce71a5fe4062d480cc413a17",
+    "semantic_hash": "78560c9cce71a5fe4062d480cc413a17"
+  },
+  "content/concepts/edges/e68.json": {
+    "mtime": 1792083989.3264203,
+    "seen": 1794654050.0216372,
+    "ast_hash": "8eef4ee6766938b3f1548a42cabef416",
+    "semantic_hash": "8eef4ee6766938b3f1548a42cabef416"
+  },
+  "content/concepts/edges/e69.json": {
+    "mtime": 1792083989.3264203,
+    "seen": 1794654050.0216377,
+    "ast_hash": "5b8b818ad8d348fc0ea2402aa869ce2b",
+    "semantic_hash": "5b8b818ad8d348fc0ea2402aa869ce2b"
+  },
+  "content/concepts/edges/e7.json": {
+    "mtime": 1792083989.3098538,
+    "seen": 1794654050.0216384,
+    "ast_hash": "1a507caf7b77b486640cff98e290db17",
+    "semantic_hash": "1a507caf7b77b486640cff98e290db17"
+  },
+  "content/concepts/edges/e71.json": {
+    "mtime": 1792791298.0762966,
+    "seen": 1794654050.0216389,
+    "ast_hash": "88664674f883f4ad680241e308bbd058",
+    "semantic_hash": "88664674f883f4ad680241e308bbd058"
+  },
+  "content/concepts/edges/e8.json": {
+    "mtime": 1792083989.3098538,
+    "seen": 1794654050.0216396,
+    "ast_hash": "c304d30d66f7602b7345d04ef66aaa26",
+    "semantic_hash": "c304d30d66f7602b7345d04ef66aaa26"
+  },
+  "content/concepts/edges/e9.json": {
+    "mtime": 1792083989.3098538,
+    "seen": 1794654050.0216405,
+    "ast_hash": "38240966dc96c5d3ff0c31f71e0d902f",
+    "semantic_hash": "38240966dc96c5d3ff0c31f71e0d902f"
+  },
+  "content/concepts/edges/electron_xyfm_e1.json": {
+    "mtime": 1792930152.4244976,
+    "seen": 1794654050.0216413,
+    "ast_hash": "dd621515d974f2177de7aa0999b71701",
+    "semantic_hash": "dd621515d974f2177de7aa0999b71701"
+  },
+  "content/concepts/edges/electron_xyfm_e2.json": {
+    "mtime": 1792925325.633901,
+    "seen": 1794654050.0216417,
+    "ast_hash": "f5f3265d3c172eb377ca234c036dc2ec",
+    "semantic_hash": "f5f3265d3c172eb377ca234c036dc2ec"
+  },
+  "content/concepts/edges/electroweak_theory_163a_e1.json": {
+    "mtime": 1794339506.4016132,
+    "seen": 1794654050.0216424,
+    "ast_hash": "8406c81a5073a4c0085d22bb1b5c64da",
+    "semantic_hash": "8406c81a5073a4c0085d22bb1b5c64da"
+  },
+  "content/concepts/edges/euler_equation_n5nu_e1.json": {
+    "mtime": 1792930152.4274957,
+    "seen": 1794654050.0216432,
+    "ast_hash": "bd056cd2ab42a3749058637d0d18d2ed",
+    "semantic_hash": "bd056cd2ab42a3749058637d0d18d2ed"
+  },
+  "content/concepts/edges/fluid_sapm_e1.json": {
+    "mtime": 1792925325.6349003,
+    "seen": 1794654050.021644,
+    "ast_hash": "a5b1530c49f75d440ac639780a253bba",
+    "semantic_hash": "a5b1530c49f75d440ac639780a253bba"
+  },
+  "content/concepts/edges/geiger_counter_mkbu_e1.json": {
+    "mtime": 1794339506.4016132,
+    "seen": 1794654050.0216448,
+    "ast_hash": "67eb1bb4d86c4b9846f989ccb923f68f",
+    "semantic_hash": "67eb1bb4d86c4b9846f989ccb923f68f"
+  },
+  "content/concepts/edges/general_relativity_zeco_030a_e1.json": {
+    "mtime": 1794653426.9166448,
+    "seen": 1794654050.0216455,
+    "ast_hash": "add1aff63b543b1532b9746df55e400c",
+    "semantic_hash": "add1aff63b543b1532b9746df55e400c"
+  },
+  "content/concepts/edges/general_relativity_zeco_e1.json": {
+    "mtime": 1792925325.6349003,
+    "seen": 1794654050.0216463,
+    "ast_hash": "1ffc1071377f226fbe6d925bc47741d9",
+    "semantic_hash": "1ffc1071377f226fbe6d925bc47741d9"
+  },
+  "content/concepts/edges/general_relativity_zeco_e2.json": {
+    "mtime": 1792930152.4284954,
+    "seen": 1794654050.0216472,
+    "ast_hash": "3a2daf1814149f4d0905193739b98fbd",
+    "semantic_hash": "3a2daf1814149f4d0905193739b98fbd"
+  },
+  "content/concepts/edges/general_relativity_zeco_e3.json": {
+    "mtime": 1792930152.4304955,
+    "seen": 1794654050.0216477,
+    "ast_hash": "9a992598bfaab5f4812ba7c98d6f953c",
+    "semantic_hash": "9a992598bfaab5f4812ba7c98d6f953c"
+  },
+  "content/concepts/edges/interactive_alpha_decay_simulation_idyq_e1.json": {
+    "mtime": 1794653426.9176447,
+    "seen": 1794654050.0216484,
+    "ast_hash": "d9d7ebb5565dd08628c172593c1be914",
+    "semantic_hash": "d9d7ebb5565dd08628c172593c1be914"
+  },
+  "content/concepts/edges/interactive_alpha_decay_simulation_idyq_e2.json": {
+    "mtime": 1794653426.9176447,
+    "seen": 1794654050.021649,
+    "ast_hash": "cd91577b6d293c624c85af8cb3bbced1",
+    "semantic_hash": "cd91577b6d293c624c85af8cb3bbced1"
+  },
+  "content/concepts/edges/lagrangian_formulation_fluid_8wkv_e1.json": {
+    "mtime": 1793740703.688841,
+    "seen": 1794654050.0216496,
+    "ast_hash": "744c2e9b5b5444fcf95dd12d168eaa7d",
+    "semantic_hash": "744c2e9b5b5444fcf95dd12d168eaa7d"
+  },
+  "content/concepts/edges/lorentz_invariance_qo60_e1.json": {
+    "mtime": 1794653426.9176447,
+    "seen": 1794654050.0216503,
+    "ast_hash": "a6c2a6c91fdd33fca0a62119fac024fa",
+    "semantic_hash": "a6c2a6c91fdd33fca0a62119fac024fa"
+  },
+  "content/concepts/edges/n_body_simulation_itvq_e1.json": {
+    "mtime": 1794653426.9176447,
+    "seen": 1794654050.021651,
+    "ast_hash": "93bdbba6872055a764f250ac6147fcbd",
+    "semantic_hash": "93bdbba6872055a764f250ac6147fcbd"
+  },
+  "content/concepts/edges/newtonian_classical_mechanics_d0e1_e1.json": {
+    "mtime": 1794653426.9189262,
+    "seen": 1794654050.0216517,
+    "ast_hash": "5360772a11cf7634f7f5a7de1d1474ff",
+    "semantic_hash": "5360772a11cf7634f7f5a7de1d1474ff"
+  },
+  "content/concepts/edges/newtonian_gravity_8ckf_e1.json": {
+    "mtime": 1794653426.9189262,
+    "seen": 1794654050.0216525,
+    "ast_hash": "5a08c927363b9409d32651b6a1fff2e0",
+    "semantic_hash": "5a08c927363b9409d32651b6a1fff2e0"
+  },
+  "content/concepts/edges/newtonian_gravity_8ckf_e2.json": {
+    "mtime": 1794653426.9189262,
+    "seen": 1794654050.021653,
+    "ast_hash": "de986499bed712ebd9cb7f9badf551d2",
+    "semantic_hash": "de986499bed712ebd9cb7f9badf551d2"
+  },
+  "content/concepts/edges/nucleus_ohhc_e1.json": {
+    "mtime": 1793131849.2179623,
+    "seen": 1794654050.0216537,
+    "ast_hash": "d19b2742155809b1adc7b8b9347ad82e",
+    "semantic_hash": "d19b2742155809b1adc7b8b9347ad82e"
+  },
+  "content/concepts/edges/orbital_angular_momentum_qwip_e1.json": {
+    "mtime": 1792930118.7057197,
+    "seen": 1794654050.021655,
+    "ast_hash": "185f4cb3f09d20195584ff130e220224",
+    "semantic_hash": "185f4cb3f09d20195584ff130e220224"
+  },
+  "content/concepts/edges/orbital_angular_momentum_qwip_e2.json": {
+    "mtime": 1792930118.7057197,
+    "seen": 1794654050.0216558,
+    "ast_hash": "fd1eeb56ec5caafa786046a134adda2c",
+    "semantic_hash": "fd1eeb56ec5caafa786046a134adda2c"
+  },
+  "content/concepts/edges/photoelectric_effect_ghnx_e1.json": {
+    "mtime": 1793131849.2179623,
+    "seen": 1794654050.0216565,
+    "ast_hash": "1dbfc9b19b1f307a57a342a6952d8743",
+    "semantic_hash": "1dbfc9b19b1f307a57a342a6952d8743"
+  },
+  "content/concepts/edges/photoelectric_equation_uluf_e1.json": {
+    "mtime": 1793131849.2189631,
+    "seen": 1794654050.021657,
+    "ast_hash": "cb7bc079479468735ccdf3b9b1a720cf",
+    "semantic_hash": "cb7bc079479468735ccdf3b9b1a720cf"
+  },
+  "content/concepts/edges/point_mechanics_2hbo_e1.json": {
+    "mtime": 1794653426.9189262,
+    "seen": 1794654050.021658,
+    "ast_hash": "17c382412a94c42b5091dec50090aa8d",
+    "semantic_hash": "17c382412a94c42b5091dec50090aa8d"
+  },
+  "content/concepts/edges/point_particle_jgrz_e1.json": {
+    "mtime": 1794653426.9199262,
+    "seen": 1794654050.0216587,
+    "ast_hash": "b143ab8634692876a92099b7bd331aa5",
+    "semantic_hash": "b143ab8634692876a92099b7bd331aa5"
+  },
+  "content/concepts/edges/poisson_equation_ozdv_e1.json": {
+    "mtime": 1793740703.689842,
+    "seen": 1794654050.0216594,
+    "ast_hash": "64cc1ad88d0602bdad08fd050c4f008b",
+    "semantic_hash": "64cc1ad88d0602bdad08fd050c4f008b"
+  },
+  "content/concepts/edges/predict_the_changes_in_nucleons_numbers_hxi4_e1.json": {
+    "mtime": 1794339506.4026177,
+    "seen": 1794654050.0216599,
+    "ast_hash": "66b9bddc48f645fa9f6e0a4e9a6f5bac",
+    "semantic_hash": "66b9bddc48f645fa9f6e0a4e9a6f5bac"
+  },
+  "content/concepts/edges/quantum_number_76rx_e1.json": {
+    "mtime": 1792925386.7886524,
+    "seen": 1794654050.0216606,
+    "ast_hash": "265fbb08ac264ba2d8a58ebaae540944",
+    "semantic_hash": "265fbb08ac264ba2d8a58ebaae540944"
+  },
+  "content/concepts/edges/quantum_number_76rx_e2.json": {
+    "mtime": 1792925386.7896514,
+    "seen": 1794654050.0216613,
+    "ast_hash": "604e7647eb6947fa1fa0d7791fc7b35e",
+    "semantic_hash": "604e7647eb6947fa1fa0d7791fc7b35e"
+  },
+  "content/concepts/edges/relativistic_viscous_hydrodynamics_dqlc_e1.json": {
+    "mtime": 1793131849.2189631,
+    "seen": 1794654050.021662,
+    "ast_hash": "3ab48482fb461031bf02333006a87f29",
+    "semantic_hash": "3ab48482fb461031bf02333006a87f29"
+  },
+  "content/concepts/edges/schrodinger_equation_833a_e1.json": {
+    "mtime": 1792925325.6369011,
+    "seen": 1794654050.0216627,
+    "ast_hash": "368bfc4ca85d1d0d5bfc4e5d22ae7f10",
+    "semantic_hash": "368bfc4ca85d1d0d5bfc4e5d22ae7f10"
+  },
+  "content/concepts/edges/schrodinger_poisson_equation_hsfj_e1.json": {
+    "mtime": 1794653426.9199262,
+    "seen": 1794654050.0216632,
+    "ast_hash": "224f4e163d8132b26376a44dee82632b",
+    "semantic_hash": "224f4e163d8132b26376a44dee82632b"
+  },
+  "content/concepts/edges/space_vp0j_e1.json": {
+    "mtime": 1793740703.69084,
+    "seen": 1794654050.021664,
+    "ast_hash": "166fbe3a3f20ac02813b995ee366af97",
+    "semantic_hash": "166fbe3a3f20ac02813b995ee366af97"
+  },
+  "content/concepts/edges/spin_yacm_e1.json": {
+    "mtime": 1792930118.7067194,
+    "seen": 1794654050.0216649,
+    "ast_hash": "fd44f8780fa0ea7cc21445960be2c24a",
+    "semantic_hash": "fd44f8780fa0ea7cc21445960be2c24a"
+  },
+  "content/concepts/edges/spin_yacm_e2.json": {
+    "mtime": 1792930118.7067194,
+    "seen": 1794654050.0216653,
+    "ast_hash": "ca8e2a9aa475d04cdfb7d53b45860978",
+    "semantic_hash": "ca8e2a9aa475d04cdfb7d53b45860978"
+  },
+  "content/concepts/edges/su_2_x_u_1_b3sd_e1.json": {
+    "mtime": 1794339506.4026177,
+    "seen": 1794654050.021666,
+    "ast_hash": "6d86b2f59befb173c9af20563099e378",
+    "semantic_hash": "6d86b2f59befb173c9af20563099e378"
+  },
+  "content/concepts/edges/su_2_x_u_1_b3sd_gcpc_e1.json": {
+    "mtime": 1794339506.403618,
+    "seen": 1794654050.0216668,
+    "ast_hash": "13455be7b07937e56d64acda232f6a8e",
+    "semantic_hash": "13455be7b07937e56d64acda232f6a8e"
+  },
+  "content/concepts/edges/symmetry_aawq_6jgw_e1.json": {
+    "mtime": 1792930118.7067194,
+    "seen": 1794654050.0216672,
+    "ast_hash": "9b49712dc7c4379c307ad860ff9dc194",
+    "semantic_hash": "9b49712dc7c4379c307ad860ff9dc194"
+  },
+  "content/concepts/edges/symmetry_aawq_e1.json": {
+    "mtime": 1792930118.707719,
+    "seen": 1794654050.0216682,
+    "ast_hash": "9c6b9a4e1d978a41ef8e70e90e1004b1",
+    "semantic_hash": "9c6b9a4e1d978a41ef8e70e90e1004b1"
+  },
+  "content/concepts/edges/symmetry_aawq_e2.json": {
+    "mtime": 1792930118.707719,
+    "seen": 1794654050.021669,
+    "ast_hash": "333fd062efd62fe985a03e11cb8fe0db",
+    "semantic_hash": "333fd062efd62fe985a03e11cb8fe0db"
+  },
+  "content/concepts/edges/time_classical_parameter_cgll_e1.json": {
+    "mtime": 1793740703.6928763,
+    "seen": 1794654050.0216694,
+    "ast_hash": "65c77893c7dae04ef2789b05db9c1afe",
+    "semantic_hash": "65c77893c7dae04ef2789b05db9c1afe"
+  },
+  "content/concepts/edges/vector_space_31l8_e1.json": {
+    "mtime": 1793131849.2189631,
+    "seen": 1794654050.02167,
+    "ast_hash": "1d333b4e82e824b8a9efc1d022957101",
+    "semantic_hash": "1d333b4e82e824b8a9efc1d022957101"
+  },
+  "content/concepts/edges/vector_space_31l8_e2.json": {
+    "mtime": 1793131849.2199628,
+    "seen": 1794654050.0216708,
+    "ast_hash": "76d110e7a758cae3dc6baa40799c919e",
+    "semantic_hash": "76d110e7a758cae3dc6baa40799c919e"
+  },
+  "content/concepts/edges/wave_function_condensate_d85q_e1.json": {
+    "mtime": 1792925325.6369011,
+    "seen": 1794654050.0216718,
+    "ast_hash": "2478783e1841a20d18576e228e99b599",
+    "semantic_hash": "2478783e1841a20d18576e228e99b599"
+  },
+  "content/concepts/edges/wave_function_condensate_d85q_e2.json": {
+    "mtime": 1792925325.6369011,
+    "seen": 1794654050.0216722,
+    "ast_hash": "546ec01a07ad9c9e2b7318617681b0ad",
+    "semantic_hash": "546ec01a07ad9c9e2b7318617681b0ad"
+  },
+  "content/concepts/edges/wave_function_xdmx_e1.json": {
+    "mtime": 1792930118.7087207,
+    "seen": 1794654050.021673,
+    "ast_hash": "d57e008ba8cb3cd8873df4a11c6a49f7",
+    "semantic_hash": "d57e008ba8cb3cd8873df4a11c6a49f7"
+  },
+  "content/concepts/edges/zeldovich_approximation_6dst_e1.json": {
+    "mtime": 1794653426.9199262,
+    "seen": 1794654050.0216734,
+    "ast_hash": "1455db62c73f614ebe444461b1fb5cdf",
+    "semantic_hash": "1455db62c73f614ebe444461b1fb5cdf"
+  },
+  "content/concepts/edges/zeldovich_approximation_9wbc_e1.json": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.0216742,
+    "ast_hash": "8fd8932a2258c6d7643ed557ce87cff6",
+    "semantic_hash": "8fd8932a2258c6d7643ed557ce87cff6"
+  },
+  "content/concepts/graph.json": {
+    "mtime": 1792083989.2871811,
+    "seen": 1794654050.021675,
+    "ast_hash": "e2305d18d50b41819736007df3e04412",
+    "semantic_hash": "e2305d18d50b41819736007df3e04412"
+  },
+  "content/concepts/nodes/airy_solution.json": {
+    "mtime": 1793131849.2199628,
+    "seen": 1794654050.0216758,
+    "ast_hash": "56cb4062c5dd83acea55cbb6887b3cd1",
+    "semantic_hash": "56cb4062c5dd83acea55cbb6887b3cd1"
+  },
+  "content/concepts/nodes/alpha_decay.json": {
+    "mtime": 1792847130.1347482,
+    "seen": 1794654050.0216763,
+    "ast_hash": "7d3711964235fdf831539f2bc0fcae9f",
+    "semantic_hash": "7d3711964235fdf831539f2bc0fcae9f"
+  },
+  "content/concepts/nodes/alpha_particle.json": {
+    "mtime": 1794339506.403618,
+    "seen": 1794654050.021677,
+    "ast_hash": "9d5054f4d71f6d7b9c2256945cea75a7",
+    "semantic_hash": "9d5054f4d71f6d7b9c2256945cea75a7"
+  },
+  "content/concepts/nodes/atom_gd2j.json": {
+    "mtime": 1793740703.6938813,
+    "seen": 1794654050.0216777,
+    "ast_hash": "cd6049cfd06dc529ae82f89305d9f4f0",
+    "semantic_hash": "cd6049cfd06dc529ae82f89305d9f4f0"
+  },
+  "content/concepts/nodes/atomic_clock_okw4.json": {
+    "mtime": 1792930118.7087207,
+    "seen": 1794654050.0216787,
+    "ast_hash": "4e3bafd4204d6fca12b42ee349fc62c9",
+    "semantic_hash": "4e3bafd4204d6fca12b42ee349fc62c9"
+  },
+  "content/concepts/nodes/bec.json": {
+    "mtime": 1792847130.135748,
+    "seen": 1794654050.0216792,
+    "ast_hash": "c29c5f25eaab36db40f95ed7f2691929",
+    "semantic_hash": "c29c5f25eaab36db40f95ed7f2691929"
+  },
+  "content/concepts/nodes/bosons.json": {
+    "mtime": 1792847130.1367507,
+    "seen": 1794654050.0216799,
+    "ast_hash": "b7ed55af58938c441dc20ca3faef4921",
+    "semantic_hash": "b7ed55af58938c441dc20ca3faef4921"
+  },
+  "content/concepts/nodes/caustics.json": {
+    "mtime": 1792847130.1367507,
+    "seen": 1794654050.0216806,
+    "ast_hash": "5064d5f435fc5300f8f89cdd3255ab0c",
+    "semantic_hash": "5064d5f435fc5300f8f89cdd3255ab0c"
+  },
+  "content/concepts/nodes/charge_diffusion.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216813,
+    "ast_hash": "9f7000b4ac11119950e1e41c0bb9b599",
+    "semantic_hash": "9f7000b4ac11119950e1e41c0bb9b599"
+  },
+  "content/concepts/nodes/conservation_equations.json": {
+    "mtime": 1792847229.72911,
+    "seen": 1794654050.021682,
+    "ast_hash": "b18c4b570e8675f7a3c2f088ec9dd529",
+    "semantic_hash": "b18c4b570e8675f7a3c2f088ec9dd529"
+  },
+  "content/concepts/nodes/coordinate_transformations.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216827,
+    "ast_hash": "35e6432bafe097a620a6055f5704ea4a",
+    "semantic_hash": "35e6432bafe097a620a6055f5704ea4a"
+  },
+  "content/concepts/nodes/curvature.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216832,
+    "ast_hash": "abf11597bdbc4529e5fe44827aec01c8",
+    "semantic_hash": "abf11597bdbc4529e5fe44827aec01c8"
+  },
+  "content/concepts/nodes/dark_matter.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.021684,
+    "ast_hash": "383de81d009d5214fad3ef8ead65ebf0",
+    "semantic_hash": "383de81d009d5214fad3ef8ead65ebf0"
+  },
+  "content/concepts/nodes/decay_equation.json": {
+    "mtime": 1792932857.2696693,
+    "seen": 1794654050.0216844,
+    "ast_hash": "3444514fdd7d53a1f99090913f79c271",
+    "semantic_hash": "3444514fdd7d53a1f99090913f79c271"
+  },
+  "content/concepts/nodes/diff_geometry.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216854,
+    "ast_hash": "975635ab5d9bfa26b77cc1d09a262f1f",
+    "semantic_hash": "975635ab5d9bfa26b77cc1d09a262f1f"
+  },
+  "content/concepts/nodes/dissipative_fields.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.021686,
+    "ast_hash": "d90edc1f117505feb3a801723d9e5501",
+    "semantic_hash": "d90edc1f117505feb3a801723d9e5501"
+  },
+  "content/concepts/nodes/einstein_eq.json": {
+    "mtime": 1794653426.920926,
+    "seen": 1794654050.0216868,
+    "ast_hash": "e5269d632e7cd82c675a928e629fc9f4",
+    "semantic_hash": "e5269d632e7cd82c675a928e629fc9f4"
+  },
+  "content/concepts/nodes/electron_xyfm.json": {
+    "mtime": 1792932857.2716727,
+    "seen": 1794654050.0216873,
+    "ast_hash": "15e9252d3eb0bd5b6a702a588abda56c",
+    "semantic_hash": "15e9252d3eb0bd5b6a702a588abda56c"
+  },
+  "content/concepts/nodes/electroweak_theory_163a.json": {
+    "mtime": 1794339506.4046175,
+    "seen": 1794654050.021688,
+    "ast_hash": "fdf59c0917724cf6fc0efa2a18d0f007",
+    "semantic_hash": "fdf59c0917724cf6fc0efa2a18d0f007"
+  },
+  "content/concepts/nodes/energy_momentum.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216885,
+    "ast_hash": "c4ce741fb3ea1fe2400092bd73a1ef7d",
+    "semantic_hash": "c4ce741fb3ea1fe2400092bd73a1ef7d"
+  },
+  "content/concepts/nodes/euler_equation_n5nu.json": {
+    "mtime": 1792932857.27267,
+    "seen": 1794654050.0216894,
+    "ast_hash": "10b39508d309e73d889a664d4cbd4229",
+    "semantic_hash": "10b39508d309e73d889a664d4cbd4229"
+  },
+  "content/concepts/nodes/experiment_eddington.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216901,
+    "ast_hash": "dad43372c53d02e9965df1753ef20424",
+    "semantic_hash": "dad43372c53d02e9965df1753ef20424"
+  },
+  "content/concepts/nodes/exponentials.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216906,
+    "ast_hash": "f18fddd102e8916744e10aaf98000a4d",
+    "semantic_hash": "f18fddd102e8916744e10aaf98000a4d"
+  },
+  "content/concepts/nodes/fluid_expansion.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216913,
+    "ast_hash": "0e2292cd7ae19c33a869559783bdaebf",
+    "semantic_hash": "0e2292cd7ae19c33a869559783bdaebf"
+  },
+  "content/concepts/nodes/fluid_sapm.json": {
+    "mtime": 1793740703.6958818,
+    "seen": 1794654050.0216923,
+    "ast_hash": "180a502d5e76cb3e9765626bfc9be0a5",
+    "semantic_hash": "180a502d5e76cb3e9765626bfc9be0a5"
+  },
+  "content/concepts/nodes/four_velocity.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216928,
+    "ast_hash": "5a689d2a1ca5418c0b165f6011e6e699",
+    "semantic_hash": "5a689d2a1ca5418c0b165f6011e6e699"
+  },
+  "content/concepts/nodes/fourteen_moment_approximation.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216935,
+    "ast_hash": "15528cf212f7bb638f7b6ee8240c68a7",
+    "semantic_hash": "15528cf212f7bb638f7b6ee8240c68a7"
+  },
+  "content/concepts/nodes/geiger_counter_mkbu.json": {
+    "mtime": 1794339506.4046175,
+    "seen": 1794654050.0216942,
+    "ast_hash": "1e2bd2d1eebdcf3fbdf1f8e79d1fc87f",
+    "semantic_hash": "1e2bd2d1eebdcf3fbdf1f8e79d1fc87f"
+  },
+  "content/concepts/nodes/general_relativity_zeco.json": {
+    "mtime": 1792930152.4234984,
+    "seen": 1794654050.0216947,
+    "ast_hash": "ecb913c30ffd485fe09841078a535459",
+    "semantic_hash": "ecb913c30ffd485fe09841078a535459"
+  },
+  "content/concepts/nodes/gravitational_lensing.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216954,
+    "ast_hash": "f8f0263a82e11b55c35cbfe064638003",
+    "semantic_hash": "f8f0263a82e11b55c35cbfe064638003"
+  },
+  "content/concepts/nodes/gravity_goal.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.021696,
+    "ast_hash": "8c31815d8f2d6d784578f56d4d1cc679",
+    "semantic_hash": "8c31815d8f2d6d784578f56d4d1cc679"
+  },
+  "content/concepts/nodes/half_life.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216968,
+    "ast_hash": "c5d24fae72db09df378bce063f33c240",
+    "semantic_hash": "c5d24fae72db09df378bce063f33c240"
+  },
+  "content/concepts/nodes/interactive_alpha_decay_simulation_idyq.json": {
+    "mtime": 1794653426.920926,
+    "seen": 1794654050.0216975,
+    "ast_hash": "7e187ee1ff3732b85eba4fca49062197",
+    "semantic_hash": "7e187ee1ff3732b85eba4fca49062197"
+  },
+  "content/concepts/nodes/interference.json": {
+    "mtime": 1792925325.638985,
+    "seen": 1794654050.0216982,
+    "ast_hash": "dd88d261887f1cfc5c646c7e3dec4cfa",
+    "semantic_hash": "dd88d261887f1cfc5c646c7e3dec4cfa"
+  },
+  "content/concepts/nodes/israel_stewart_equations.json": {
+    "mtime": 1792847229.7301097,
+    "seen": 1794654050.0216987,
+    "ast_hash": "cb0a508ddbbbc05c50ded542bd6c59b3",
+    "semantic_hash": "cb0a508ddbbbc05c50ded542bd6c59b3"
+  },
+  "content/concepts/nodes/kinetic_theory.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0216997,
+    "ast_hash": "3287c267a2d0598939663abdf1f9ad18",
+    "semantic_hash": "3287c267a2d0598939663abdf1f9ad18"
+  },
+  "content/concepts/nodes/lagrangian_formulation_fluid_8wkv.json": {
+    "mtime": 1793740703.696883,
+    "seen": 1794654050.0217004,
+    "ast_hash": "1e39b9f20e14a46a69bf15df363b91d9",
+    "semantic_hash": "1e39b9f20e14a46a69bf15df363b91d9"
+  },
+  "content/concepts/nodes/lg_alpha_decay_nucleons.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.021701,
+    "ast_hash": "eff32ba387425a21dfa29bdeca4fb185",
+    "semantic_hash": "eff32ba387425a21dfa29bdeca4fb185"
+  },
+  "content/concepts/nodes/lg_alpha_radiation_properties.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217018,
+    "ast_hash": "6744051d190fdeadbad0fa6a76fcc2c3",
+    "semantic_hash": "6744051d190fdeadbad0fa6a76fcc2c3"
+  },
+  "content/concepts/nodes/lg_pt_1.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217023,
+    "ast_hash": "dcbec495e8c39f8f0b371fae57074116",
+    "semantic_hash": "dcbec495e8c39f8f0b371fae57074116"
+  },
+  "content/concepts/nodes/lg_pt_2.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217032,
+    "ast_hash": "9e60074540e4d2048a51b9438a901cfc",
+    "semantic_hash": "9e60074540e4d2048a51b9438a901cfc"
+  },
+  "content/concepts/nodes/lg_pt_3.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.021704,
+    "ast_hash": "b3a977886bf9baaedb0a60ffdbd7f19b",
+    "semantic_hash": "b3a977886bf9baaedb0a60ffdbd7f19b"
+  },
+  "content/concepts/nodes/lg_pt_4.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217047,
+    "ast_hash": "5de1b5ca7f076cf51aebe4a26f314390",
+    "semantic_hash": "5de1b5ca7f076cf51aebe4a26f314390"
+  },
+  "content/concepts/nodes/lg_pt_5.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217052,
+    "ast_hash": "7a48e6e8fc951b86d75a009d9b82083a",
+    "semantic_hash": "7a48e6e8fc951b86d75a009d9b82083a"
+  },
+  "content/concepts/nodes/lg_tv_1.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217059,
+    "ast_hash": "6ad54ef8a8d45fe7ec57e74291a036df",
+    "semantic_hash": "6ad54ef8a8d45fe7ec57e74291a036df"
+  },
+  "content/concepts/nodes/lg_tv_2.json": {
+    "mtime": 1792847130.1377482,
+    "seen": 1794654050.0217066,
+    "ast_hash": "5ab3d570920d277160294efd76962cf0",
+    "semantic_hash": "5ab3d570920d277160294efd76962cf0"
+  },
+  "content/concepts/nodes/lg_tv_3.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217073,
+    "ast_hash": "784a58b7490bf1b47591b133fb572dfb",
+    "semantic_hash": "784a58b7490bf1b47591b133fb572dfb"
+  },
+  "content/concepts/nodes/linear_algebra.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021708,
+    "ast_hash": "49a572b05d7456db229f083850f12f5c",
+    "semantic_hash": "49a572b05d7456db229f083850f12f5c"
+  },
+  "content/concepts/nodes/lorentz_invariance.json": {
+    "mtime": 1794653426.920926,
+    "seen": 1794654050.0217085,
+    "ast_hash": "48a2e1e431b821bcfacfbd92ed9199df",
+    "semantic_hash": "48a2e1e431b821bcfacfbd92ed9199df"
+  },
+  "content/concepts/nodes/misconception_force.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217092,
+    "ast_hash": "b402d278bde1c1ff1c1db36869becac8",
+    "semantic_hash": "b402d278bde1c1ff1c1db36869becac8"
+  },
+  "content/concepts/nodes/n_body_simulation_itvq.json": {
+    "mtime": 1794653426.9219263,
+    "seen": 1794654050.0217102,
+    "ast_hash": "6c77169d422a5f280b4913a0f1352ebb",
+    "semantic_hash": "6c77169d422a5f280b4913a0f1352ebb"
+  },
+  "content/concepts/nodes/newtonian_classical_mechanics_d0e1.json": {
+    "mtime": 1794653426.9219263,
+    "seen": 1794654050.0217106,
+    "ast_hash": "6a4becbe8ac6b402caf133e204f5079a",
+    "semantic_hash": "6a4becbe8ac6b402caf133e204f5079a"
+  },
+  "content/concepts/nodes/newtonian_gravity.json": {
+    "mtime": 1794653426.9219263,
+    "seen": 1794654050.0217113,
+    "ast_hash": "b6e882f4cf1d46c0ef1c6824ab6992ea",
+    "semantic_hash": "b6e882f4cf1d46c0ef1c6824ab6992ea"
+  },
+  "content/concepts/nodes/nucleon_number.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021712,
+    "ast_hash": "ad6f6054b98f483478c2fbdceeb734de",
+    "semantic_hash": "ad6f6054b98f483478c2fbdceeb734de"
+  },
+  "content/concepts/nodes/nucleus.json": {
+    "mtime": 1793131849.2209635,
+    "seen": 1794654050.0217128,
+    "ast_hash": "737df33bc0e49fa86f3a4f15e6d684a4",
+    "semantic_hash": "737df33bc0e49fa86f3a4f15e6d684a4"
+  },
+  "content/concepts/nodes/orbital_angular_momentum_qwip.json": {
+    "mtime": 1792930118.7097187,
+    "seen": 1794654050.0217144,
+    "ast_hash": "abb1a62d83874c80478b9c41a2f1dcfe",
+    "semantic_hash": "abb1a62d83874c80478b9c41a2f1dcfe"
+  },
+  "content/concepts/nodes/orthogonal_projection.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217152,
+    "ast_hash": "c16eeab781fe21f5db13de5e0cafbfb9",
+    "semantic_hash": "c16eeab781fe21f5db13de5e0cafbfb9"
+  },
+  "content/concepts/nodes/parallel_transport.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217159,
+    "ast_hash": "3a02d2eabba9281be804e2ab495bfe18",
+    "semantic_hash": "3a02d2eabba9281be804e2ab495bfe18"
+  },
+  "content/concepts/nodes/particle_charge_current.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217166,
+    "ast_hash": "23f1f77d6ef481aea4835970b3634027",
+    "semantic_hash": "23f1f77d6ef481aea4835970b3634027"
+  },
+  "content/concepts/nodes/pdf.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217173,
+    "ast_hash": "dc86a25157e75f1baa891c1b571bca0c",
+    "semantic_hash": "dc86a25157e75f1baa891c1b571bca0c"
+  },
+  "content/concepts/nodes/photoelectric_effect_ghnx.json": {
+    "mtime": 1793131849.2219632,
+    "seen": 1794654050.021718,
+    "ast_hash": "172338f7a98e3b6c92436b86dc5263ca",
+    "semantic_hash": "172338f7a98e3b6c92436b86dc5263ca"
+  },
+  "content/concepts/nodes/photoelectric_equation_uluf.json": {
+    "mtime": 1793131849.2219632,
+    "seen": 1794654050.0217187,
+    "ast_hash": "914cf8ac4d426a519639d5b3478d010c",
+    "semantic_hash": "914cf8ac4d426a519639d5b3478d010c"
+  },
+  "content/concepts/nodes/point_mechanics_2hbo.json": {
+    "mtime": 1794653426.9229262,
+    "seen": 1794654050.0217192,
+    "ast_hash": "06cb892ef4f41c45404fb28b9a1bbeb2",
+    "semantic_hash": "06cb892ef4f41c45404fb28b9a1bbeb2"
+  },
+  "content/concepts/nodes/point_particle_jgrz.json": {
+    "mtime": 1794653426.9229262,
+    "seen": 1794654050.0217202,
+    "ast_hash": "da8d268b0c42a9637970ce8888248a06",
+    "semantic_hash": "da8d268b0c42a9637970ce8888248a06"
+  },
+  "content/concepts/nodes/poisson_equation_ozdv.json": {
+    "mtime": 1793740703.6978812,
+    "seen": 1794654050.021721,
+    "ast_hash": "0819f694fe6bd3d9dd4c20ed5c1b28ea",
+    "semantic_hash": "0819f694fe6bd3d9dd4c20ed5c1b28ea"
+  },
+  "content/concepts/nodes/predict_the_changes_in_nucleons_numbers_hxi4.json": {
+    "mtime": 1794339506.4046175,
+    "seen": 1794654050.0217216,
+    "ast_hash": "0320205eaeb989f858a3ac06a015ee62",
+    "semantic_hash": "0320205eaeb989f858a3ac06a015ee62"
+  },
+  "content/concepts/nodes/quantum_number_76rx.json": {
+    "mtime": 1792925386.7896514,
+    "seen": 1794654050.0217223,
+    "ast_hash": "91dea908a4fea6f91e69099150eaae24",
+    "semantic_hash": "91dea908a4fea6f91e69099150eaae24"
+  },
+  "content/concepts/nodes/quark_gluon_plasma.json": {
+    "mtime": 1793131849.222962,
+    "seen": 1794654050.021723,
+    "ast_hash": "06b4ea14f36723a53afdcaad3b6da8c8",
+    "semantic_hash": "06b4ea14f36723a53afdcaad3b6da8c8"
+  },
+  "content/concepts/nodes/relativistic_viscous_hydrodynamics.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021724,
+    "ast_hash": "998b9a3acca267eb5386d02233643355",
+    "semantic_hash": "998b9a3acca267eb5386d02233643355"
+  },
+  "content/concepts/nodes/res_pt_concepttest.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217245,
+    "ast_hash": "2f57c228de8f8d056d92b60cbb13ee2c",
+    "semantic_hash": "2f57c228de8f8d056d92b60cbb13ee2c"
+  },
+  "content/concepts/nodes/res_pt_textbook.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217252,
+    "ast_hash": "0b8ef0b20b7d7d1ae04fb3f3e4194f90",
+    "semantic_hash": "0b8ef0b20b7d7d1ae04fb3f3e4194f90"
+  },
+  "content/concepts/nodes/res_pt_video.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021726,
+    "ast_hash": "07f9590c4bae542b86fb1872991f5272",
+    "semantic_hash": "07f9590c4bae542b86fb1872991f5272"
+  },
+  "content/concepts/nodes/resource_mtw.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217266,
+    "ast_hash": "feed77c9d0e0760454c425cb197a4d0e",
+    "semantic_hash": "feed77c9d0e0760454c425cb197a4d0e"
+  },
+  "content/concepts/nodes/rhic.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217276,
+    "ast_hash": "b70baada0db9bbec35a524a4094236a7",
+    "semantic_hash": "b70baada0db9bbec35a524a4094236a7"
+  },
+  "content/concepts/nodes/sample_schrodingers_cat.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217283,
+    "ast_hash": "289531fe09994436ce62a93ac9faeb52",
+    "semantic_hash": "289531fe09994436ce62a93ac9faeb52"
+  },
+  "content/concepts/nodes/schrodinger_equation_833a.json": {
+    "mtime": 1792925325.6399853,
+    "seen": 1794654050.021729,
+    "ast_hash": "ee6bfc214864de56baec98b7aca4f2fa",
+    "semantic_hash": "ee6bfc214864de56baec98b7aca4f2fa"
+  },
+  "content/concepts/nodes/schrodinger_poisson_equation.json": {
+    "mtime": 1792847229.7301097,
+    "seen": 1794654050.0217295,
+    "ast_hash": "3caceb24228235de818ebfd3cb22e382",
+    "semantic_hash": "3caceb24228235de818ebfd3cb22e382"
+  },
+  "content/concepts/nodes/space_vp0j.json": {
+    "mtime": 1793740703.699884,
+    "seen": 1794654050.0217304,
+    "ast_hash": "b141dc9371b1cf6777b8abb4db438130",
+    "semantic_hash": "b141dc9371b1cf6777b8abb4db438130"
+  },
+  "content/concepts/nodes/spacetime.json": {
+    "mtime": 1792932857.27267,
+    "seen": 1794654050.0217311,
+    "ast_hash": "f691b72b27da11b2a09c05d8250c824a",
+    "semantic_hash": "f691b72b27da11b2a09c05d8250c824a"
+  },
+  "content/concepts/nodes/special_relativity.json": {
+    "mtime": 1794653426.923926,
+    "seen": 1794654050.0217316,
+    "ast_hash": "ae60f4379d00f59840a0c1b8c50569fa",
+    "semantic_hash": "ae60f4379d00f59840a0c1b8c50569fa"
+  },
+  "content/concepts/nodes/spin_yacm.json": {
+    "mtime": 1792930118.7097187,
+    "seen": 1794654050.0217323,
+    "ast_hash": "5a67fc8d666d179b1fa771591d53fbf1",
+    "semantic_hash": "5a67fc8d666d179b1fa771591d53fbf1"
+  },
+  "content/concepts/nodes/structure_formation.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021733,
+    "ast_hash": "5ce5f1f102833ce1aa0dcdbe250bf488",
+    "semantic_hash": "5ce5f1f102833ce1aa0dcdbe250bf488"
+  },
+  "content/concepts/nodes/su_2_x_u_1_b3sd.json": {
+    "mtime": 1794339506.4046175,
+    "seen": 1794654050.021734,
+    "ast_hash": "7f3e01e9323d5c85fbb436ed659e7242",
+    "semantic_hash": "7f3e01e9323d5c85fbb436ed659e7242"
+  },
+  "content/concepts/nodes/symmetry_aawq.json": {
+    "mtime": 1792930118.710719,
+    "seen": 1794654050.0217345,
+    "ast_hash": "30ad2506bb421c082964d4a6789e1b23",
+    "semantic_hash": "30ad2506bb421c082964d4a6789e1b23"
+  },
+  "content/concepts/nodes/tangent_space.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.0217352,
+    "ast_hash": "b8e50a71f5fcc1ae83e7baf82a25d18a",
+    "semantic_hash": "b8e50a71f5fcc1ae83e7baf82a25d18a"
+  },
+  "content/concepts/nodes/tangent_vector.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021736,
+    "ast_hash": "caebaa4ce296b2eed14c1d2bab539b5e",
+    "semantic_hash": "caebaa4ce296b2eed14c1d2bab539b5e"
+  },
+  "content/concepts/nodes/time_classical_parameter_cgll.json": {
+    "mtime": 1793740703.7008839,
+    "seen": 1794654050.0217366,
+    "ast_hash": "524e293163e3ec676a6ed47af7f7e652",
+    "semantic_hash": "524e293163e3ec676a6ed47af7f7e652"
+  },
+  "content/concepts/nodes/vector_space.json": {
+    "mtime": 1793137944.4465756,
+    "seen": 1794654050.021737,
+    "ast_hash": "39f3891945f4c5c5d238fd8468888665",
+    "semantic_hash": "39f3891945f4c5c5d238fd8468888665"
+  },
+  "content/concepts/nodes/vlasov_equation.json": {
+    "mtime": 1792847229.7311096,
+    "seen": 1794654050.021738,
+    "ast_hash": "f357fbdf964d9259ca0f70458d2e8c42",
+    "semantic_hash": "f357fbdf964d9259ca0f70458d2e8c42"
+  },
+  "content/concepts/nodes/wave_dark_matter.json": {
+    "mtime": 1792932857.2716727,
+    "seen": 1794654050.0217388,
+    "ast_hash": "50925bf14e42d298b2e8f6df47060dd0",
+    "semantic_hash": "50925bf14e42d298b2e8f6df47060dd0"
+  },
+  "content/concepts/nodes/wave_function_condensate_d85q.json": {
+    "mtime": 1792925325.6399853,
+    "seen": 1794654050.0217392,
+    "ast_hash": "4bd9758db037f09b22dd9b4a970f2e01",
+    "semantic_hash": "4bd9758db037f09b22dd9b4a970f2e01"
+  },
+  "content/concepts/nodes/wave_function_xdmx.json": {
+    "mtime": 1792930118.710719,
+    "seen": 1794654050.02174,
+    "ast_hash": "87728c1142f063d86d13e2b11949df3b",
+    "semantic_hash": "87728c1142f063d86d13e2b11949df3b"
+  },
+  "content/concepts/nodes/zeldovich_approximation.json": {
+    "mtime": 1794653426.923926,
+    "seen": 1794654050.021741,
+    "ast_hash": "798c293f26f272731327fdfff000505f",
+    "semantic_hash": "798c293f26f272731327fdfff000505f"
+  },
+  "content/proposals-fixtures/sample-edit-vlasov.json": {
+    "mtime": 1792847276.3794026,
+    "seen": 1794654050.0217416,
+    "ast_hash": "f01f6ddee276477f57568b1f21d5520e",
+    "semantic_hash": "f01f6ddee276477f57568b1f21d5520e"
+  },
+  "content/proposals-fixtures/sample-jeans-mass.json": {
+    "mtime": 1792847130.153401,
+    "seen": 1794654050.021742,
+    "ast_hash": "12555cc0dc4bf9d8756d24c600c9924c",
+    "semantic_hash": "12555cc0dc4bf9d8756d24c600c9924c"
+  },
+  "content/proposals-fixtures/sample-jeans-scale.json": {
+    "mtime": 1792847130.1690392,
+    "seen": 1794654050.0217428,
+    "ast_hash": "2fc1b67ee60a0b551bf7a626a4d21bf3",
+    "semantic_hash": "2fc1b67ee60a0b551bf7a626a4d21bf3"
+  },
+  "content/proposals-fixtures/sample-nonlinear-growth.json": {
+    "mtime": 1792847130.1690392,
+    "seen": 1794654050.0217435,
+    "ast_hash": "c975248d1b2132c4c5c4df03138c053f",
+    "semantic_hash": "c975248d1b2132c4c5c4df03138c053f"
+  },
+  "content/proposals-fixtures/sample-ultralight-bound.json": {
+    "mtime": 1792847130.1690392,
+    "seen": 1794654050.021744,
+    "ast_hash": "525141b805c451d4b170193313123c5a",
+    "semantic_hash": "525141b805c451d4b170193313123c5a"
+  },
+  "package.json": {
+    "mtime": 1793129731.163254,
+    "seen": 1794654050.021745,
+    "ast_hash": "c70ae57b6f8a919f2e63b1d3a454615c",
+    "semantic_hash": "c70ae57b6f8a919f2e63b1d3a454615c"
+  },
+  "scripts/build-layout.mjs": {
+    "mtime": 1792930969.9944582,
+    "seen": 1794654050.0217454,
+    "ast_hash": "ad79992c47bb08de45c8cf31e78f3719",
+    "semantic_hash": "ad79992c47bb08de45c8cf31e78f3719"
+  },
+  "scripts/check-pages.mjs": {
+    "mtime": 1793740999.0718095,
+    "seen": 1794654050.0217462,
+    "ast_hash": "8095f1b98f483ac6a3b7d97641d2894c",
+    "semantic_hash": "8095f1b98f483ac6a3b7d97641d2894c"
+  },
+  "scripts/compile-concepts.mjs": {
+    "mtime": 1792089253.1133354,
+    "seen": 1794654050.0217469,
+    "ast_hash": "9a63a9626f94e33165b0a57d27460254",
+    "semantic_hash": "9a63a9626f94e33165b0a57d27460254"
+  },
+  "scripts/export-draft.test.mjs": {
+    "mtime": 1792923692.1882763,
+    "seen": 1794654050.0217478,
+    "ast_hash": "2f365c06d6515f8982d2f65480084807",
+    "semantic_hash": "2f365c06d6515f8982d2f65480084807"
+  },
+  "scripts/init-template.sh": {
+    "mtime": 1791996041.0837958,
+    "seen": 1794654050.0217483,
+    "ast_hash": "150fbf2af19c4a9313cadd42f9f6bf72",
+    "semantic_hash": "150fbf2af19c4a9313cadd42f9f6bf72"
+  },
+  "scripts/lib/concept-files.mjs": {
+    "mtime": 1792083973.8734202,
+    "seen": 1794654050.021749,
+    "ast_hash": "753697f4393b6913e1ce08acfdc6117d",
+    "semantic_hash": "753697f4393b6913e1ce08acfdc6117d"
+  },
+  "scripts/lib/concept-files.test.mjs": {
+    "mtime": 1792084136.298416,
+    "seen": 1794654050.0217497,
+    "ast_hash": "c9bbe1710abfccc8e3008d576ef10944",
+    "semantic_hash": "c9bbe1710abfccc8e3008d576ef10944"
+  },
+  "scripts/lib/find-cycle.mjs": {
+    "mtime": 1792694446.055127,
+    "seen": 1794654050.0217505,
+    "ast_hash": "78944f1278ce45317a9f0f78be387035",
+    "semantic_hash": "78944f1278ce45317a9f0f78be387035"
+  },
+  "scripts/measure-glyph-widths.mjs": {
+    "mtime": 1792928606.7655928,
+    "seen": 1794654050.0217514,
+    "ast_hash": "db9447bce35f2590b81737b1e422b211",
+    "semantic_hash": "db9447bce35f2590b81737b1e422b211"
+  },
+  "scripts/preflight.sh": {
+    "mtime": 1791996041.0847952,
+    "seen": 1794654050.0217519,
+    "ast_hash": "f68c53a22d3cc097df5d5fa716c170b8",
+    "semantic_hash": "f68c53a22d3cc097df5d5fa716c170b8"
+  },
+  "scripts/smoke-test.mjs": {
+    "mtime": 1793135117.4039614,
+    "seen": 1794654050.0217526,
+    "ast_hash": "bdc276e5f75f259e31466665afb5d6a7",
+    "semantic_hash": "bdc276e5f75f259e31466665afb5d6a7"
+  },
+  "scripts/validate-concepts.mjs": {
+    "mtime": 1794339569.0581536,
+    "seen": 1794654050.0217533,
+    "ast_hash": "f9bd0b8b6921f8c72736110a76c3764f",
+    "semantic_hash": "f9bd0b8b6921f8c72736110a76c3764f"
+  },
+  "server/api.test.ts": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.021754,
+    "ast_hash": "5dcc24e5bcf331afc09924e346c70574",
+    "semantic_hash": "5dcc24e5bcf331afc09924e346c70574"
+  },
+  "server/api.ts": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.0217547,
+    "ast_hash": "aad42c66ebe4f2074e6d96b56cf93583",
+    "semantic_hash": "aad42c66ebe4f2074e6d96b56cf93583"
+  },
+  "server/config.ts": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.0217555,
+    "ast_hash": "68183a8d0a12266bcac3d0490ba2af33",
+    "semantic_hash": "68183a8d0a12266bcac3d0490ba2af33"
+  },
+  "server/crypto.ts": {
+    "mtime": 1792612653.8253255,
+    "seen": 1794654050.021756,
+    "ast_hash": "bf1e10f59622819951b6434572b161a6",
+    "semantic_hash": "bf1e10f59622819951b6434572b161a6"
+  },
+  "server/github.ts": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.021757,
+    "ast_hash": "aff0d283a7224c24717c8dadab426cbf",
+    "semantic_hash": "aff0d283a7224c24717c8dadab426cbf"
+  },
+  "server/proposalPr.ts": {
+    "mtime": 1794001051.783245,
+    "seen": 1794654050.0217574,
+    "ast_hash": "c4e373d797aeb30b97fe78f65e91e019",
+    "semantic_hash": "c4e373d797aeb30b97fe78f65e91e019"
+  },
+  "server/session.ts": {
+    "mtime": 1792612654.9035163,
+    "seen": 1794654050.0217583,
+    "ast_hash": "df804f7cf08b56c6c01d7b38e7a2de2e",
+    "semantic_hash": "df804f7cf08b56c6c01d7b38e7a2de2e"
+  },
+  "src/App.tsx": {
+    "mtime": 1793138524.0797555,
+    "seen": 1794654050.021759,
+    "ast_hash": "39f84f9e1d0f267093c42286bbc1d106",
+    "semantic_hash": "39f84f9e1d0f267093c42286bbc1d106"
+  },
+  "src/community/api.test.ts": {
+    "mtime": 1792786426.9195335,
+    "seen": 1794654050.0217595,
+    "ast_hash": "e4abd6a17bbdc42fb4cfca7d346780a3",
+    "semantic_hash": "e4abd6a17bbdc42fb4cfca7d346780a3"
+  },
+  "src/community/api.ts": {
+    "mtime": 1794001051.783245,
+    "seen": 1794654050.0217605,
+    "ast_hash": "f5ea5d6d4e0205a9b722ae2bf20428ca",
+    "semantic_hash": "f5ea5d6d4e0205a9b722ae2bf20428ca"
+  },
+  "src/community/community.test.ts": {
+    "mtime": 1792177378.1723502,
+    "seen": 1794654050.021761,
+    "ast_hash": "616a787f6d3a85bb9e1f54ff3c16784b",
+    "semantic_hash": "616a787f6d3a85bb9e1f54ff3c16784b"
+  },
+  "src/community/draft.test.ts": {
+    "mtime": 1794339634.89978,
+    "seen": 1794654050.021762,
+    "ast_hash": "95d500ee3aa1479a83b291b54ca7e2e4",
+    "semantic_hash": "95d500ee3aa1479a83b291b54ca7e2e4"
+  },
+  "src/community/draft.ts": {
+    "mtime": 1794339583.608822,
+    "seen": 1794654050.0217626,
+    "ast_hash": "aa79de2255cbe8736f0fc56a65602f68",
+    "semantic_hash": "aa79de2255cbe8736f0fc56a65602f68"
+  },
+  "src/community/feedback.test.ts": {
+    "mtime": 1793130935.7144608,
+    "seen": 1794654050.021763,
+    "ast_hash": "89b97a44d01f4dd2ffc337273d61e807",
+    "semantic_hash": "89b97a44d01f4dd2ffc337273d61e807"
+  },
+  "src/community/feedback.ts": {
+    "mtime": 1793130792.8294446,
+    "seen": 1794654050.0217638,
+    "ast_hash": "3e62d2cbeb467d66318f0ff9ed47836e",
+    "semantic_hash": "3e62d2cbeb467d66318f0ff9ed47836e"
+  },
+  "src/community/figures.test.ts": {
+    "mtime": 1793137600.2841208,
+    "seen": 1794654050.0217645,
+    "ast_hash": "7750140fcbd3cc881cbaeedf4b1b503f",
+    "semantic_hash": "7750140fcbd3cc881cbaeedf4b1b503f"
+  },
+  "src/community/figures.ts": {
+    "mtime": 1793137073.1447315,
+    "seen": 1794654050.0217655,
+    "ast_hash": "dceeed2a478c22bf6bd1526fc418b8f6",
+    "semantic_hash": "dceeed2a478c22bf6bd1526fc418b8f6"
+  },
+  "src/community/pictureStore.ts": {
+    "mtime": 1793137285.1700368,
+    "seen": 1794654050.021766,
+    "ast_hash": "59cc142a9f4e6268dd98a0be3d11a003",
+    "semantic_hash": "59cc142a9f4e6268dd98a0be3d11a003"
+  },
+  "src/community/proposals.ts": {
+    "mtime": 1794339569.0601504,
+    "seen": 1794654050.0217667,
+    "ast_hash": "49ee3a22d85aac678819701c98e0dd9a",
+    "semantic_hash": "49ee3a22d85aac678819701c98e0dd9a"
+  },
+  "src/community/relationTypes.test.ts": {
+    "mtime": 1793137711.3130789,
+    "seen": 1794654050.0217674,
+    "ast_hash": "bd622f385c133bf8761962e340bfcb0c",
+    "semantic_hash": "bd622f385c133bf8761962e340bfcb0c"
+  },
+  "src/community/relationTypes.ts": {
+    "mtime": 1793137048.6512637,
+    "seen": 1794654050.0217679,
+    "ast_hash": "a81328bf7fb6372ce706c3c533cfb41b",
+    "semantic_hash": "a81328bf7fb6372ce706c3c533cfb41b"
+  },
+  "src/community/richText.ts": {
+    "mtime": 1792089793.2252684,
+    "seen": 1794654050.0217688,
+    "ast_hash": "55efdc1cd18d1d6e365ecf81ee286b49",
+    "semantic_hash": "55efdc1cd18d1d6e365ecf81ee286b49"
+  },
+  "src/community/store.ts": {
+    "mtime": 1792176657.833688,
+    "seen": 1794654050.0217695,
+    "ast_hash": "11511a590c367ff28320f1a9a304516a",
+    "semantic_hash": "11511a590c367ff28320f1a9a304516a"
+  },
+  "src/community/types.ts": {
+    "mtime": 1793137021.9548988,
+    "seen": 1794654050.02177,
+    "ast_hash": "5e777710756b7c1f7c3478211ed7cb33",
+    "semantic_hash": "5e777710756b7c1f7c3478211ed7cb33"
+  },
+  "src/community/useDraft.ts": {
+    "mtime": 1793137300.5389614,
+    "seen": 1794654050.0217707,
+    "ast_hash": "08776f50df03f86004f5e2ad2733842e",
+    "semantic_hash": "08776f50df03f86004f5e2ad2733842e"
+  },
+  "src/components/ConceptCard.tsx": {
+    "mtime": 1792932642.9481037,
+    "seen": 1794654050.0217714,
+    "ast_hash": "89f22cec71ca89f1a34703c60cd283e8",
+    "semantic_hash": "89f22cec71ca89f1a34703c60cd283e8"
+  },
+  "src/components/ConceptMapView.tsx": {
+    "mtime": 1794001051.783245,
+    "seen": 1794654050.0217724,
+    "ast_hash": "d892593019a79d82fbbce6373c459dbf",
+    "semantic_hash": "d892593019a79d82fbbce6373c459dbf"
+  },
+  "src/components/DraftEditor.tsx": {
+    "mtime": 1794339614.5709393,
+    "seen": 1794654050.0217729,
+    "ast_hash": "d817705f9f8de674a2f7b1409a094b4f",
+    "semantic_hash": "d817705f9f8de674a2f7b1409a094b4f"
+  },
+  "src/components/EdgeCard.tsx": {
+    "mtime": 1793137513.373918,
+    "seen": 1794654050.0217736,
+    "ast_hash": "3214195cda7cdf5e60aef16d7b5f9fce",
+    "semantic_hash": "3214195cda7cdf5e60aef16d7b5f9fce"
+  },
+  "src/components/EquationView.tsx": {
+    "mtime": 1793129687.5259945,
+    "seen": 1794654050.0217743,
+    "ast_hash": "7903bf0a27528d84ac1f7a5e9416af09",
+    "semantic_hash": "7903bf0a27528d84ac1f7a5e9416af09"
+  },
+  "src/components/FeedbackView.tsx": {
+    "mtime": 1793130918.1787696,
+    "seen": 1794654050.021775,
+    "ast_hash": "c14d29a39a1c00068d61d1d10a2175f2",
+    "semantic_hash": "c14d29a39a1c00068d61d1d10a2175f2"
+  },
+  "src/components/Figures.tsx": {
+    "mtime": 1793137511.5880256,
+    "seen": 1794654050.0217757,
+    "ast_hash": "aaf2372ba7583fd13d9374efe89c9db3",
+    "semantic_hash": "aaf2372ba7583fd13d9374efe89c9db3"
+  },
+  "src/components/Galaxy.tsx": {
+    "mtime": 1792002521.5701451,
+    "seen": 1794654050.0217764,
+    "ast_hash": "26a23344c81890804aa333146f7f0763",
+    "semantic_hash": "26a23344c81890804aa333146f7f0763"
+  },
+  "src/components/GraphView.tsx": {
+    "mtime": 1793130586.3878233,
+    "seen": 1794654050.0217772,
+    "ast_hash": "25b164f3a60b4db9eafa0f356fdf896f",
+    "semantic_hash": "25b164f3a60b4db9eafa0f356fdf896f"
+  },
+  "src/components/Home.tsx": {
+    "mtime": 1793138501.8533802,
+    "seen": 1794654050.0217779,
+    "ast_hash": "e5e4119648a7f62e36cac1e253951434",
+    "semantic_hash": "e5e4119648a7f62e36cac1e253951434"
+  },
+  "src/components/Legend.tsx": {
+    "mtime": 1793305474.2933342,
+    "seen": 1794654050.0217783,
+    "ast_hash": "1492ab627ae8fe2a30526a86e647e7e7",
+    "semantic_hash": "1492ab627ae8fe2a30526a86e647e7e7"
+  },
+  "src/components/PageView.tsx": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.0217795,
+    "ast_hash": "e2e7f88ef6411ff0768531efb9bee97f",
+    "semantic_hash": "e2e7f88ef6411ff0768531efb9bee97f"
+  },
+  "src/components/ProposalCard.tsx": {
+    "mtime": 1792613018.5068564,
+    "seen": 1794654050.0217803,
+    "ast_hash": "563f1286ac71af9a159f75cf2ffd00c5",
+    "semantic_hash": "563f1286ac71af9a159f75cf2ffd00c5"
+  },
+  "src/components/RelationPicker.tsx": {
+    "mtime": 1793137453.2190342,
+    "seen": 1794654050.021781,
+    "ast_hash": "dda1f9d51bf7a6ef5397fa1a32291c91",
+    "semantic_hash": "dda1f9d51bf7a6ef5397fa1a32291c91"
+  },
+  "src/components/RelationSentence.tsx": {
+    "mtime": 1792923198.1244342,
+    "seen": 1794654050.0217814,
+    "ast_hash": "800f89bf93253e5f7fa531c2880c8eb0",
+    "semantic_hash": "800f89bf93253e5f7fa531c2880c8eb0"
+  },
+  "src/components/RichText.tsx": {
+    "mtime": 1792090002.4508276,
+    "seen": 1794654050.0217822,
+    "ast_hash": "f3ca81b0699f050010acc14a766d57b5",
+    "semantic_hash": "f3ca81b0699f050010acc14a766d57b5"
+  },
+  "src/components/SearchBox.tsx": {
+    "mtime": 1792694474.1306016,
+    "seen": 1794654050.021783,
+    "ast_hash": "9f34fc0cb8c5555d573d0c2fa4b9ca1f",
+    "semantic_hash": "9f34fc0cb8c5555d573d0c2fa4b9ca1f"
+  },
+  "src/components/TypeBadge.tsx": {
+    "mtime": 1791996041.0953112,
+    "seen": 1794654050.0217838,
+    "ast_hash": "96069e73ef0f08070e9713a67cdce260",
+    "semantic_hash": "96069e73ef0f08070e9713a67cdce260"
+  },
+  "src/components/pages/ConceptPage.tsx": {
+    "mtime": 1793137513.373918,
+    "seen": 1794654050.0217843,
+    "ast_hash": "7657357498d5f204393b0b1282ed1d44",
+    "semantic_hash": "7657357498d5f204393b0b1282ed1d44"
+  },
+  "src/components/pages/ConnectionsDiagram.tsx": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.021785,
+    "ast_hash": "c9e277f15922d1395ade0d3fad6bdcef",
+    "semantic_hash": "c9e277f15922d1395ade0d3fad6bdcef"
+  },
+  "src/components/pages/FilterGroups.tsx": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.021786,
+    "ast_hash": "8b78b087e6440aadcdeeeaf02b851f42",
+    "semantic_hash": "8b78b087e6440aadcdeeeaf02b851f42"
+  },
+  "src/components/pages/PageText.tsx": {
+    "mtime": 1793129779.8331237,
+    "seen": 1794654050.0217867,
+    "ast_hash": "3e7db43445b52e67848841c13194d825",
+    "semantic_hash": "3e7db43445b52e67848841c13194d825"
+  },
+  "src/components/pages/RelationPage.tsx": {
+    "mtime": 1793137513.373918,
+    "seen": 1794654050.0217874,
+    "ast_hash": "6554499158631ae83b4ae86831a42ba7",
+    "semantic_hash": "6554499158631ae83b4ae86831a42ba7"
+  },
+  "src/components/pages/Sidebar.tsx": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.021788,
+    "ast_hash": "dfbc3e0908b44cde73874d3712f6192b",
+    "semantic_hash": "dfbc3e0908b44cde73874d3712f6192b"
+  },
+  "src/components/pages/links.tsx": {
+    "mtime": 1792941212.7349837,
+    "seen": 1794654050.0217886,
+    "ast_hash": "bc965c6df82b397fd471b57520699d09",
+    "semantic_hash": "bc965c6df82b397fd471b57520699d09"
+  },
+  "src/components/pages/shared.tsx": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.0217896,
+    "ast_hash": "b5c98b7089af74ede7262caea95bed08",
+    "semantic_hash": "b5c98b7089af74ede7262caea95bed08"
+  },
+  "src/data/conceptVocabulary.json": {
+    "mtime": 1794339506.4061205,
+    "seen": 1794654050.0217903,
+    "ast_hash": "ee1cc60dad4f055738a16c6bf1d84f10",
+    "semantic_hash": "ee1cc60dad4f055738a16c6bf1d84f10"
+  },
+  "src/data/loadConcepts.ts": {
+    "mtime": 1792930727.4414802,
+    "seen": 1794654050.0217907,
+    "ast_hash": "7c858466851e0327174d7d974a33062a",
+    "semantic_hash": "7c858466851e0327174d7d974a33062a"
+  },
+  "src/data/media.ts": {
+    "mtime": 1793137073.9535227,
+    "seen": 1794654050.0217915,
+    "ast_hash": "6704e72fc1c3581a6aa4f6ad7fc950ee",
+    "semantic_hash": "6704e72fc1c3581a6aa4f6ad7fc950ee"
+  },
+  "src/data/pageSources.ts": {
+    "mtime": 1793129822.2483578,
+    "seen": 1794654050.021792,
+    "ast_hash": "0180d87595e08c9f437a2f196a2221a1",
+    "semantic_hash": "0180d87595e08c9f437a2f196a2221a1"
+  },
+  "src/data/types.ts": {
+    "mtime": 1794339569.0581536,
+    "seen": 1794654050.0217927,
+    "ast_hash": "392866bbbca4aa8e6c8e885f463b0865",
+    "semantic_hash": "392866bbbca4aa8e6c8e885f463b0865"
+  },
+  "src/graph/cardSections.ts": {
+    "mtime": 1792932623.7946968,
+    "seen": 1794654050.0217936,
+    "ast_hash": "8cc5b72da3a7fed226202515893b6455",
+    "semantic_hash": "8cc5b72da3a7fed226202515893b6455"
+  },
+  "src/graph/conceptLayout.test.ts": {
+    "mtime": 1792932799.9278538,
+    "seen": 1794654050.0217943,
+    "ast_hash": "7f9645f4f528aa952464ea826bacc695",
+    "semantic_hash": "7f9645f4f528aa952464ea826bacc695"
+  },
+  "src/graph/conceptLayout.ts": {
+    "mtime": 1793139798.2489233,
+    "seen": 1794654050.0217948,
+    "ast_hash": "5e2305034190d8e3b39ae3643a48f65a",
+    "semantic_hash": "5e2305034190d8e3b39ae3643a48f65a"
+  },
+  "src/graph/concepts.test.ts": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.0217955,
+    "ast_hash": "5befa4eb4da5a295cac16118dd7881ac",
+    "semantic_hash": "5befa4eb4da5a295cac16118dd7881ac"
+  },
+  "src/graph/concepts.ts": {
+    "mtime": 1793137481.9406068,
+    "seen": 1794654050.0217965,
+    "ast_hash": "37eef26d4307357e5dc68bd1192cbee9",
+    "semantic_hash": "37eef26d4307357e5dc68bd1192cbee9"
+  },
+  "src/graph/conflicts.test.ts": {
+    "mtime": 1792092881.5336857,
+    "seen": 1794654050.0217972,
+    "ast_hash": "d23757d923abeaedc067765ed92593e4",
+    "semantic_hash": "d23757d923abeaedc067765ed92593e4"
+  },
+  "src/graph/conflicts.ts": {
+    "mtime": 1792092854.3899016,
+    "seen": 1794654050.0217977,
+    "ast_hash": "bff8236db1ebb855ffebcae3502e59c1",
+    "semantic_hash": "bff8236db1ebb855ffebcae3502e59c1"
+  },
+  "src/graph/contents.test.ts": {
+    "mtime": 1793134881.5959451,
+    "seen": 1794654050.0217984,
+    "ast_hash": "e95d0cd1d9c7cd59923a5aef852ffc8c",
+    "semantic_hash": "e95d0cd1d9c7cd59923a5aef852ffc8c"
+  },
+  "src/graph/contents.ts": {
+    "mtime": 1793134821.523797,
+    "seen": 1794654050.021799,
+    "ast_hash": "20e6756e4ca9e140789b31cc3e95c589",
+    "semantic_hash": "20e6756e4ca9e140789b31cc3e95c589"
+  },
+  "src/graph/dag.ts": {
+    "mtime": 1792694643.1787753,
+    "seen": 1794654050.0217996,
+    "ast_hash": "8cc22d3ae2b6409668902646d5ba355f",
+    "semantic_hash": "8cc22d3ae2b6409668902646d5ba355f"
+  },
+  "src/graph/glyphWidths.json": {
+    "mtime": 1792926872.4984114,
+    "seen": 1794654050.0218008,
+    "ast_hash": "b10fa2b78771c794e73ba41644cf2a76",
+    "semantic_hash": "b10fa2b78771c794e73ba41644cf2a76"
+  },
+  "src/graph/layoutOptimize.test.ts": {
+    "mtime": 1793140345.6422877,
+    "seen": 1794654050.0218012,
+    "ast_hash": "6b3ac013323a0a675b591cd29b48134b",
+    "semantic_hash": "6b3ac013323a0a675b591cd29b48134b"
+  },
+  "src/graph/layoutOptimize.ts": {
+    "mtime": 1793139780.6110964,
+    "seen": 1794654050.021802,
+    "ast_hash": "7bf1468ab561fce77f987af9f847bb6a",
+    "semantic_hash": "7bf1468ab561fce77f987af9f847bb6a"
+  },
+  "src/graph/typeColors.test.ts": {
+    "mtime": 1792694955.4881198,
+    "seen": 1794654050.0218027,
+    "ast_hash": "4186c00de0dc6a7a0395b7ed5d2ffcf8",
+    "semantic_hash": "4186c00de0dc6a7a0395b7ed5d2ffcf8"
+  },
+  "src/graph/typeColors.ts": {
+    "mtime": 1792791247.5843358,
+    "seen": 1794654050.0218036,
+    "ast_hash": "846883ff0efad4b1c5944263f1f813d0",
+    "semantic_hash": "846883ff0efad4b1c5944263f1f813d0"
+  },
+  "src/graph/typeIcons.ts": {
+    "mtime": 1792925163.6418116,
+    "seen": 1794654050.021804,
+    "ast_hash": "81c7d67e7168a2bdec33749de47b01d1",
+    "semantic_hash": "81c7d67e7168a2bdec33749de47b01d1"
+  },
+  "src/lib/equationSymbols.test.ts": {
+    "mtime": 1793741175.6082058,
+    "seen": 1794654050.0218048,
+    "ast_hash": "e4d6c09d97b6575b4f8f657b5aa8f6b4",
+    "semantic_hash": "e4d6c09d97b6575b4f8f657b5aa8f6b4"
+  },
+  "src/lib/equationSymbols.ts": {
+    "mtime": 1793741111.7834394,
+    "seen": 1794654050.0218055,
+    "ast_hash": "e94a8e825a12e059b7b8a8e4cf18bcaf",
+    "semantic_hash": "e94a8e825a12e059b7b8a8e4cf18bcaf"
+  },
+  "src/lib/motion.ts": {
+    "mtime": 1793138822.0567193,
+    "seen": 1794654050.021806,
+    "ast_hash": "89b1eeaa3270adfbe504b02697a2eb6f",
+    "semantic_hash": "89b1eeaa3270adfbe504b02697a2eb6f"
+  },
+  "src/lib/pageLinks.ts": {
+    "mtime": 1793129562.9310515,
+    "seen": 1794654050.0218072,
+    "ast_hash": "5847cd146be2411715014fba7491b821",
+    "semantic_hash": "5847cd146be2411715014fba7491b821"
+  },
+  "src/lib/pageMaths.ts": {
+    "mtime": 1793740977.4859478,
+    "seen": 1794654050.021808,
+    "ast_hash": "0b7f147c879ba900f03c95317d5e3bed",
+    "semantic_hash": "0b7f147c879ba900f03c95317d5e3bed"
+  },
+  "src/lib/pageText.test.ts": {
+    "mtime": 1793136793.5532112,
+    "seen": 1794654050.0218084,
+    "ast_hash": "202083a11ce52b3a861f49db37988ac6",
+    "semantic_hash": "202083a11ce52b3a861f49db37988ac6"
+  },
+  "src/lib/pageText.ts": {
+    "mtime": 1793136785.6591177,
+    "seen": 1794654050.021809,
+    "ast_hash": "e6f87d8a2efc679f7f71ad696b468387",
+    "semantic_hash": "e6f87d8a2efc679f7f71ad696b468387"
+  },
+  "src/lib/prepareImage.ts": {
+    "mtime": 1793137373.2256901,
+    "seen": 1794654050.0218098,
+    "ast_hash": "7d218cfbb2f186b99a2ecdf4b00d2f37",
+    "semantic_hash": "7d218cfbb2f186b99a2ecdf4b00d2f37"
+  },
+  "src/lib/scrollableMath.ts": {
+    "mtime": 1793129795.8968008,
+    "seen": 1794654050.0218108,
+    "ast_hash": "36a7b1f980e6706374ddcff278ac8caf",
+    "semantic_hash": "36a7b1f980e6706374ddcff278ac8caf"
+  },
+  "src/lib/useFold.ts": {
+    "mtime": 1793305451.2226424,
+    "seen": 1794654050.0218115,
+    "ast_hash": "a81cbcd720a51c1723635317bc456b7e",
+    "semantic_hash": "a81cbcd720a51c1723635317bc456b7e"
+  },
+  "src/lib/useProgress.ts": {
+    "mtime": 1791996041.1028183,
+    "seen": 1794654050.0218122,
+    "ast_hash": "40fd4f2e138e6a5d0ccd265809cceb6d",
+    "semantic_hash": "40fd4f2e138e6a5d0ccd265809cceb6d"
+  },
+  "src/lib/useTheme.ts": {
+    "mtime": 1791996041.1028183,
+    "seen": 1794654050.0218127,
+    "ast_hash": "093735791ea40f29221d1fbbbb8ef239",
+    "semantic_hash": "093735791ea40f29221d1fbbbb8ef239"
+  },
+  "src/main.tsx": {
+    "mtime": 1791996041.1028183,
+    "seen": 1794654050.0218134,
+    "ast_hash": "df3369963799e47ef5a77cdca932abf0",
+    "semantic_hash": "df3369963799e47ef5a77cdca932abf0"
+  },
+  "start-dev-session.sh": {
+    "mtime": 1791996041.103818,
+    "seen": 1794654050.021814,
+    "ast_hash": "418d70e0ca0199924fcb0c9788f2bc60",
+    "semantic_hash": "418d70e0ca0199924fcb0c9788f2bc60"
+  },
+  "tsconfig.app.json": {
+    "mtime": 1791996041.104819,
+    "seen": 1794654050.0218148,
+    "ast_hash": "e4f83bdfdf660f5e5364945e14291d70",
+    "semantic_hash": "e4f83bdfdf660f5e5364945e14291d70"
+  },
+  "tsconfig.json": {
+    "mtime": 1792612768.7440994,
+    "seen": 1794654050.0218155,
+    "ast_hash": "02c2f6b267744917782675db07f75e5e",
+    "semantic_hash": "02c2f6b267744917782675db07f75e5e"
+  },
+  "tsconfig.node.json": {
+    "mtime": 1791996041.1058178,
+    "seen": 1794654050.0218163,
+    "ast_hash": "74cde0261ad0a13045ca0a05ab1542ae",
+    "semantic_hash": "74cde0261ad0a13045ca0a05ab1542ae"
+  },
+  "tsconfig.server.json": {
+    "mtime": 1792687939.1760273,
+    "seen": 1794654050.0218167,
+    "ast_hash": "8d1b0cf14ad7422899b5c3ea2fa949bb",
+    "semantic_hash": "8d1b0cf14ad7422899b5c3ea2fa949bb"
+  },
+  "vite.config.ts": {
+    "mtime": 1793130110.8670027,
+    "seen": 1794654050.0218177,
+    "ast_hash": "3b326eabcbc02cce92829fe38c4106c7",
+    "semantic_hash": "3b326eabcbc02cce92829fe38c4106c7"
+  },
+  "worker/index.ts": {
+    "mtime": 1792687939.1827815,
+    "seen": 1794654050.0218182,
+    "ast_hash": "b06e3040b50fc31d7e38c7dc1f6cdcaa",
+    "semantic_hash": "b06e3040b50fc31d7e38c7dc1f6cdcaa"
+  },
+  ".claude/agents/committer.md": {
+    "mtime": 1791996041.0530002,
+    "seen": 1794654050.0218189,
+    "ast_hash": "ce96c486a65960cbc7046d8144b1d8b8",
+    "semantic_hash": "ce96c486a65960cbc7046d8144b1d8b8"
+  },
+  ".claude/agents/developer.md": {
+    "mtime": 1792695540.120825,
+    "seen": 1794654050.0218196,
+    "ast_hash": "64ee0c9ff3b0ce31ca82c5f095eb8de5",
+    "semantic_hash": "64ee0c9ff3b0ce31ca82c5f095eb8de5"
+  },
+  ".claude/agents/live-qa.md": {
+    "mtime": 1791996041.0540001,
+    "seen": 1794654050.0218203,
+    "ast_hash": "66de0d0ca2cffcfff738232e62757660",
+    "semantic_hash": "66de0d0ca2cffcfff738232e62757660"
+  },
+  ".claude/agents/orchestrator.md": {
+    "mtime": 1791996041.0540001,
+    "seen": 1794654050.0218213,
+    "ast_hash": "97036f423ea2f69e01048fc341872e89",
+    "semantic_hash": "97036f423ea2f69e01048fc341872e89"
+  },
+  ".claude/agents/planner.md": {
+    "mtime": 1792695535.1786819,
+    "seen": 1794654050.0218217,
+    "ast_hash": "1b3cffbba6937375ae39c6b6ce9ca0a8",
+    "semantic_hash": "1b3cffbba6937375ae39c6b6ce9ca0a8"
+  },
+  ".claude/agents/reviewer.md": {
+    "mtime": 1792695540.1526012,
+    "seen": 1794654050.0218227,
+    "ast_hash": "24a3c96953890b162aacbe26962afa44",
+    "semantic_hash": "24a3c96953890b162aacbe26962afa44"
+  },
+  ".claude/plans/epic-community-review.md": {
+    "mtime": 1792687939.1834264,
+    "seen": 1794654050.0218232,
+    "ast_hash": "e6d5dbc7708e27e23cd349b6ee1de4e9",
+    "semantic_hash": "e6d5dbc7708e27e23cd349b6ee1de4e9"
+  },
+  ".claude/plans/feature-13-category-colors-goal-highlight.md": {
+    "mtime": 1791996041.0560012,
+    "seen": 1794654050.021824,
+    "ast_hash": "5ea365fa07c242fb167db4767cd12a6a",
+    "semantic_hash": "5ea365fa07c242fb167db4767cd12a6a"
+  },
+  ".claude/plans/feature-14-topic-cleanup-default-subtopics-hover-zoom.md": {
+    "mtime": 1791996041.057001,
+    "seen": 1794654050.0218248,
+    "ast_hash": "4bd052d6071bc5bbff6326a1b493979d",
+    "semantic_hash": "4bd052d6071bc5bbff6326a1b493979d"
+  },
+  ".claude/plans/feature-15-concept-schema-foundation.md": {
+    "mtime": 1791996041.057001,
+    "seen": 1794654050.0218253,
+    "ast_hash": "eb9dbeff3f837bd0a29cf631c93eec83",
+    "semantic_hash": "eb9dbeff3f837bd0a29cf631c93eec83"
+  },
+  ".claude/plans/feature-16-concept-map-rendering.md": {
+    "mtime": 1791996041.0580013,
+    "seen": 1794654050.021826,
+    "ast_hash": "6621fceffb02f6d05ba8b3e0978581e3",
+    "semantic_hash": "6621fceffb02f6d05ba8b3e0978581e3"
+  },
+  ".claude/plans/feature-17-concept-learning-flow.md": {
+    "mtime": 1791996041.0590003,
+    "seen": 1794654050.0218267,
+    "ast_hash": "82a689ba37b7d627f4b96e86505b19a5",
+    "semantic_hash": "82a689ba37b7d627f4b96e86505b19a5"
+  },
+  ".claude/plans/feature-21-concepts-replace-full-map-nav.md": {
+    "mtime": 1791996041.0590003,
+    "seen": 1794654050.0218272,
+    "ast_hash": "9c77c88579bf1b7844d973319b459428",
+    "semantic_hash": "9c77c88579bf1b7844d973319b459428"
+  },
+  ".claude/reviews/feature-15.md": {
+    "mtime": 1791996041.060062,
+    "seen": 1794654050.0218282,
+    "ast_hash": "439922d20a789ce361005ad9f43164ac",
+    "semantic_hash": "439922d20a789ce361005ad9f43164ac"
+  },
+  ".claude/reviews/feature-16.md": {
+    "mtime": 1791996041.060062,
+    "seen": 1794654050.021829,
+    "ast_hash": "52a0a965516a725fb48a0503f532fa91",
+    "semantic_hash": "52a0a965516a725fb48a0503f532fa91"
+  },
+  ".claude/reviews/feature-17.md": {
+    "mtime": 1791996041.060062,
+    "seen": 1794654050.0218296,
+    "ast_hash": "6cc5fe4c13b6e789a6d22b6897b5f93f",
+    "semantic_hash": "6cc5fe4c13b6e789a6d22b6897b5f93f"
+  },
+  ".claude/reviews/feature-21.md": {
+    "mtime": 1791996041.0610619,
+    "seen": 1794654050.0218303,
+    "ast_hash": "3b8f9a70c210ddd81b2ca3885f0a0455",
+    "semantic_hash": "3b8f9a70c210ddd81b2ca3885f0a0455"
+  },
+  ".claude/reviews/wave-1.md": {
+    "mtime": 1791996041.0610619,
+    "seen": 1794654050.0218313,
+    "ast_hash": "025971b57f3cbc378f1a184a7526f86b",
+    "semantic_hash": "025971b57f3cbc378f1a184a7526f86b"
+  },
+  "BACKLOG.md": {
+    "mtime": 1793138550.7153292,
+    "seen": 1794654050.0218318,
+    "ast_hash": "45bf9922dd7d87670518a72d68602108",
+    "semantic_hash": "45bf9922dd7d87670518a72d68602108"
+  },
+  "CLAUDE.md": {
+    "mtime": 1793134955.2790313,
+    "seen": 1794654050.0218327,
+    "ast_hash": "06b9ae9029b09a56168950e5578bb876",
+    "semantic_hash": "06b9ae9029b09a56168950e5578bb876"
+  },
+  "README.md": {
+    "mtime": 1793131308.747604,
+    "seen": 1794654050.0218332,
+    "ast_hash": "7a391f765261329021f8745032834892",
+    "semantic_hash": "7a391f765261329021f8745032834892"
+  },
+  "ROADMAP.md": {
+    "mtime": 1794339793.794052,
+    "seen": 1794654050.021834,
+    "ast_hash": "49b5f3307983ea37d0c1e9b1c40b9942",
+    "semantic_hash": "49b5f3307983ea37d0c1e9b1c40b9942"
+  },
+  "community/README.md": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.0218346,
+    "ast_hash": "38cb5b8acd41b6dab094a5e2738ce7e7",
+    "semantic_hash": "38cb5b8acd41b6dab094a5e2738ce7e7"
+  },
+  "content/pages/README.md": {
+    "mtime": 1793131308.7456033,
+    "seen": 1794654050.021837,
+    "ast_hash": "d605c93ca2ffe8f03829587c69cda366",
+    "semantic_hash": "d605c93ca2ffe8f03829587c69cda366"
+  },
+  "content/pages/lagrangian_formulation_fluid_8wkv/depth-1.md": {
+    "mtime": 1793740999.9816961,
+    "seen": 1794654050.0218377,
+    "ast_hash": "1a108ef44c0a421ef57fd44551146eec",
+    "semantic_hash": "1a108ef44c0a421ef57fd44551146eec"
+  },
+  "content/pages/vector_space/depth-1.md": {
+    "mtime": 1793132314.7391994,
+    "seen": 1794654050.0218387,
+    "ast_hash": "2971c84c4efba6e993825101b27b4c15",
+    "semantic_hash": "2971c84c4efba6e993825101b27b4c15"
+  },
+  "content/pages/vector_space/depth-2.md": {
+    "mtime": 1793132318.0165699,
+    "seen": 1794654050.0218391,
+    "ast_hash": "59a3d5b4f729375a309d83928b959a2d",
+    "semantic_hash": "59a3d5b4f729375a309d83928b959a2d"
+  },
+  "content/proposals-fixtures/README.md": {
+    "mtime": 1792269590.2451706,
+    "seen": 1794654050.0218399,
+    "ast_hash": "b54a5e42945835f4304d1f7bdeb30ac3",
+    "semantic_hash": "b54a5e42945835f4304d1f7bdeb30ac3"
+  },
+  "docs/ACCESSIBILITY.md": {
+    "mtime": 1793305611.1602173,
+    "seen": 1794654050.0218406,
+    "ast_hash": "94125093fb58741a6c9b24d9d35976e7",
+    "semantic_hash": "94125093fb58741a6c9b24d9d35976e7"
+  },
+  "docs/AUTHORING.md": {
+    "mtime": 1794339793.7920513,
+    "seen": 1794654050.0218415,
+    "ast_hash": "b139d34b8dc4e163b6f777a5bebe8fd9",
+    "semantic_hash": "b139d34b8dc4e163b6f777a5bebe8fd9"
+  },
+  "docs/COMMUNITY-BACKEND-SETUP.md": {
+    "mtime": 1794001051.7766,
+    "seen": 1794654050.0218422,
+    "ast_hash": "185dc536e2ecab88ec0a3b1c70ca8bf4",
+    "semantic_hash": "185dc536e2ecab88ec0a3b1c70ca8bf4"
+  },
+  "docs/DESIGN-DECISIONS.md": {
+    "mtime": 1794339793.7930512,
+    "seen": 1794654050.0218427,
+    "ast_hash": "f30c04bfde729429756a56365e4b5153",
+    "semantic_hash": "f30c04bfde729429756a56365e4b5153"
+  },
+  "docs/TESTING-COMMUNITY-REVIEW.md": {
+    "mtime": 1793138550.7163293,
+    "seen": 1794654050.0218434,
+    "ast_hash": "0444387b95a24c6e15422b4559ac225e",
+    "semantic_hash": "0444387b95a24c6e15422b4559ac225e"
+  },
+  "docs/physics-atlas-migration-brief.md": {
+    "mtime": 1791996041.0670621,
+    "seen": 1794654050.0218441,
+    "ast_hash": "08dcfb395c0a34b1a1c16b63d640c7d8",
+    "semantic_hash": "08dcfb395c0a34b1a1c16b63d640c7d8"
+  },
+  "index.html": {
+    "mtime": 1793138501.654689,
+    "seen": 1794654050.0218446,
+    "ast_hash": "283fd211451107360e24ed52eae2ee54",
+    "semantic_hash": "283fd211451107360e24ed52eae2ee54"
+  }
+}
