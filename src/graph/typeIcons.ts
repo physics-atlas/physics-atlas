@@ -77,9 +77,10 @@ function centred(type: NodeType): string | null {
 export const TYPE_ICON_VIEWBOX = '1.5 1.5 21 21';
 
 const svgFor = (markup: string) =>
-  // Explicit width/height: Cytoscape's zoomed-out texture cache mis-scales an
-  // SVG without an intrinsic size (tiny, top-left glyphs).
-  `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="${TYPE_ICON_VIEWBOX}" ` +
+  // Explicit width/height: Cytoscape mis-scales an SVG without an intrinsic
+  // size (tiny, top-left glyphs). Large, because some browsers draw an SVG
+  // image at that size and scale the pixels: at 96 a landmark's glyph went soft.
+  `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="${TYPE_ICON_VIEWBOX}" ` +
   'fill="none" stroke="currentColor" ' +
   `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${markup}</svg>`;
 

@@ -16,6 +16,13 @@
   --display: 'Sora', system-ui, sans-serif;
   --gold: #e6b566;
   --silver: #cdd6e8;
+  /* Terracotta, the accent beside the blue (Decision 48): --terra for side
+     borders and marks (6.2:1 on a panel), --terra-ink for text (8.8:1; 7.1:1
+     on --terra-soft, the highlight behind a section title). Decoration only:
+     it never says anything the words don't. */
+  --terra: #e07a52;
+  --terra-ink: #f0a07c;
+  --terra-soft: rgba(224, 122, 82, 0.16);
 }
 
 :root[data-theme='light'] {
@@ -35,6 +42,10 @@
   --panel-rgb: 244, 246, 251;
   --gold: #8a6514;
   --silver: #5c6a88;
+  /* 4.1:1 on a panel; text 6.1:1, 5.3:1 on the highlight */
+  --terra: #c2582f;
+  --terra-ink: #9a4220;
+  --terra-soft: rgba(194, 88, 47, 0.12);
   color-scheme: light;
 }
 
@@ -53,7 +64,7 @@ body {
 }
 
 :root[data-theme='light'] .app-title {
-  background: linear-gradient(100deg, #1c2333 0%, #2f6fc4 55%, #7d4a9e 100%);
+  background: linear-gradient(100deg, #1c2333 0%, #2f6fc4 55%, #9a4220 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -117,7 +128,7 @@ body {
   left: 45%;
   width: 40vmax;
   height: 40vmax;
-  background: radial-gradient(circle at 50% 50%, rgba(190, 74, 130, 0.22), transparent 65%);
+  background: radial-gradient(circle at 50% 50%, rgba(224, 122, 82, 0.2), transparent 65%);
   animation: nebula-drift-c 70s ease-in-out infinite alternate;
 }
 
@@ -141,167 +152,6 @@ body {
 
 :root[data-motion='reduce'] .nebula {
   animation: none;
-}
-
-/* ---------- home ---------- */
-.galaxy-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.home {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  animation: view-in 0.6s cubic-bezier(0.22, 0.8, 0.3, 1);
-}
-
-.home-content {
-  padding: 0 24px;
-  max-width: 760px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 18px;
-}
-
-.home-eyebrow {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.home-title {
-  margin: 0;
-  font-family: var(--display);
-  font-weight: 300;
-  font-size: clamp(34px, 5vw, 56px);
-  line-height: 1.12;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-  background: linear-gradient(105deg, #f5f8ff 20%, #9fc2f5 65%, #c99ae0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-.home-lede {
-  margin: 0;
-  max-width: 46ch;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--ink-2);
-}
-
-.home-search {
-  width: min(580px, 100%);
-  margin-top: 10px;
-}
-
-.search-hero {
-  flex: none;
-  margin-left: 0;
-  width: 100%;
-}
-
-.search-hero .search-input {
-  font-size: 16.5px;
-  padding: 17px 26px;
-  background: rgba(11, 16, 30, 0.78);
-  border-color: rgba(143, 183, 255, 0.45);
-  box-shadow: 0 0 45px rgba(57, 135, 229, 0.22);
-  animation: search-beacon 3.2s ease-in-out infinite;
-}
-
-@keyframes search-beacon {
-  0%,
-  100% {
-    box-shadow: 0 0 35px rgba(57, 135, 229, 0.18);
-    border-color: rgba(143, 183, 255, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 70px rgba(57, 135, 229, 0.4);
-    border-color: rgba(143, 183, 255, 0.65);
-  }
-}
-
-:root[data-motion='reduce'] .search-hero .search-input {
-  animation: none;
-}
-
-.search-hero .search-input:focus {
-  animation: none;
-  box-shadow:
-    0 0 0 3px rgba(57, 135, 229, 0.3),
-    0 0 80px rgba(57, 135, 229, 0.35);
-  border-color: rgba(143, 183, 255, 0.75);
-}
-
-.search-hero .search-results {
-  text-align: left;
-}
-
-.search-hero .search-result {
-  font-size: 14px;
-  padding: 9px 12px;
-}
-
-.home-goals {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.home-goals-label {
-  font-size: 12.5px;
-  color: var(--muted);
-  margin-right: 4px;
-}
-
-.home-explore {
-  margin-top: 10px;
-  border: 1px solid rgba(143, 183, 255, 0.4);
-  background: var(--accent-soft);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 11px 22px;
-  font-size: 14px;
-  font-family: var(--display);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition:
-    box-shadow 0.25s,
-    transform 0.25s,
-    border-color 0.25s;
-}
-
-.home-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-/* The community entry: dashed, like a proposal — the word says what it is. */
-.home-community {
-  border-style: dashed;
-}
-
-.home-explore:hover {
-  border-color: rgba(143, 183, 255, 0.7);
-  box-shadow: 0 0 30px rgba(57, 135, 229, 0.35);
-  transform: translateY(-1px);
 }
 
 /* ---------- header ---------- */
@@ -331,7 +181,7 @@ body {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  background: linear-gradient(100deg, #eef2fb 0%, #9fc2f5 55%, #c99ae0 100%);
+  background: linear-gradient(100deg, #eef2fb 0%, #9fc2f5 50%, #f0a07c 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -636,26 +486,6 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--muted);
-}
-
-/* Primary call to action — this is the path we want people to take. */
-.map-card-goal {
-  border: 1.5px solid rgba(143, 183, 255, 0.6);
-  background: var(--accent-soft);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 10px 20px;
-  font-size: 14.5px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  font-family: inherit;
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.15s;
-}
-
-.map-card-goal:hover {
-  box-shadow: 0 0 22px rgba(57, 135, 229, 0.45);
-  transform: translateY(-1px);
 }
 
 .map-card-close {
@@ -1358,26 +1188,6 @@ body {
   content: '▾';
 }
 
-.goal-chip {
-  border: 1px solid var(--hairline);
-  background: rgba(var(--glass-rgb), 0.5);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 5px 13px;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-
-.goal-chip:hover {
-  border-color: var(--chip-color);
-  transform: translateY(-1px);
-}
-
 .block-heading {
   font-size: 12px;
   text-transform: uppercase;
@@ -1429,12 +1239,6 @@ body {
 
 .map-card-cta .learned-toggle {
   align-self: flex-start;
-}
-
-.map-card-cta .map-card-goal {
-  width: 100%;
-  margin: 0;
-  text-align: center;
 }
 
 /* ---------- responsive ---------- */
@@ -1539,15 +1343,6 @@ body {
   background: var(--accent-soft);
 }
 
-.home-feedback {
-  margin: 18px 0 0;
-  font-size: 15px;
-}
-
-.home-feedback a {
-  color: inherit;
-}
-
 /* The feedback form: one readable column. */
 .feedback-view {
   height: 100%;
@@ -1623,13 +1418,6 @@ body {
   align-items: center;
   gap: 6px;
   flex: none;
-}
-
-.home-settings {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  z-index: 2;
 }
 
 /* Toggle state is in the text (aria-pressed is announced) and in the fill */
@@ -1726,6 +1514,15 @@ input[type='checkbox'] {
   background: var(--accent-soft);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* The map's two arrangements (Clustered / Even), one choice: framed together. */
+.graph-control-group {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
 /* The legend sits bottom-left and the controls bottom-right; on narrow screens
@@ -1872,8 +1669,7 @@ input[type='checkbox'] {
    (beside the ticked checkbox / ✓). */
 
 .block-heading,
-.map-card-category,
-.home-eyebrow {
+.map-card-category {
   font-weight: 600;
 }
 
@@ -1895,7 +1691,6 @@ input[type='checkbox'] {
   text-align: center;
 }
 
-.home-goals-label,
 .type-definition-term,
 .concept-empty,
 .concept-via,
@@ -3526,4 +3321,64 @@ a.mode-tab {
   display: inline-block;
   min-height: 24px;
   line-height: 24px;
+}
+
+/* ---------- terracotta accents (Decision 48) ----------
+   Blue stays the main colour (links, focus, pressed controls, selection);
+   terracotta adds warmth: section titles in capitals get its ink and a soft
+   highlight, panels and cards a side border, the active view an underline.
+   Tokens: --terra, --terra-ink, --terra-soft (top of this file). */
+
+/* Titles in full capitals: terracotta ink; a section title also a soft highlight fading out to the right. */
+.block-heading,
+.map-card-category,
+.legend-type-group-name,
+.edge-card-role,
+.concept-path-type,
+.atlas-small-label,
+.atlas-page-meta {
+  color: var(--terra-ink);
+}
+
+.block-heading {
+  padding: 3px 8px;
+  margin-left: -8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--terra-soft), transparent 85%);
+}
+
+/* Cards and panels: a coloured side border. */
+.map-card,
+.concept-index,
+.concept-path,
+.type-definition,
+.feedback-panel {
+  border-left: 3px solid var(--terra);
+}
+
+/* The view you're in: a terracotta underline under its tab. */
+.mode-tab-active {
+  box-shadow:
+    inset 0 0 0 1px rgba(143, 183, 255, 0.35),
+    inset 0 -2px 0 var(--terra);
+}
+
+/* A card's main way on — to the concept's page. */
+.map-card-page {
+  border-color: var(--terra);
+}
+
+.map-card-page:hover {
+  background: var(--terra-soft);
+}
+
+/* An atlas page's sections: a short terracotta rule under each heading. */
+.atlas-page h2::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--terra);
 }

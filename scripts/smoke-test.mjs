@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Browser smoke test: drives the running dev server (npm run dev) with
-// puppeteer-core + installed Chrome. Walks the home page, the concept map and
+// puppeteer-core + installed Chrome. Walks the front page (the concept map), the map and
 // the community view, and collects console errors. Screenshots go to SMOKE_OUT (default /tmp).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -41,52 +41,30 @@ const errors = [];
 page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()));
 page.on('pageerror', (err) => errors.push(String(err)));
 
-// --- Home page: galaxy hero; its search and landmark chips open the concept map ---
+// --- The front page is the concept map (the home page was retired, Decision 48) ---
 await page.goto(URL, { waitUntil: 'networkidle0' });
-await page.waitForSelector('.home .search-input');
-console.log('home hero title:', await page.$eval('.home-title', (el) => el.textContent?.trim()));
-await page.click('.home .search-input');
-await page.type('.home .search-input', 'dark mat');
+await page.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0);
+const front = await page.evaluate(() => ({ search: window.location.search, nodes: window.__cy.nodes().length, home: !!document.querySelector('.home') }));
+console.log('front page:', front);
+if (front.search !== '' || front.home) errors.push(`the front page isn't the concept map: ${JSON.stringify(front)}`);
+if (front.nodes !== expected.nodes) errors.push(`expected ${expected.nodes} concept nodes on the front page, got ${front.nodes}`);
+await page.click('.search-input');
+await page.type('.search-input', 'dark mat');
 await page.waitForSelector('.search-result');
 await page.keyboard.press('Enter');
 await page.waitForSelector('.map-card');
-const homeSearch = await page.evaluate(() => ({
-  search: window.location.search,
-  card: document.querySelector('.map-card-title')?.textContent?.trim(),
-}));
-console.log('home search "dark mat":', homeSearch);
-if (!homeSearch.search.startsWith('?mode=concepts') || homeSearch.card !== 'Dark Matter')
-  errors.push(`home search didn't open Dark Matter on the concept map: ${JSON.stringify(homeSearch)}`);
-await new Promise((r) => setTimeout(r, 600));
-await page.screenshot({ path: `${OUT}/home-search-focused.png` });
+const frontSearch = await page.$eval('.map-card-title', (el) => el.textContent?.trim());
+if (frontSearch !== 'Dark Matter') errors.push(`search "dark mat" opened ${frontSearch}`);
+if (await page.$('.map-card-goal')) errors.push('a card still offers "Show path to this"');
 
-await page.goto(URL, { waitUntil: 'networkidle0' });
-const landmarks = await page.$$eval('.goal-chip', (els) => els.map((e) => e.textContent?.trim()));
-console.log('landmark chips:', landmarks);
-if (landmarks.length === 0) errors.push('the home page shows no landmark chips');
-await page.click('.goal-chip');
-await page.waitForSelector('.map-card');
-const chipCard = await page.$eval('.map-card-title', (el) => el.textContent?.trim());
-if (chipCard !== landmarks[0]) errors.push(`landmark chip "${landmarks[0]}" opened "${chipCard}"`);
-
-// The retired topic views' addresses land on the concept map.
-for (const old of ['?mode=goal&goal=cosmology', '?mode=topic&id=quantum-mechanics', '?mode=map', '?mode=explore']) {
+// The retired topic views' addresses, and the old home, land on the concept map.
+for (const old of ['?mode=goal&goal=cosmology', '?mode=topic&id=quantum-mechanics', '?mode=map', '?mode=explore', '?mode=home']) {
   await page.goto(`${URL}/${old}`, { waitUntil: 'networkidle0' });
   const now = await page.evaluate(() => window.location.search);
-  if (now !== '?mode=concepts') errors.push(`${old} landed on ${now}, not the concept map`);
+  if (now !== '') errors.push(`${old} landed on ${now}, not the concept map`);
 }
 
-// --- Home → Explore now lands on the concept map, not the topic full map ---
 await page.goto(`${URL}/`, { waitUntil: 'networkidle0' });
-await page.click('.home-explore');
-await new Promise((r) => setTimeout(r, 600));
-const exploreSearch = await page.evaluate(() => window.location.search);
-console.log('home-explore search:', exploreSearch);
-if (!exploreSearch.startsWith('?mode=concepts'))
-  errors.push(`expected home-explore to land on ?mode=concepts, got ${exploreSearch}`);
-const exploreNodeCount = await page.evaluate(() => window.__cy?.nodes().length ?? 0);
-if (exploreNodeCount !== expected.nodes)
-  errors.push(`expected ${expected.nodes} concept nodes after home-explore, got ${exploreNodeCount}`);
 const tabTexts = await page.$$eval('.mode-tab', (els) => els.map((e) => e.textContent?.trim()));
 console.log('mode tabs:', tabTexts);
 if (tabTexts.some((t) => t === 'Full map')) errors.push('a "Full map" tab is still in the header nav');
@@ -108,16 +86,11 @@ const communityTab = await page.evaluate(() => ({
 await clickTab('Concept map');
 await new Promise((r) => setTimeout(r, 600));
 const plainAgain = await page.evaluate(() => ({ search: window.location.search, proposals: window.__cy.nodes('.overlay').length }));
-await page.goto(`${URL}/`, { waitUntil: 'networkidle0' });
-await page.click('.home-community');
-await new Promise((r) => setTimeout(r, 600));
-const fromHome = await page.evaluate(() => window.location.search);
-console.log('community tab:', communityTab, 'back to concept map:', plainAgain, 'from home:', fromHome);
+console.log('community tab:', communityTab, 'back to concept map:', plainAgain);
 if (communityTab.search !== '?mode=community' || communityTab.current !== 'Community' || !communityTab.propose)
   errors.push(`the Community tab didn't open the community view: ${JSON.stringify(communityTab)}`);
-if (plainAgain.search !== '?mode=concepts' || plainAgain.proposals !== 0)
+if (plainAgain.search !== '' || plainAgain.proposals !== 0)
   errors.push(`the Concept map tab still shows proposals: ${JSON.stringify(plainAgain)}`);
-if (fromHome !== '?mode=community') errors.push(`home's community button landed on ${fromHome}`);
 
 // --- Concept map (pilot): the second GraphView input variant ---
 await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
@@ -255,19 +228,39 @@ if (!conceptProgress.includes(`"concept:${goalPath[0]}"`))
   errors.push(`ticking the first concept step did not store concept:${goalPath[0]}`);
 await page.screenshot({ path: `${OUT}/concepts-goal.png` });
 
-// "Show path to this" on a goal that is "a learning goal of" a concept: the
-// concept is on its path (read backwards), so the path is more than the goal.
+// The map's two arrangements (Decision 47): Even moves the map, Clustered brings it back.
+{
+  await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+  const where = () => page.evaluate(() => Object.fromEntries(window.__cy.nodes().map((n) => [n.id(), { ...n.position() }])));
+  const pick = (label) =>
+    page.evaluate((l) => [...document.querySelectorAll('.graph-control')].find((b) => b.textContent.trim() === l)?.click(), label);
+  const pressed = (label) =>
+    page.evaluate((l) => [...document.querySelectorAll('.graph-control')].find((b) => b.textContent.trim() === l)?.getAttribute('aria-pressed'), label);
+  const before = await where();
+  await pick('Even');
+  await new Promise((r) => setTimeout(r, 1200));
+  const even = await where();
+  const moved = Object.keys(before).filter((id) => Math.hypot(before[id].x - even[id].x, before[id].y - even[id].y) > 1).length;
+  console.log(`arrangement Even: ${moved} concepts moved, pressed ${await pressed('Even')}`);
+  if (moved === 0 || (await pressed('Even')) !== 'true') errors.push('"Even" did not change the arrangement');
+  await pick('Clustered');
+  await new Promise((r) => setTimeout(r, 1200));
+  const back = await where();
+  const off = Object.keys(before).filter((id) => Math.hypot(before[id].x - back[id].x, before[id].y - back[id].y) > 1).length;
+  if (off > 0) errors.push(`"Clustered" left ${off} concepts away from the clustered arrangement`);
+  await page.evaluate(() => localStorage.removeItem('physics-atlas-arrangement-v1'));
+}
+
+// A goal's path (`?goal=`) for a goal that is "a learning goal of" a concept:
+// the concept is on its path (read backwards), so the path is more than the goal.
 const goalOf = compiled.edges.find((e) => e.relationship.trim().toLowerCase() === 'is a learning goal of' && serious.has(e.source));
 if (goalOf) {
-  await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
-  await page.evaluate((id) => window.__cy.$id(id).emit('tap'), goalOf.source);
-  await page.waitForSelector('.map-card-goal');
-  await page.click('.map-card-goal');
+  await page.goto(`${URL}/?mode=concepts&goal=${goalOf.source}`, { waitUntil: 'networkidle0' });
   await page.waitForSelector('.concept-path-step');
   const steps = await page.$$eval('.concept-path-step', (els) => els.length);
   const onPath = await page.evaluate((id) => window.__cy.$id(id).hasClass('path-node'), goalOf.target);
   console.log(`show path to ${goalOf.source}: ${steps} steps, ${goalOf.target} on it: ${onPath}`);
-  if (steps < 2 || !onPath) errors.push(`"Show path to this" on ${goalOf.source} left out ${goalOf.target}`);
+  if (steps < 2 || !onPath) errors.push(`the path to ${goalOf.source} left out ${goalOf.target}`);
 }
 
 // --- Community preview, Phase 1: proposed layer from the sample fixtures ---

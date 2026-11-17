@@ -147,8 +147,13 @@ export function edgeWeight(radii: [number, number], importances: [number, number
   return { px: EDGE_MIN_PX + (EDGE_MAX_PX - EDGE_MIN_PX) * generality, strength: importance };
 }
 
-/** A relation name's size (model px) between two specific concepts. */
+/** A relation name's size (model px) between two specific concepts — the scale the others grow from. */
 export const EDGE_LABEL_FONT = 11;
+/**
+ * No relation name is smaller than this (model px): between two small
+ * concepts it was 11, too small to read even zoomed in close (Decision 47).
+ */
+export const EDGE_LABEL_MIN = 14;
 
 /**
  * A relation name grows with its line, but less: up to 2.5× for a landmark's
@@ -159,7 +164,7 @@ export const EDGE_LABEL_FONT = 11;
 export function edgeLabelSize(px: number, strength: number): number {
   const generality = (px - EDGE_MIN_PX) / (EDGE_MAX_PX - EDGE_MIN_PX);
   const size = EDGE_LABEL_FONT * (1 + 1.5 * generality) * (0.9 + 0.2 * strength);
-  return Math.round(10 * Math.max(EDGE_LABEL_FONT, size)) / 10;
+  return Math.round(10 * Math.max(EDGE_LABEL_MIN, size)) / 10;
 }
 
 /**

@@ -9,7 +9,7 @@ and edits, each one a pull request reviewed on GitHub.
 
 **Live:** https://physics-atlas.gnmdaudt.workers.dev
 
-![Home — animated galaxy landing page](docs/screenshots/home.png)
+![The concept map, a concept's card open](docs/screenshots/map-detail-card.png)
 
 More views in [docs/screenshots/](docs/screenshots/).
 

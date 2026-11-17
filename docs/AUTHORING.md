@@ -400,8 +400,8 @@ That list describes the equation itself.
 
 ## How the concept curriculum is built
 
-Any concept can be picked as a goal ("★ Show path to this" on its card, or
-`?mode=concepts&goal=<id>`). Two relations build a path: `strict prerequisite for`,
+Any concept can be picked as a goal with `?mode=concepts&goal=<id>` (the card's
+"★ Show path to this" was retired for now, Decision 48). Two relations build a path: `strict prerequisite for`,
 and `is a learning goal of` read backwards (`G is a learning goal of C` puts C on G's
 path, as `C is a strict prerequisite for G` would). The goal's steps are every concept
 reachable backwards over those, in reading order (a concept comes after everything it

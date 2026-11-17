@@ -24,6 +24,7 @@ import {
   searchSeeds,
 } from '../graph/conceptLayout';
 import shippedLayout from '../data/conceptLayout.json';
+import { quickEvenLayout } from '../graph/evenLayout';
 import { reducedMotion } from '../lib/motion';
 
 const ICON_BOOST_PX = 14;
@@ -137,6 +138,8 @@ interface GraphViewProps {
   selectedEdgeId?: string | null;
   /** Clicking a line selects its relation (null: clicking off it). */
   onSelectEdge?: (id: string | null) => void;
+  /** Which arrangement of the map shows (Decision 47); switching glides between them. */
+  arrangement?: Arrangement;
 }
 
 export interface DraftOverlay {
@@ -624,7 +627,8 @@ const styleFor = (light: boolean) => {
     selector: 'node.zoom-past',
     style: {
       'background-opacity': 0.05,
-      'background-image-opacity': 0.08,
+      // Faint, but still there: the type's glyph doesn't vanish as you zoom past it.
+      'background-image-opacity': 0.22,
       'border-opacity': 0.3,
       'text-opacity': 0,
       events: 'no',
@@ -762,8 +766,55 @@ const styleFor = (light: boolean) => {
 // one seeded arrangement per tick in the background, and the map glides to
 // the best one.
 // (Typed by hand: the generated JSON's inferred type changes with every graph.)
-const SHIPPED = shippedLayout as unknown as { key: string; components: Positions[] };
+const SHIPPED = shippedLayout as unknown as { key: string; components: Positions[]; even?: Positions[] };
 const layoutCache = new Map<string, Positions[]>();
+const evenCache = new Map<string, Positions[]>();
+
+/**
+ * The map's two arrangements (Decision 47): `clustered` — specific concepts
+ * gather around the general one they hang off; `even` — no gravity, every
+ * concept a comfortable distance from the rest, no concept on a line.
+ */
+export type Arrangement = 'clustered' | 'even';
+
+/** The Even arrangement, packed for this viewport: shipped, cached, or worked out quickly here. */
+function evenPositions(cy: cytoscape.Core, graph: ConceptGraph): Positions {
+  const input = conceptLayoutInput(graph);
+  const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
+  let components = SHIPPED.key === input.key ? SHIPPED.even : evenCache.get(input.key);
+  if (!components) {
+    components = quickEvenLayout(input);
+    evenCache.set(input.key, components);
+  }
+  return packConceptLayout(input, components, aspect);
+}
+
+/** The clustered arrangement as it stands now: shipped, the best searched so far, or a first quick one. */
+function clusteredPositions(cy: cytoscape.Core, graph: ConceptGraph): Positions {
+  const input = conceptLayoutInput(graph);
+  const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
+  const ready =
+    (SHIPPED.key === input.key ? SHIPPED.components : layoutCache.get(input.key)) ??
+    input.components.map((c, i) => arrangeConceptComponent(input, i, searchSeeds(i, c.ids)[0]).pos);
+  return packConceptLayout(input, ready, aspect);
+}
+
+/**
+ * Cytoscape draws elements from bitmaps cached at fixed zoom steps, and while
+ * you zoom it shows the nearest coarser one and sharpens it frames later —
+ * names and glyphs look fuzzy, and a glyph cached before its image loaded
+ * stays missing. The map has a few hundred elements, cheap to draw directly
+ * every frame, so the caches are switched off: always sharp. These are
+ * Cytoscape internals, so each is only touched when it's there.
+ */
+function sharpRendering(cy: cytoscape.Core) {
+  type Cache = { getElement?: unknown; getLayers?: unknown };
+  const data = (cy as unknown as { renderer?: () => { data?: Record<string, Cache | undefined> } }).renderer?.()?.data;
+  if (!data) return;
+  for (const key of ['eleTxrCache', 'lblTxrCache', 'slbTxrCache', 'tlbTxrCache'])
+    if (typeof data[key]?.getElement === 'function') data[key]!.getElement = () => null;
+  if (typeof data.lyrTxrCache?.getLayers === 'function') data.lyrTxrCache.getLayers = () => null;
+}
 
 function setPositions(cy: cytoscape.Core, positions: Positions) {
   cy.batch(() => {
@@ -782,7 +833,12 @@ function layoutConcepts(
   cy: cytoscape.Core,
   graph: ConceptGraph,
   onImproved: (positions: Positions) => void,
+  arrangement: Arrangement = 'clustered',
 ): () => void {
+  if (arrangement === 'even') {
+    setPositions(cy, evenPositions(cy, graph));
+    return () => {};
+  }
   const input = conceptLayoutInput(graph);
   const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
   const pack = (components: Positions[]) => packConceptLayout(input, components, aspect);
@@ -983,9 +1039,14 @@ export default function GraphView({
   fluff = null,
   selectedEdgeId = null,
   onSelectEdge,
+  arrangement = 'clustered',
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const arrangementRef = useRef(arrangement);
+  arrangementRef.current = arrangement;
+  /** Glides the map (with fluff and proposals) to new confirmed positions, then re-fits. */
+  const glideToRef = useRef<((positions: Positions) => void) | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const onSelectEdgeRef = useRef(onSelectEdge);
@@ -1056,6 +1117,16 @@ export default function GraphView({
     onDraftNearRef.current?.(near, draftPlaceRef.current.get(ghostId)?.byHand ?? false, ghostId);
   };
 
+  // Switching arrangement: the whole map glides to the other one and is framed again.
+  const shownArrangement = useRef(arrangement);
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || shownArrangement.current === arrangement) return;
+    shownArrangement.current = arrangement;
+    viewportTouchedRef.current = false;
+    glideToRef.current?.(arrangement === 'even' ? evenPositions(cy, concepts) : clusteredPositions(cy, concepts));
+  }, [arrangement, concepts]);
+
   // (Re)build the graph when the concept set or the theme changes
   useEffect(() => {
     const elements = conceptElements(concepts, buildConceptIndex(concepts), theme === 'light' ? '#1c2333' : '#ffffff');
@@ -1066,13 +1137,14 @@ export default function GraphView({
       style: styleFor(theme === 'light'),
       wheelSensitivity: 1,
     });
+    sharpRendering(cy);
     // A user pan/zoom before the background layout search finishes means the
     // improved layout should not re-fit the viewport under them.
     viewportTouchedRef.current = false;
     cy.on('scrollzoom dragpan pinchzoom', () => {
       viewportTouchedRef.current = true;
     });
-    const cancelLayoutSearch = layoutConcepts(cy, concepts, (improved) => {
+    const glideTo = (improved: Positions) => {
       // Fluff and proposals follow the confirmed graph into its better arrangement.
       const withFluff = { ...improved, ...(placeFluffRef.current?.(improved) ?? {}) };
       const positions = { ...withFluff, ...(placeOverlayRef.current?.(withFluff) ?? {}) };
@@ -1103,7 +1175,17 @@ export default function GraphView({
       } as cytoscape.LayoutOptions);
       glide.one('layoutstop', refit);
       glide.run();
-    });
+    };
+    glideToRef.current = glideTo;
+    const cancelLayoutSearch = layoutConcepts(
+      cy,
+      concepts,
+      // A better clustered arrangement found in the background only matters while it's shown.
+      (improved) => {
+        if (arrangementRef.current === 'clustered') glideTo(improved);
+      },
+      arrangementRef.current,
+    );
     fitBeside(cy, cy.elements(), overviewInsets(), false);
     coversRef.current = relationCovers(cy);
 

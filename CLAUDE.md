@@ -55,8 +55,8 @@ sophie_scicom/
 │   ├── community/    # community review: proposal types, validation, overlay, store, claim text,
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,
-│   │                 # DraftEditor, ProposalCard, Legend, Home, PageView (the atlas pages, lazy)
-│   ├── App.tsx       # mode switch (home | concepts | community | page), reads ?mode= (and ?concept=) from the URL
+│   │                 # DraftEditor, ProposalCard, Legend, PageView (the atlas pages, lazy)
+│   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback), reads ?mode= (and ?concept=) from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
 ├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
@@ -87,6 +87,8 @@ sophie_scicom/
   pulled to their most general neighbour (Decision 34). The layout is computed at build time
   (`src/graph/conceptLayout.ts`, run by `scripts/build-layout.mjs` in `npm run build:content`) and shipped as
   `src/data/conceptLayout.json` (generated, not committed); a change to the layout code re-runs it — no cache key to bump.
+  A second arrangement, **Even** (`src/graph/evenLayout.ts`, Decision 47): stress majorization, no gravity, no
+  concept on a line; shipped beside the clustered one and chosen in the map's control bar.
 
 ## Subsystems (scope selection for the live-qa agent)
 

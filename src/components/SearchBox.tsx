@@ -4,7 +4,6 @@ interface SearchBoxProps {
   entries: SearchEntry[];
   /** Receives the picked entry's ref */
   onPick: (ref: string) => void;
-  hero?: boolean;
   placeholder?: string;
   label?: string;
 }
@@ -20,7 +19,7 @@ export interface SearchEntry {
 
 const MAX_RESULTS = 8;
 
-export default function SearchBox({ entries, onPick, hero, placeholder, label }: SearchBoxProps) {
+export default function SearchBox({ entries, onPick, placeholder, label }: SearchBoxProps) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +65,7 @@ export default function SearchBox({ entries, onPick, hero, placeholder, label }:
       : `${results.length} match${results.length === 1 ? '' : 'es'}, use up and down arrows to choose`;
 
   return (
-    <div className={`search ${hero ? 'search-hero' : ''}`}>
+    <div className="search">
       <input
         ref={inputRef}
         className="search-input"

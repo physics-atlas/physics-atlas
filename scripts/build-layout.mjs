@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Works out the concept map's layout once, at build time, and writes it to
+// Works out the concept map's two layouts (clustered, and Even) once, at build time, and writes them to
 // src/data/conceptLayout.json — the app ships it, so no visitor's browser
 // has to search for a layout (src/graph/conceptLayout.ts). Generated, not
 // committed, like concepts.json. The file is reused while both the graph's
@@ -17,6 +17,7 @@ const OUT = join(ROOT, 'src/data/conceptLayout.json');
 // Everything the layout is computed by: a change to any of them re-runs the search.
 const CODE = [
   'src/graph/conceptLayout.ts',
+  'src/graph/evenLayout.ts',
   'src/graph/layoutOptimize.ts',
   'src/graph/concepts.ts',
   'src/graph/glyphWidths.json',
@@ -29,6 +30,7 @@ const codeHash = code.digest('hex').slice(0, 16);
 
 const load = async (file) => (await runnerImport(join(ROOT, file), { root: ROOT, configFile: false, logLevel: 'error' })).module;
 const layout = await load('src/graph/conceptLayout.ts');
+const evenLayout = await load('src/graph/evenLayout.ts');
 const concepts = await load('src/graph/concepts.ts');
 // The graph exactly as the app loads it, so the keys match.
 const { concepts: graph } = await load('src/data/loadConcepts.ts');
@@ -45,5 +47,7 @@ if (existsSync(OUT)) {
 const started = Date.now();
 const round = (pos) => Object.fromEntries(Object.entries(pos).map(([id, p]) => [id, { x: Math.round(10 * p.x) / 10, y: Math.round(10 * p.y) / 10 }]));
 const components = layout.searchConceptLayout(input).map(round);
-writeFileSync(OUT, JSON.stringify({ key: input.key, code: codeHash, components }) + '\n');
-console.log(`✓ laid out ${input.components.length} groups in ${((Date.now() - started) / 1000).toFixed(1)} s → src/data/conceptLayout.json`);
+// The map's second arrangement, Even (Decision 47): no gravity, even spacing.
+const even = evenLayout.searchEvenLayout(input).map(round);
+writeFileSync(OUT, JSON.stringify({ key: input.key, code: codeHash, components, even }) + '\n');
+console.log(`✓ laid out ${input.components.length} groups, both views, in ${((Date.now() - started) / 1000).toFixed(1)} s → src/data/conceptLayout.json`);

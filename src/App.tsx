@@ -1,27 +1,26 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import Home from './components/Home';
 import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
 import { NODE_TYPE_LABELS } from './data/types';
-import { IMPORTANCE_MAX, splitFluff } from './graph/concepts';
+import { splitFluff } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
 import { useMotion } from './lib/motion';
 import { hrefOf, isPlainClick, refFromSearch } from './lib/pageLinks';
 import type { PageRef } from './lib/pageLinks';
+import { useArrangement } from './lib/useArrangement';
 import './App.css';
 
 // The atlas pages typeset maths and carry their own sidebar: loaded on first visit.
 const PageView = lazy(() => import('./components/PageView'));
 const FeedbackView = lazy(() => import('./components/FeedbackView'));
 
-type Mode = 'home' | 'concepts' | 'community' | 'page' | 'feedback';
+type Mode = 'concepts' | 'community' | 'page' | 'feedback';
 
 const VIEW_TITLES: Record<Mode, string> = {
-  home: 'Learn by prerequisites',
   concepts: 'Concept map',
   community: 'Community review',
   page: 'Atlas pages',
@@ -45,15 +44,16 @@ function initialMode(): Mode {
   if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
   if (m === 'page') return 'page';
   if (m === 'feedback') return 'feedback';
-  // The retired topic views (map, explore, goal, topic) land on the concept map.
-  if (m) return 'concepts';
-  return 'home';
+  // The concept map is the front page (the home page was retired, Decision 48); the
+  // retired topic views (map, explore, goal, topic) land on it too.
+  return 'concepts';
 }
 
 function initialConceptGoal(): string | null {
   const params = new URLSearchParams(window.location.search);
   const g = params.get('goal');
-  if ((params.get('mode') !== 'concepts' && params.get('mode') !== 'community') || !g) return null;
+  const m = params.get('mode');
+  if ((m !== null && m !== 'concepts' && m !== 'community') || !g) return null;
   return concepts.nodes.some((n) => n.id === g) ? g : null;
 }
 
@@ -76,11 +76,6 @@ const conceptSearchEntries: SearchEntry[] = concepts.nodes
 const isFluff = (e: SearchEntry) => concepts.nodes.find((n) => n.id === e.ref)?.type === 'fluff';
 const seriousSearchEntries = conceptSearchEntries.filter((e) => !isFluff(e));
 
-/** The concepts visible at every zoom — the home page's starting points. */
-const landmarkEntries = seriousSearchEntries.filter(
-  (e) => concepts.nodes.find((n) => n.id === e.ref)?.importance === IMPORTANCE_MAX,
-);
-
 export default function App() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [conceptGoal, setConceptGoal] = useState(initialConceptGoal);
@@ -88,6 +83,8 @@ export default function App() {
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
   // Fun mode: off on every visit; kept while switching between the map's two tabs.
   const [fun, setFun] = useState(false);
+  // The map's arrangement, clustered or even: remembered in this browser.
+  const [arrangement, setArrangement] = useArrangement();
   // The atlas page shown, and a tick that moves focus to its heading on each navigation.
   const [pageRef, setPageRef] = useState<PageRef>(initialPage);
   const [pageFocus, setPageFocus] = useState(0);
@@ -109,10 +106,9 @@ export default function App() {
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
   const motion = useMotion();
-  // The home hero is intentionally dark-only; every other view honors the choice.
   useEffect(() => {
-    document.documentElement.dataset.theme = mode === 'home' ? 'dark' : theme;
-  }, [mode, theme]);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   // Each view is a page to assistive tech: its own title (WCAG 2.4.2), and
   // focus moves to the new view on navigation so a screen reader starts
@@ -156,14 +152,15 @@ export default function App() {
   // no guard flag needed, no loop.
   const firstUrlSync = useRef(true);
   useEffect(() => {
+    // The concept map is the front page: its address is the site's own.
     const target =
-      mode === 'home'
-        ? ''
-        : mode === 'page'
-          ? hrefOf(pageRef)
-          : conceptGoal && isConceptView(mode)
+      mode === 'page'
+        ? hrefOf(pageRef)
+        : conceptGoal && isConceptView(mode)
           ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
-          : `?mode=${mode}`;
+          : mode === 'concepts'
+            ? ''
+            : `?mode=${mode}`;
     if (window.location.search === target) {
       firstUrlSync.current = false;
       return;
@@ -217,8 +214,8 @@ export default function App() {
     setMode('feedback');
   }, []);
 
-  // Home search and landmarks land on the concept map, centred on the pick.
-  const homePick = useCallback(
+  // A search outside the map (on the feedback form) lands on the concept map, centred on the pick.
+  const pickOnMap = useCallback(
     (id: string) => {
       setMode('concepts');
       focusOn(id);
@@ -234,17 +231,16 @@ export default function App() {
       <div className="nebula nebula-a" aria-hidden />
       <div className="nebula nebula-b" aria-hidden />
       <div className="nebula nebula-c" aria-hidden />
-      {mode !== 'home' && (
         <header className="app-header">
           <p className="app-heading">
-            <button className="app-wordmark" onClick={() => setMode('home')} aria-label="Physics Atlas, home">
+            <button className="app-wordmark" onClick={() => setMode('concepts')} aria-label="Physics Atlas, the concept map">
               <span className="app-title">Physics Atlas</span>
             </button>
           </p>
           {/* On the pages, a search opens the concept's page; elsewhere, it centres the map on it. */}
           <SearchBox
             entries={mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
-            onPick={mode === 'page' ? openConceptPage : isConceptView(mode) ? focusOn : homePick}
+            onPick={mode === 'page' ? openConceptPage : isConceptView(mode) ? focusOn : pickOnMap}
           />
           {isConceptView(mode) && (
             <button
@@ -303,23 +299,9 @@ export default function App() {
             {themeButton}
           </div>
         </header>
-      )}
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
         {/* An atlas page's own heading is the view's h1, and the feedback form's. */}
-        {mode !== 'home' && mode !== 'page' && mode !== 'feedback' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
-        {mode === 'home' && (
-          <Home
-            entries={seriousSearchEntries}
-            landmarks={landmarkEntries}
-            onPick={homePick}
-            onExplore={() => setMode('concepts')}
-            onCommunity={() => setMode('community')}
-            onPages={() => openPage({})}
-            onFeedback={openFeedback}
-            motionButton={motionButton}
-            still={motion.reduced}
-          />
-        )}
+        {mode !== 'page' && mode !== 'feedback' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
         {isConceptView(mode) && (
           <ConceptMapView
             graph={concepts}
@@ -334,6 +316,8 @@ export default function App() {
             community={mode === 'community'}
             fun={fun}
             onFunChange={setFun}
+            arrangement={arrangement}
+            onArrangementChange={setArrangement}
             hintOpen={hintOpen}
             onOpenPage={openConceptPage}
             onOpenRelationPage={openRelationPage}

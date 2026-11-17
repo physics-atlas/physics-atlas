@@ -802,6 +802,44 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 48 — The concept map is the front page; terracotta accents (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Front page | The home page (galaxy hero, search, landmark chips) is retired: the site opens on the concept map, at the site's own address (`?mode=concepts` without a goal is written as `/`). Old links (`?mode=home`, the retired topic views) land on the map. The wordmark goes to the map. `Home.tsx`, `Galaxy.tsx` and the search's hero variant are gone. |
+| Show path to this | Removed from every card: it served no purpose in this iteration. A path still opens from `?goal=<id>`, with its panel and goal bar. |
+| Colour | Blue stays the main colour — links, focus, pressed controls, selection. **Terracotta** is the accent, after the reference (morphorganizer.lovable.app: navy with a terracotta primary): titles in capitals in its ink, section titles with a soft highlight, cards and side panels with a 3px side border, the active tab underlined, the card's **Open its page** outlined, atlas page headings with a short rule, the wordmark fading blue → terracotta, one nebula warm. Tokens `--terra`, `--terra-ink`, `--terra-soft`, measured in both themes (ACCESSIBILITY.md). |
+
+**Open paths:** the reference's other accent, a muted sage, for a second family (e.g. the
+Learning or Community side); a serif display face for the wordmark and page titles, as the
+reference has; terracotta for primary buttons instead of an outline.
+
+## Decision 47 — Two arrangements of the map: Clustered and Even; sharper, more legible map (2026-11)
+
+The map gets a second arrangement beside the existing one, chosen with **Clustered** /
+**Even** in the map's control bar (remembered in the browser; both map tabs share it), so
+the two can be compared.
+
+| Piece | Rule |
+|---|---|
+| Clustered (as before) | The force layout: big concepts push harder, a specific concept is pulled to its most general neighbour (Decisions 15, 28, 32, 34, 41). New last step: concepts a line passes through are moved off it (`clearLines`), kept only when no crossing is added. |
+| Even (new, `src/graph/evenLayout.ts`) | No gravity, no pull. Stress majorization: every pair of concepts sits as far apart as the shortest path between them, each relation as long as its two concepts' boxes plus a comfortable gap (`EVEN_GAP` 140) or what its name needs. Then the clustered view's clean-up — names given their room, concepts' places swapped to take crossings out — and `clearLines`. Scored with a line through a concept as bad as a crossing (`evenScore`). |
+| Shipped | Both are worked out at build time (`scripts/build-layout.mjs`) and shipped in `conceptLayout.json` (`components`, `even`). Without a match, the browser works out a quick Even arrangement (one seed, no swaps). The build's layout step takes ~5 minutes instead of ~3. |
+| Switching | The map glides from one to the other and is framed again; proposals, drafts and fluff are placed around it as before. |
+| Relation names | No name is smaller than 14 model px (`EDGE_LABEL_MIN`; it was 11 between two small concepts) — the layout makes room for the larger names. |
+| Sharp glyphs and names | Cytoscape drew elements from bitmaps cached at fixed zoom steps and showed a coarser one while zooming — fuzzy glyphs and names, and a glyph cached before its image loaded stayed missing. The caches are switched off (`sharpRendering`; measured: no slower, since the map's per-zoom updates kept invalidating them anyway). Glyph images are 512 px instead of 96, for browsers that scale an SVG's pixels. A circle zoomed past keeps its glyph at 22% instead of 8%. |
+
+Measured on the current graph (one connected group, 90 concepts):
+
+| | Crossings | Concepts on a line | Names covered | Spacing variation (nearest-neighbour CV) |
+|---|---|---|---|---|
+| Clustered | 5 | 5 | 4 | 0.65 |
+| Even | 12 | 0 | 2 | 0.46 |
+
+**Open paths:** Even has more crossings — stress layouts keep distances, not planarity; a
+crossing-aware term in the stress, or a planarization step, could take more out. Concepts
+are still sized by generality in both; an Even variant with uniform sizes is possible.
+
 ## Decision 46 — Model, goals rated per concept, resources described, equations in plain words (2026-11)
 
 | Piece | Rule |

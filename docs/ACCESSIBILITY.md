@@ -37,9 +37,9 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 
 | Practice | Where |
 |---|---|
-| Learners choose the goal | Any concept can become a goal ("Show path to this") |
+| Learners choose the goal | A concept's learning path opens from its address (`?goal=<id>`); the card's "Show path to this" was retired for now (Decision 48) |
 | Self-paced, no time limits | Nothing advances or expires on its own |
-| Distraction can be switched off | **Reduce motion** (header, and the home page) stops the home galaxy, the drifting nebulae and the map glides; motion is on until it's pressed, and the choice is kept (WCAG 2.2.2 for the backdrop, 2.3.3 for the glides) |
+| Distraction can be switched off | **Reduce motion** (header) stops the drifting nebulae and the map glides; motion is on until it's pressed, and the choice is kept (WCAG 2.2.2 for the backdrop, 2.3.3 for the glides) |
 | Progress is visible | Path progress ("3 of 8 learned"), learned markers on the map |
 
 ## WCAG 2.2 AA rules for contributors
@@ -57,6 +57,11 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   | `--muted` | 13.50 / 12.26 | 8.75 / 9.55 |
   | `--gold` | 10.46 / 9.50 | 4.87 / 5.31 |
   | `--silver` | 13.48 / 12.24 | 4.97 / 5.42 |
+  | `--terra-ink` (text) | 9.39 / 8.76; 7.09 on `--terra-soft` | 6.62 white / 6.12 panel; 5.27 on `--terra-soft` |
+  | `--terra` (borders, marks) | — / 6.18 | — / 4.11 |
+
+  Terracotta (Decision 48) is decoration: section titles, side borders, the active tab's
+  underline. It never carries meaning on its own — the words and the blue states do.
 
 - **No grey text for de-emphasis.** `--ink-2` and `--muted` are high-contrast
   (≥ 8.7:1). Secondary text is marked by typography, using the shared rules
@@ -87,8 +92,8 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
 - **Minimum text size 12px** in the UI; canvas labels drop out below 9px on screen
   instead of rendering unreadably small.
 - **Images and canvases have a text alternative.** The graph canvas is
-  `role="img"` with a name that points to the keyboard route; decorative canvases
-  (the home galaxy) are `aria-hidden`.
+  `role="img"` with a name that points to the keyboard route; decorative layers
+  (the nebulae) are `aria-hidden`.
 
 **Operable**
 
@@ -125,7 +130,7 @@ Every new UI element has to meet the rules below. The reviewer agent checks them
   `aria-describedby`; groups of checkboxes are a `fieldset` with a `legend`; problems are
   listed in words, each a button that moves focus to its field. Destructive actions ask
   first ("Discard everything? Discard / Keep it").
-- **Plain language:** labels say what happens ("Show path to this", "Show the
+- **Plain language:** labels say what happens ("Open its page", "Show the
   whole map"), not just an icon.
 
 **Robust**

@@ -17,7 +17,8 @@ import {
   normalizeRelationship,
   relationFontSize,
 } from './concepts';
-import { arrangeComponent, better, clearance, createRng, layoutKey, packComponents, SPACING, untangle } from './layoutOptimize';
+import { arrangeComponent, better, clearance, createRng, layoutKey, packComponents, scoreLayout, SPACING, untangle } from './layoutOptimize';
+import { clearLines } from './evenLayout';
 import type { NodeBox, Positions, Segment, SegmentLabel, SegmentLabels } from './layoutOptimize';
 
 /** A line's width in model px when zoomed in. */
@@ -240,7 +241,10 @@ export function searchConceptLayout(input: ConceptLayoutInput): Positions[] {
     const order = (a: (typeof candidates)[number], b: (typeof candidates)[number]) =>
       better(a.score, b.score) ? -1 : better(b.score, a.score) ? 1 : 0;
     const finalists = candidates.sort(order).slice(0, UNTANGLE_FINALISTS);
-    return finalists.map((f) => untangle(c.segments, f.pos, input.boxes, c.labels)).sort(order)[0].pos;
+    const best = finalists.map((f) => untangle(c.segments, f.pos, input.boxes, c.labels)).sort(order)[0];
+    // Then concepts sitting on a line are moved off it — kept only if no crossing is added (Decision 47).
+    const cleared = clearLines(c.segments, best.pos, input.boxes, c.labels);
+    return better(scoreLayout(c.segments, cleared, input.boxes, c.labels), best.score) ? cleared : best.pos;
   });
 }
 

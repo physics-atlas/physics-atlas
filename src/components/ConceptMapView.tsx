@@ -28,7 +28,7 @@ import { TYPE_COLORS, TYPE_ORDER } from '../graph/typeColors';
 import type { Progress } from '../lib/useProgress';
 import ConceptCard, { CONCEPT_CARD_TITLE_ID, EDGE_CARD_TITLE_ID } from './ConceptCard';
 import GraphView from './GraphView';
-import type { DraftOverlay } from './GraphView';
+import type { Arrangement, DraftOverlay } from './GraphView';
 import Legend from './Legend';
 import RelationSentence from './RelationSentence';
 import ResourceInfo from './ResourceInfo';
@@ -40,6 +40,12 @@ import { useFold } from '../lib/useFold';
 
 // The proposal card brings KaTeX — load both only when a proposal is opened.
 const ProposalCard = lazy(() => import('./ProposalCard'));
+
+/** The map's two arrangements, side by side in the control bar for comparison. */
+const ARRANGEMENTS: { key: Arrangement; label: string; title: string }[] = [
+  { key: 'clustered', label: 'Clustered', title: 'Specific concepts gather around the general concept they belong to' },
+  { key: 'even', label: 'Even', title: 'Every concept evenly spaced, with no concept on a line' },
+];
 const DraftEditor = lazy(() => import('./DraftEditor'));
 // KaTeX is large: the typeset equation loads when an equation's card first opens.
 const EquationView = lazy(() => import('./EquationView'));
@@ -98,6 +104,9 @@ interface ConceptMapViewProps {
   /** The map guide is shown (its button is in the header) */
   hintOpen?: boolean;
   onFunChange?: (on: boolean) => void;
+  /** The map's arrangement (Decision 47): clustered around general concepts, or evenly spaced */
+  arrangement?: Arrangement;
+  onArrangementChange?: (a: Arrangement) => void;
   /** Open a concept's atlas page */
   onOpenPage?: (id: string) => void;
   /** Open a relation's atlas page */
@@ -117,6 +126,8 @@ export default function ConceptMapView({
   community = false,
   fun = false,
   onFunChange,
+  arrangement = 'clustered',
+  onArrangementChange,
   hintOpen = false,
   onOpenPage,
   onOpenRelationPage,
@@ -859,12 +870,6 @@ export default function ConceptMapView({
                     <span aria-hidden> →</span>
                   </a>
                 )}
-                {/* Fluff never joins a learning path (the validator keeps it out). */}
-                {selected.id !== goalId && selected.type !== 'fluff' && (
-                  <button className="map-card-goal" onClick={() => onGoalChange(selected.id)}>
-                    ★ Show path to this
-                  </button>
-                )}
                 {community && selected.type !== 'resource' && (
                   <button type="button" className="draft-button map-card-edit" onClick={() => proposeEdit(selected)}>
                     <span aria-hidden>✎ </span>Propose an edit
@@ -936,8 +941,23 @@ export default function ConceptMapView({
           draft={draftOverlay}
           onDraftNear={onDraftNear}
           draftRecall={draftRecall}
+          arrangement={arrangement}
           extraControls={
             <>
+              <span className="graph-control-group" role="group" aria-label="Arrangement of the map">
+                {ARRANGEMENTS.map((a) => (
+                  <button
+                    key={a.key}
+                    type="button"
+                    className="graph-control graph-control-text"
+                    aria-pressed={arrangement === a.key}
+                    onClick={() => onArrangementChange?.(a.key)}
+                    title={a.title}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </span>
               {community && (
                 <>
                   <button

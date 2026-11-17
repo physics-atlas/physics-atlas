@@ -228,7 +228,7 @@ export function countNodeOverlaps(
 }
 
 /** Does the relation pass through a concept (its circle or name, padded 4px) it doesn't end at? */
-function passesThrough([s, t]: Segment, id: string, pos: Positions, boxes: Record<string, NodeBox>): boolean {
+export function passesThrough([s, t]: Segment, id: string, pos: Positions, boxes: Record<string, NodeBox>): boolean {
   if (id === s || id === t) return false;
   const p = pos[id], box = boxes[id];
   return segmentHitsRect(pos[s], pos[t], p.x + box.left - 4, p.y + box.top - 4, p.x + box.right + 4, p.y + box.bottom + 4);

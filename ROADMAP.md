@@ -6,6 +6,39 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-76: the map as front page; "Show path to this" removed; terracotta accents
+
+**Status:** ✅ Implemented <!-- status-line: feature-76 -->
+**Planned:** 2026-11-17 — requested: remove the home page, the concept map is the default; remove "Show path to this" from every card; add terracotta accents inspired by morphorganizer.lovable.app, keeping blue as the main colour
+**Implemented:** 2026-11-17
+
+### Implemented
+- `App.tsx`: no `home` mode; the map at `/`; `Home.tsx`, `Galaxy.tsx`, the search's hero variant and their styles removed
+- `ConceptMapView`: the card's path button and its styles removed (`?goal=` still works)
+- `App.css`: `--terra`, `--terra-ink`, `--terra-soft` (both themes); the accents section at the end
+- Smoke test: the front page is the map, no path button, old addresses land on the map; the goal path via `?goal=`
+- Decision 48; ACCESSIBILITY.md tokens
+
+### Review
+Not run — direct session.
+
+## feature-75: a second, evenly spaced arrangement; legible names; sharp glyphs
+
+**Status:** ✅ Implemented <!-- status-line: feature-75 -->
+**Planned:** 2026-11-17 — requested: an alternate graph view beside the current one, switchable for comparison, without gravity, evenly spaced, fewer crossings and no concepts on lines; small concepts' relation names too small; glyphs fuzzy or disappearing
+**Implemented:** 2026-11-17
+
+### Implemented
+- `src/graph/evenLayout.ts`: stress majorization, `clearLines`, `evenScore`, search; shipped as `even` in `conceptLayout.json` (`build-layout.mjs`)
+- `GraphView` `arrangement` prop, glide between arrangements; **Clustered / Even** in the control bar (`ConceptMapView`, `useArrangement`)
+- Clustered: `clearLines` as its last step (concepts on lines 17 → 5 after the larger names)
+- `EDGE_LABEL_MIN` 14; `sharpRendering` (Cytoscape texture caches off); glyph images 512 px; zoomed-past glyph 22%
+- Tests: `evenLayout.test.ts`; smoke: switching arrangements
+- Decision 47
+
+### Review
+Not run — direct session.
+
 ## feature-74: Model, goals rated per concept, resources described, plain words, path fix
 
 **Status:** ✅ Implemented <!-- status-line: feature-74 -->
