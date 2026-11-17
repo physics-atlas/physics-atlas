@@ -1,0 +1,10 @@
+{
+  "id": "wave_packet_1fp2",
+  "label": "Wave Packet",
+  "type": "formalism",
+  "importance": 6,
+  "generality": 5,
+  "attrs": {
+    "description": "A superposition of waves which have a localised position."
+  }
+}
