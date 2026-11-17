@@ -1,0 +1,10 @@
+{
+  "id": "wave_q5e0",
+  "label": "Wave",
+  "type": "physical_system",
+  "importance": 10,
+  "generality": 10,
+  "attrs": {
+    "description": "A change that travels through spacetime, transferring energy and momentum (but not matter)"
+  }
+}
