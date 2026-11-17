@@ -1,0 +1,10 @@
+{
+  "id": "quantum_mechanics_qm_bnul",
+  "label": "Quantum Mechanics (QM)",
+  "type": "theory",
+  "importance": 10,
+  "generality": 10,
+  "attrs": {
+    "description": "The collection of equations, models and assumptions describing how matter behaves around atomic scales and lower at non-relativistic speeds."
+  }
+}
