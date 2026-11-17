@@ -1,0 +1,10 @@
+{
+  "id": "velocity_7r85",
+  "label": "Velocity",
+  "type": "property",
+  "importance": 8,
+  "generality": 6,
+  "attrs": {
+    "description": "How \"fast\" and in which direction an object is moving"
+  }
+}
