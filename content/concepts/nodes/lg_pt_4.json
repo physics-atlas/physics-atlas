@@ -2,7 +2,7 @@
   "id": "lg_pt_4",
   "type": "learning_goal",
   "label": "Compute component transformations of a transported vector.",
-  "importance": 2,
+  "importance": 4,
   "generality": 2,
   "attrs": {
     "description": "Given a metric/connection and a path, compute how a vector's components change under parallel transport."
