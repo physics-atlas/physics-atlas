@@ -1,0 +1,14 @@
+{
+  "id": "1d_motion_graph_game_z32b",
+  "label": "1d motion graph game",
+  "type": "resource",
+  "importance": 3,
+  "generality": 2,
+  "attrs": {
+    "description": "formative assessment of how the shape and slope of a position-time and velocity-time graph relate to the motion of an object",
+    "link": "https://www.physicsclassroom.com/interactive/1d-kinematics/graph-that-motion",
+    "mediaType": "quiz",
+    "estimatedTime": "10-20min",
+    "accessibility": "Need to test"
+  }
+}
