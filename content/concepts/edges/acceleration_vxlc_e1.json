@@ -1,0 +1,6 @@
+{
+  "id": "acceleration_vxlc_e1",
+  "source": "acceleration_vxlc",
+  "target": "newton_ii_f_ma_smym",
+  "relationship": "can be described by"
+}
