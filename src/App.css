@@ -24,6 +24,17 @@
   --terra-ink: #f0a07c;
   --terra-soft: rgba(224, 122, 82, 0.16);
   --terra-rgb: 224, 122, 82;
+  /* Two quieter accents beside the terracotta: --second (sage green) for
+     small-caps labels, navigation panels' edges and the legend's open type;
+     --third (creme) for finishing touches — rules, the wordmark, the light
+     end of a limewash highlight. Same floors: marks >= 3:1, text >= 4.5:1 on
+     a panel (sage 8.0 / 11.3, creme 11.7 / 14.2 dark; 5.0 / 7.0 and 3.7 / 6.8 light). */
+  --second: #8cb894;
+  --second-ink: #b4d6ba;
+  --second-rgb: 140, 184, 148;
+  --third: #e3cfa6;
+  --third-ink: #f1e4c6;
+  --third-rgb: 227, 207, 166;
   /* Limewash: cloudy, brushed tonal shifts plus a fine grain, used as a mask
      on the accent highlights so they read as a washed wall, not a flat fill. */
   --wash-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='120'%3E%3Cfilter id='w' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.018 .05' numOctaves='4' seed='3' stitchTiles='stitch' result='c'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='1' seed='9' stitchTiles='stitch' result='g'/%3E%3CfeComposite in='c' in2='g' operator='arithmetic' k2='.8' k3='.2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.2 0 0 0 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
@@ -53,13 +64,19 @@
   --terra-ink: #9a4220;
   --terra-soft: rgba(194, 88, 47, 0.12);
   --terra-rgb: 194, 88, 47;
+  --second: #4d7a57;
+  --second-ink: #3b6145;
+  --second-rgb: 77, 122, 87;
+  --third: #9a7a45;
+  --third-ink: #6b5226;
+  --third-rgb: 154, 122, 69;
   --wash-strong: 0.22;
   --wash-faint: 0.06;
   color-scheme: light;
 }
 
-/* Alternate accents, for comparison (header select, lib/usePalette.ts). Same
-   roles and contrast floors as terracotta: marks >= 3:1 and text >= 4.5:1 on a
+/* Alternate accents, for comparison (header select, lib/usePalette.ts): the
+   same trio with another colour leading. Same roles and contrast floors as terracotta: marks >= 3:1 and text >= 4.5:1 on a
    panel, in both themes (forest 6.2 / 10.6 dark, 4.9 / 7.4 light; creme 10.5 /
    14.2 dark, 3.7 / 6.8 light). */
 :root[data-palette='forest'] {
@@ -67,6 +84,12 @@
   --terra-ink: #9fd4ad;
   --terra-soft: rgba(90, 168, 116, 0.16);
   --terra-rgb: 90, 168, 116;
+  --second: #e07a52;
+  --second-ink: #f0a07c;
+  --second-rgb: 224, 122, 82;
+  --third: #e3cfa6;
+  --third-ink: #f1e4c6;
+  --third-rgb: 227, 207, 166;
 }
 
 :root[data-palette='creme'] {
@@ -74,6 +97,12 @@
   --terra-ink: #f1e4c6;
   --terra-soft: rgba(217, 196, 154, 0.14);
   --terra-rgb: 217, 196, 154;
+  --second: #e07a52;
+  --second-ink: #f0a07c;
+  --second-rgb: 224, 122, 82;
+  --third: #8cb894;
+  --third-ink: #b4d6ba;
+  --third-rgb: 140, 184, 148;
 }
 
 :root[data-theme='light'][data-palette='forest'] {
@@ -81,6 +110,12 @@
   --terra-ink: #1f5c36;
   --terra-soft: rgba(47, 122, 74, 0.12);
   --terra-rgb: 47, 122, 74;
+  --second: #c2582f;
+  --second-ink: #9a4220;
+  --second-rgb: 194, 88, 47;
+  --third: #9a7a45;
+  --third-ink: #6b5226;
+  --third-rgb: 154, 122, 69;
 }
 
 :root[data-theme='light'][data-palette='creme'] {
@@ -88,6 +123,12 @@
   --terra-ink: #6b5226;
   --terra-soft: rgba(154, 122, 69, 0.14);
   --terra-rgb: 154, 122, 69;
+  --second: #c2582f;
+  --second-ink: #9a4220;
+  --second-rgb: 194, 88, 47;
+  --third: #4d7a57;
+  --third-ink: #3b6145;
+  --third-rgb: 77, 122, 87;
 }
 
 body {
@@ -105,7 +146,7 @@ body {
 }
 
 :root[data-theme='light'] .app-title {
-  background: linear-gradient(100deg, #1c2333 0%, #2f6fc4 55%, var(--terra-ink) 100%);
+  background: linear-gradient(100deg, #1c2333 0%, #2f6fc4 45%, var(--third-ink) 70%, var(--terra-ink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -222,7 +263,7 @@ body {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  background: linear-gradient(100deg, #eef2fb 0%, #9fc2f5 50%, var(--terra-ink) 100%);
+  background: linear-gradient(100deg, #eef2fb 0%, #9fc2f5 40%, var(--third-ink) 68%, var(--terra-ink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -3364,28 +3405,35 @@ a.mode-tab {
   line-height: 24px;
 }
 
-/* ---------- terracotta accents (Decision 48) ----------
-   Blue stays the main colour (links, focus, pressed controls, selection);
-   terracotta adds warmth: section titles in capitals get its ink and a soft
-   highlight, panels and cards a side border, the active view an underline.
-   Tokens: --terra, --terra-ink, --terra-soft (top of this file). */
+/* ---------- warm accents (Decision 48) ----------
+   Blue stays the colour of links and focus. Three warm accents beside it:
+   terracotta leads (selection markers, the main action, cards, section
+   titles); sage green follows (small-caps labels, navigation panels, the
+   legend's open type); creme finishes (the light end of a highlight, rules,
+   the wordmark, the line under the header). Decoration only: none of them
+   says anything the words don't.
+   Tokens: --terra*, --second*, --third* (top of this file). */
 
-/* Titles in full capitals: terracotta ink; a section title also a soft highlight fading out to the right. */
-.block-heading,
+/* A section title: terracotta ink on a soft highlight fading through creme. */
+.block-heading {
+  color: var(--terra-ink);
+}
+
+/* Small labels in full capitals: sage ink. */
 .map-card-category,
 .legend-type-group-name,
 .edge-card-role,
 .concept-path-type,
 .atlas-small-label,
 .atlas-page-meta {
-  color: var(--terra-ink);
+  color: var(--second-ink);
 }
 
 .block-heading {
   padding: 3px 8px;
   margin-left: -8px;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--terra-soft), transparent 85%);
+  background: linear-gradient(90deg, var(--terra-soft), rgba(var(--third-rgb), 0.06) 55%, transparent 85%);
 }
 
 /* Limewash highlights on the selection markers (section titles stay a smooth
@@ -3410,18 +3458,28 @@ a.mode-tab {
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(100deg, rgba(var(--terra-rgb), var(--wash-strong)), rgba(var(--terra-rgb), var(--wash-faint)));
+  /* Limewash dries lighter at the edges: terracotta into creme. */
+  background: linear-gradient(
+    100deg,
+    rgba(var(--terra-rgb), var(--wash-strong)),
+    rgba(var(--third-rgb), calc(var(--wash-faint) * 1.4))
+  );
   -webkit-mask: var(--wash-mask) 0 0 / 240px 120px repeat;
   mask: var(--wash-mask) 0 0 / 240px 120px repeat;
 }
 
-/* Cards and panels: a coloured side border. */
+/* A side border: terracotta on what you're reading about (a card, a
+   learning path), sage on what you find your way with (lists, definitions,
+   the feedback form). */
 .map-card,
+.concept-path {
+  border-left: 3px solid var(--terra);
+}
+
 .concept-index,
-.concept-path,
 .type-definition,
 .feedback-panel {
-  border-left: 3px solid var(--terra);
+  border-left: 3px solid var(--second);
 }
 
 /* The view you're in: a washed highlight and an accent underline under its tab. */
@@ -3443,7 +3501,16 @@ a.mode-tab {
 
 .legend-type-button-active {
   background: transparent;
-  border-color: var(--terra);
+  border-color: var(--second);
+}
+
+/* The legend is a sage place: its open type washes green into creme. */
+.legend-type-button-active::before {
+  background: linear-gradient(
+    100deg,
+    rgba(var(--second-rgb), var(--wash-strong)),
+    rgba(var(--third-rgb), calc(var(--wash-faint) * 1.4))
+  );
 }
 
 /* A card's main way on — to the concept's page. */
@@ -3451,7 +3518,7 @@ a.mode-tab {
   border-color: var(--terra);
 }
 
-/* An atlas page's sections: a short terracotta rule under each heading. */
+/* An atlas page's sections: a short rule under each heading, terracotta into creme. */
 .atlas-page h2::after {
   content: '';
   display: block;
@@ -3459,7 +3526,24 @@ a.mode-tab {
   height: 3px;
   margin-top: 6px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--terra), var(--terra-ink));
+  background: linear-gradient(90deg, var(--terra), var(--third));
+}
+
+/* Under the header, a hairline in all three accents. */
+.app-header {
+  position: relative;
+}
+
+.app-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--terra) 20%, var(--second) 55%, var(--third) 80%, transparent);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 /* ---------- accent picker (header) ---------- */
@@ -3475,7 +3559,7 @@ a.mode-tab {
 }
 
 .palette-select select:hover {
-  border-color: var(--terra);
+  border-color: var(--second);
   color: var(--ink);
 }
 
