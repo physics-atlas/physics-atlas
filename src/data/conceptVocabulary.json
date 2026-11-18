@@ -144,6 +144,7 @@
     }
   },
   "edgeTemplates": {
+    "affects": "{s} affects {t}.",
     "measures": "{s} measures {t}.",
     "can be described by": "{s} can be described by {t}.",
     "is a learning goal of": "{s} is a learning goal of {t}.",
@@ -187,7 +188,7 @@
     { "key": "explanation", "label": "Explanation and prediction", "description": "One concept accounts for another, or says what will happen.", "types": ["explains", "predicts"] },
     { "key": "evidence", "label": "Evidence", "description": "Claims, findings and data: what tests, supports or concerns what.", "types": ["tested by", "supported by", "addresses", "concerns"] },
     { "key": "classification", "label": "Classification and parts", "description": "What a concept is a kind of, what it has, and what it is a property of.", "types": ["is a", "is a class of", "has a", "is one property of"], "nests": true },
-    { "key": "occurrence", "label": "Occurrence", "description": "Where a concept shows up: what exhibits it, where it happens, what it applies to.", "types": ["exhibits", "happens in", "applies to"] },
+    { "key": "occurrence", "label": "Occurrence", "description": "Where a concept shows up: what exhibits it, where it happens, what it applies to.", "types": ["exhibits", "happens in", "applies to", "affects"] },
     { "key": "conditions", "label": "Conditions", "description": "What must hold for a concept to apply.", "types": ["is a condition of", "valid under", "under"] },
     { "key": "association", "label": "Association", "description": "A connection without a more specific kind — use one of the other categories when one fits.", "types": ["relates", "links", "is involved in", "is a learning goal of", "measures"] }
   ],
