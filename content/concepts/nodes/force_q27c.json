@@ -1,0 +1,10 @@
+{
+  "id": "force_q27c",
+  "label": "Force",
+  "type": "property",
+  "importance": 8,
+  "generality": 5,
+  "attrs": {
+    "description": "The \"push\" experienced by an object. is what causes change in velocity."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "force_q27c_e2",
+  "source": "acceleration_vxlc",
+  "target": "force_q27c",
+  "relationship": "depends on"
+}
