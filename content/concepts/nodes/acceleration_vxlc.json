@@ -1,0 +1,10 @@
+{
+  "id": "acceleration_vxlc",
+  "label": "Acceleration",
+  "type": "property",
+  "importance": 8,
+  "generality": 5,
+  "attrs": {
+    "description": "The measure of how the velocity of an object is changing. Can only be present if there is  force acting on it. (or curved spacetime)"
+  }
+}
