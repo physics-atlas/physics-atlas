@@ -1,0 +1,11 @@
+{
+  "id": "zero_velocity_implies_zero_acceleration_ypil",
+  "label": "Zero Velocity Implies Zero Acceleration",
+  "type": "misconception",
+  "importance": 4,
+  "generality": 2,
+  "attrs": {
+    "description": "“When a ball is thrown directly up in the air on Earth, what is the acceleration of the ball at the highest point?”. Maybe you were tempted to say that the acceleration is 0 m/s^2\nbecause the velocity is 0 m/s. If that were the case, the ball would never come back down. Think about it. If there is no acceleration, or no change in velocity, how can the ball, with zero velocity at the top of its vertical trajectory, change its velocity to fall back down?",
+    "domain": "Classical mechanics"
+  }
+}
