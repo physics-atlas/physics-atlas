@@ -4,5 +4,7 @@
   "type": "learning_goal",
   "attrs": {
     "description": "A learner can do this after being able to describe positional change over a time-interval"
-  }
+  },
+  "importance": 6,
+  "generality": 4
 }
