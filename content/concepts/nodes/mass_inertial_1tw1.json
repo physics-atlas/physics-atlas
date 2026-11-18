@@ -1,0 +1,10 @@
+{
+  "id": "mass_inertial_1tw1",
+  "label": "Mass (inertial)",
+  "type": "property",
+  "importance": 8,
+  "generality": 4,
+  "attrs": {
+    "description": "The proportionality constant affecting how much acceleration arises from a force on an object. \nWas found to be equal to the gravitational mass"
+  }
+}

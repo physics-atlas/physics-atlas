@@ -1,0 +1,10 @@
+{
+  "id": "identify_the_points_at_which_the_n35u",
+  "label": "Identify the points at which the acceleration is positive or negative on position-time graoh",
+  "type": "learning_goal",
+  "importance": 3,
+  "generality": 2,
+  "attrs": {
+    "description": "A learner can do this  when they are confident on how acceleration relates to position change with time."
+  }
+}
