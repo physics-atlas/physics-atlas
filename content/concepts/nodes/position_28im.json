@@ -1,0 +1,10 @@
+{
+  "id": "position_28im",
+  "label": "Position",
+  "type": "property",
+  "importance": 8,
+  "generality": 5,
+  "attrs": {
+    "description": "How we describe the location of an object in \"space\" (our euclidean notion of space). Usually represented by a vector from the origin of a chose coordinate system."
+  }
+}
