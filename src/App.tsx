@@ -8,6 +8,7 @@ import { splitFluff } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
+import { PALETTES, usePalette, type Palette } from './lib/usePalette';
 import { useMotion } from './lib/motion';
 import { hrefOf, isPlainClick, refFromSearch } from './lib/pageLinks';
 import type { PageRef } from './lib/pageLinks';
@@ -105,6 +106,7 @@ export default function App() {
   }, [mode]);
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { palette, setPalette } = usePalette();
   const motion = useMotion();
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -134,6 +136,18 @@ export default function App() {
     >
       <span aria-hidden>{theme === 'dark' ? '☀' : '🌙'}</span>
     </button>
+  );
+  const paletteSelect = (
+    <label className="palette-select" title="The accent colour beside the blue">
+      <span className="visually-hidden">Accent colour</span>
+      <select value={palette} onChange={(e) => setPalette(e.target.value as Palette)}>
+        {PALETTES.map((p) => (
+          <option key={p.value} value={p.value}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
   const motionButton = (
     <button
@@ -296,6 +310,7 @@ export default function App() {
           </a>
           <div className="header-settings" role="group" aria-label="Display settings">
             {motionButton}
+            {paletteSelect}
             {themeButton}
           </div>
         </header>

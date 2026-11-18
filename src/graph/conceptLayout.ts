@@ -91,6 +91,26 @@ function wrapWidths(text: string, font: number, max: number, measure: Measure): 
   return out;
 }
 
+/** How many lines a name wraps to at a font size and wrap width. */
+export function wrappedLineCount(text: string, font: number, max: number, measure: Measure = glyphMeasure): number {
+  return wrapWidths(text, font, max, measure).length;
+}
+
+/** Inside a big circle, the type glyph sits above the name: 42% of the
+ *  circle, its top edge at a quarter of the radius. When a name wrapping to
+ *  several lines would reach up into it, the glyph first rises toward the rim,
+ *  then shrinks (down to 40% of its size) — the name matters more than the
+ *  glyph. Offsets in px from the circle's top. */
+export function insideIcon(radius: number, labelShift: number, lines: number, fontSize: number) {
+  const full = 0.84 * radius;
+  const top = 0.255 * radius;
+  const highest = 0.12 * radius;
+  // The name's top edge, less its outline and a gap that grows with the font.
+  const bottom = radius + labelShift - (lines * fontSize) / 2 - 0.3 * fontSize - 6;
+  const size = Math.max(0.4 * full, Math.min(full, bottom - highest));
+  return { iconSize: size, iconTop: Math.max(highest, Math.min(top, bottom - size)) };
+}
+
 /** A concept's label-inclusive extent, as offsets from its centre (NodeBox). */
 export function conceptNodeBox(node: GraphNode, degree: number, measure: Measure = glyphMeasure): NodeBox {
   const { radius, inside, fontSize, labelWidth, labelShift } = nodeLabelLayout(node, degree);

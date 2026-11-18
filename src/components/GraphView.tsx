@@ -16,12 +16,14 @@ import {
   conceptLayoutInput,
   EDGE_WIDTH,
   EDGE_LABEL_MAX,
+  insideIcon,
   MIN_LABEL_PX,
   nodeLabelLayout,
   packConceptLayout,
   relationLabelBox,
   relationText,
   searchSeeds,
+  wrappedLineCount,
 } from '../graph/conceptLayout';
 import shippedLayout from '../data/conceptLayout.json';
 import { quickEvenLayout } from '../graph/evenLayout';
@@ -320,6 +322,11 @@ const styleFor = (light: boolean) => {
       // names too small to read on screen are dropped.
       'font-size': 'data(fontSize)',
       'min-zoomed-font-size': MIN_LABEL_PX,
+      // Names are outlined in the page colour instead of sitting on a plate:
+      // readable over lines, fills and other names, without boxing them in.
+      'text-outline-color': surface,
+      'text-outline-width': 2.4,
+      'text-outline-opacity': 1,
       // Every glow (hover, selection, edge ends) follows the circle.
       'underlay-shape': 'ellipse',
       'transition-property': 'opacity, text-opacity, background-opacity, border-width, border-color',
@@ -335,20 +342,17 @@ const styleFor = (light: boolean) => {
       'background-image-opacity': 0.95,
     },
   },
-  // A big concept: its name inside the circle on a plate (readable over the
-  // fill), the glyph above it.
+  // A big concept: its name inside the circle, outlined a little heavier to
+  // stay readable over the fill, the glyph above it.
   {
     selector: 'node.concept-node.label-inside',
     style: {
       'text-valign': 'center',
       'text-margin-y': 'data(labelShift)',
-      'text-background-color': surface,
-      'text-background-opacity': 0.78,
-      'text-background-padding': '4px',
-      'text-background-shape': 'roundrectangle',
-      'background-position-y': '22%',
-      'background-width': '42%',
-      'background-height': '42%',
+      'text-outline-width': 3,
+      'background-position-y': 'data(iconTop)',
+      'background-width': 'data(iconSize)',
+      'background-height': 'data(iconSize)',
     },
   },
   // Zoomed out, the circle is only a few px across — let the glyph fill more of it.
@@ -705,7 +709,7 @@ const styleFor = (light: boolean) => {
     },
   },
   // Hovering a line: its relation name grows and the two concepts it joins
-  // pop out, their names on the same plate as the relation name.
+  // pop out, their names in bold with a heavier outline.
   {
     selector: 'edge.concept-edge.edge-hovered, edge.concept-edge.edge-selected',
     style: {
@@ -741,9 +745,7 @@ const styleFor = (light: boolean) => {
       'font-size': 'data(fontSizeEmph)',
       'font-weight': 'bold',
       'text-margin-y': 6,
-      'text-background-color': surface,
-      'text-background-opacity': 0.95,
-      'text-background-padding': 3,
+      'text-outline-width': 3.6,
       'underlay-color': 'data(color)',
       'underlay-opacity': 0.22,
       'underlay-padding': 8,
@@ -816,6 +818,54 @@ function sharpRendering(cy: cytoscape.Core) {
   if (typeof data.lyrTxrCache?.getLayers === 'function') data.lyrTxrCache.getLayers = () => null;
 }
 
+/**
+ * Concepts the reader dragged ("Move concepts"), per arrangement: offsets
+ * from where the layout puts them, so they survive a window resize (the
+ * layout is packed for the viewport). Kept for this browser tab only
+ * (sessionStorage) — never data, never shared.
+ */
+const movesKey = (arrangement: Arrangement) => `physics-atlas-moved-${arrangement}`;
+
+function readMoves(arrangement: Arrangement): Positions {
+  try {
+    const raw = sessionStorage.getItem(movesKey(arrangement));
+    return raw ? (JSON.parse(raw) as Positions) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMoves(arrangement: Arrangement, moves: Positions) {
+  try {
+    if (Object.keys(moves).length) sessionStorage.setItem(movesKey(arrangement), JSON.stringify(moves));
+    else sessionStorage.removeItem(movesKey(arrangement));
+  } catch {
+    // private mode / quota — the moves just last until the page reloads
+  }
+}
+
+/** Layout positions with the reader's moves for that arrangement added. */
+function withMoves(positions: Positions, arrangement: Arrangement): Positions {
+  const moves = readMoves(arrangement);
+  const out = { ...positions };
+  for (const [id, d] of Object.entries(moves)) {
+    const p = out[id];
+    if (p) out[id] = { x: p.x + d.x, y: p.y + d.y };
+  }
+  return out;
+}
+
+/** The arrangement's own positions, without the reader's moves. */
+function layoutPositions(cy: cytoscape.Core, graph: ConceptGraph, arrangement: Arrangement): Positions {
+  return arrangement === 'even' ? evenPositions(cy, graph) : clusteredPositions(cy, graph);
+}
+
+/** The concepts a reader may drag: confirmed ones (not fun-mode extras, proposals or the draft). */
+function movableNodes(cy: cytoscape.Core, graph: ConceptGraph) {
+  const ids = new Set(graph.nodes.map((n) => n.id));
+  return cy.nodes('.concept-node').filter((n) => ids.has(n.id()) && !n.hasClass('draft'));
+}
+
 function setPositions(cy: cytoscape.Core, positions: Positions) {
   cy.batch(() => {
     cy.nodes().forEach((n) => {
@@ -836,12 +886,12 @@ function layoutConcepts(
   arrangement: Arrangement = 'clustered',
 ): () => void {
   if (arrangement === 'even') {
-    setPositions(cy, evenPositions(cy, graph));
+    setPositions(cy, withMoves(evenPositions(cy, graph), 'even'));
     return () => {};
   }
   const input = conceptLayoutInput(graph);
   const aspect = cy.width() / Math.max(cy.height(), 1) || 1.6;
-  const pack = (components: Positions[]) => packConceptLayout(input, components, aspect);
+  const pack = (components: Positions[]) => withMoves(packConceptLayout(input, components, aspect), 'clustered');
   const ready = SHIPPED.key === input.key ? SHIPPED.components : layoutCache.get(input.key);
   if (ready) {
     setPositions(cy, pack(ready));
@@ -880,20 +930,26 @@ function nodeLabel(title: string, { goal = false, done = false, badge }: { goal?
 
 function conceptNodeElement(n: GraphNode, degree: number, iconColor: string, classes = '', badge?: string) {
   const { radius, importance, inside, fontSize, labelWidth, labelWidthWide, labelShift } = nodeLabelLayout(n, degree);
+  const label = nodeLabel(n.label, { badge });
+  const fontSizeEmph = Math.max(fontSize, 15);
+  const icon = inside
+    ? insideIcon(radius, labelShift, wrappedLineCount(label, fontSizeEmph, labelWidth), fontSizeEmph)
+    : undefined;
   return {
     data: {
       id: n.id,
       title: n.label,
       badge,
-      label: nodeLabel(n.label, { badge }),
+      label,
       color: TYPE_COLORS[n.type],
       size: 2 * radius,
       radius,
       importance,
       fontSize,
       // Hover emphasis grows a small name but never shrinks a big one.
-      fontSizeEmph: Math.max(fontSize, 15),
+      fontSizeEmph,
       labelWidth,
+      ...icon,
       labelWidthWide,
       labelShift,
       type: n.type,
@@ -1124,8 +1180,31 @@ export default function GraphView({
     if (!cy || shownArrangement.current === arrangement) return;
     shownArrangement.current = arrangement;
     viewportTouchedRef.current = false;
-    glideToRef.current?.(arrangement === 'even' ? evenPositions(cy, concepts) : clusteredPositions(cy, concepts));
+    glideToRef.current?.(withMoves(layoutPositions(cy, concepts, arrangement), arrangement));
+    setMovedCount(Object.keys(readMoves(arrangement)).length);
   }, [arrangement, concepts]);
+
+  // "Move concepts": while on, a drag on a confirmed concept moves it instead
+  // of panning (off by default — on a phone the circles cover most of the
+  // map, and a finger needs somewhere to pan). Each move is kept as an offset
+  // for this arrangement; "Reset positions" glides back to the layout.
+  const [rearrange, setRearrange] = useState(false);
+  const rearrangeRef = useRef(rearrange);
+  rearrangeRef.current = rearrange;
+  const [movedCount, setMovedCount] = useState(() => Object.keys(readMoves(arrangement)).length);
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const nodes = movableNodes(cy, concepts);
+    if (rearrange) nodes.grabify();
+    else nodes.ungrabify();
+  }, [rearrange, concepts]);
+  const resetPositions = () => {
+    const cy = cyRef.current;
+    writeMoves(arrangementRef.current, {});
+    setMovedCount(0);
+    if (cy) glideToRef.current?.(layoutPositions(cy, concepts, arrangementRef.current));
+  };
 
   // (Re)build the graph when the concept set or the theme changes
   useEffect(() => {
@@ -1138,6 +1217,8 @@ export default function GraphView({
       wheelSensitivity: 1,
     });
     sharpRendering(cy);
+    // Rebuilt on a theme or graph change: "Move concepts" carries over.
+    if (rearrangeRef.current) movableNodes(cy, concepts).grabify();
     // A user pan/zoom before the background layout search finishes means the
     // improved layout should not re-fit the viewport under them.
     viewportTouchedRef.current = false;
@@ -1336,6 +1417,34 @@ export default function GraphView({
       refreshCovers();
     });
 
+    // A concept moved by the reader ("Move concepts"): its offset is added up
+    // per arrangement, so a second drag of the same concept builds on the first.
+    const grabbedAt = new Map<string, Pos>();
+    cy.on('grab', 'node.concept-node', (e) => {
+      const n = e.target as cytoscape.NodeSingular;
+      if (n.hasClass('draft')) return;
+      grabbedAt.set(n.id(), { ...n.position() });
+      if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
+    });
+    cy.on('free', 'node.concept-node', (e) => {
+      const n = e.target as cytoscape.NodeSingular;
+      const from = grabbedAt.get(n.id());
+      grabbedAt.delete(n.id());
+      if (!from) return;
+      if (containerRef.current) containerRef.current.style.cursor = 'grab';
+      const p = n.position();
+      const dx = p.x - from.x;
+      const dy = p.y - from.y;
+      if (Math.hypot(dx, dy) < 1) return;
+      const arrangementNow = arrangementRef.current;
+      const moves = readMoves(arrangementNow);
+      const was = moves[n.id()] ?? { x: 0, y: 0 };
+      moves[n.id()] = { x: was.x + dx, y: was.y + dy };
+      writeMoves(arrangementNow, moves);
+      setMovedCount(Object.keys(moves).length);
+      refreshCovers();
+    });
+
     // A drag that starts on a concept pans the map, as one on the background
     // does. Cytoscape leaves it still (the concepts can't be moved), and on a
     // phone the circles cover most of the screen at the whole-map zoom, so a
@@ -1397,7 +1506,7 @@ export default function GraphView({
         n.outgoers().removeClass('hover-soft').addClass('hover-post');
         n.removeClass('hover-soft').addClass('hovered');
       });
-      if (containerRef.current) containerRef.current.style.cursor = n.hasClass('draft') ? 'grab' : 'pointer';
+      if (containerRef.current) containerRef.current.style.cursor = n.grabbable() ? 'grab' : 'pointer';
     });
     cy.on('mouseout', 'node', () => {
       cy.batch(() =>
@@ -1892,6 +2001,25 @@ export default function GraphView({
         >
           Show all concepts
         </button>
+        <button
+          type="button"
+          className="graph-control graph-control-text"
+          aria-pressed={rearrange}
+          onClick={() => setRearrange((r) => !r)}
+          title="Drag concepts to rearrange the map — kept in this tab only"
+        >
+          Move concepts
+        </button>
+        {movedCount > 0 && (
+          <button
+            type="button"
+            className="graph-control graph-control-text"
+            onClick={resetPositions}
+            title="Put every moved concept back where the map places it"
+          >
+            Reset positions
+          </button>
+        )}
         {extraControls}
       </div>
       {lost && (
