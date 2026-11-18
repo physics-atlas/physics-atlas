@@ -1,0 +1,14 @@
+{
+  "id": "video_visualizing_what_parallel_4ppg",
+  "label": "Video visualizing what parallel transport and covariant derivatives mean an a curved spacetime",
+  "type": "resource",
+  "importance": 4,
+  "generality": 2,
+  "attrs": {
+    "description": "shows different ways that we can have an intuituve understanding of vectors and their transformations in spacetime.\nUseful if you have an idea of the maths but want more intuition",
+    "link": "https://www.google.com/url?opi=89978449&q=https://www.youtube.com/watch%3Fv%3DMRU2D6sLpU0%26xstg%3DCAMSBhUD1t3-Hw%253D%253D&sa=U&sqi=2&ved=2ahUKEwjj3PKH6pGYAxVKSvEDHbdqE2AQwqsBegQIFxAB&usg=AOvVaw2efrI_D4DM4yerPgEvz9wZ",
+    "mediaType": "video",
+    "estimatedTime": "20",
+    "listeningTime": "15"
+  }
+}
