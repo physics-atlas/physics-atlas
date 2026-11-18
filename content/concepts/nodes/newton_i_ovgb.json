@@ -1,0 +1,25 @@
+{
+  "id": "newton_i_ovgb",
+  "label": "Newton I",
+  "type": "equation",
+  "importance": 8,
+  "generality": 6,
+  "attrs": {
+    "description": "A body at rest tends to stay at rest and a body in motion tends to stay in motion unless acted upon by a force",
+    "equation": "F=0 \\space \\Rightarrow \\space v = \\text{const}",
+    "plain": "If force equals zero, the objects velocity is constant",
+    "variables": [
+      {
+        "symbol": "F",
+        "meaning": "Forces"
+      },
+      {
+        "symbol": "v",
+        "meaning": "Velocity"
+      }
+    ],
+    "conditions": [],
+    "representations": [],
+    "domain": "Classical mechanics"
+  }
+}
