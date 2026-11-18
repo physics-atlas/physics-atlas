@@ -1,0 +1,6 @@
+{
+  "id": "mass_inertial_1tw1_e1",
+  "source": "point_particle_jgrz",
+  "target": "mass_inertial_1tw1",
+  "relationship": "has a"
+}
