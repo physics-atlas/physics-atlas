@@ -1,0 +1,28 @@
+{
+  "id": "newton_ii_f_ma_smym",
+  "label": "Newton II (F=ma)",
+  "type": "equation",
+  "importance": 8,
+  "generality": 6,
+  "attrs": {
+    "description": "The connection between a force and the acceleration it causes on a body. The proportionality constant m is the inertial mass, which is found to me the same as the gravitational mass.",
+    "equation": "F=ma",
+    "plain": "The stronger a force exerted on an object, the larger its acceleration. The bigger an objects mass the smaller the acceleration for the same force (hence it acts \"inertially\")",
+    "variables": [
+      {
+        "symbol": "F",
+        "meaning": "The sum of Forces on an object"
+      },
+      {
+        "symbol": "m",
+        "meaning": "mass (inertial)"
+      },
+      {
+        "symbol": "a",
+        "meaning": "acceleration"
+      }
+    ],
+    "conditions": [],
+    "representations": []
+  }
+}
