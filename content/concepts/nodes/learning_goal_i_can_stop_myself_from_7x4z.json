@@ -1,0 +1,11 @@
+{
+  "id": "learning_goal_i_can_stop_myself_from_7x4z",
+  "label": "Learning Goal: I can stop myself from crying too much while deriving the Israel-Stewart equations",
+  "type": "fluff",
+  "importance": 6,
+  "generality": 3,
+  "attrs": {
+    "description": "The derivation from the Boltzmann equation includes 16 dynamic quantities... at second order. :v  )",
+    "domain": "Relativistic fluid dynamics"
+  }
+}
