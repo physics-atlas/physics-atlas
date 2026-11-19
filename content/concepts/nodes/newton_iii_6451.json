@@ -1,0 +1,32 @@
+{
+  "id": "newton_iii_6451",
+  "label": "Newton III",
+  "type": "equation",
+  "importance": 8,
+  "generality": 6,
+  "attrs": {
+    "description": "Every action has an opposite and equal reaction.",
+    "equation": "F_{12}=-F_{21}",
+    "plain": "The force object 1 enacts on object 2 is the same force object 2 enacts on object 1, but in the opposite direction",
+    "variables": [
+      {
+        "symbol": "F_{12}",
+        "meaning": "Force",
+        "plain": "Force from object 1 on 2"
+      },
+      {
+        "symbol": "F_{21}",
+        "meaning": "Force",
+        "plain": "Force from object 2 on 1"
+      }
+    ],
+    "conditions": [],
+    "representations": [
+      {
+        "name": "As reaction force",
+        "equation": "\\text{Actio}=\\text{Reactio}"
+      }
+    ],
+    "domain": "Classical mechanics"
+  }
+}
