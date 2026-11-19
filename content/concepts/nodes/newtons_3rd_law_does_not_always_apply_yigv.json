@@ -1,0 +1,19 @@
+{
+  "id": "newtons_3rd_law_does_not_always_apply_yigv",
+  "label": "Newtons 3rd law does not always apply to equal opposing forces.",
+  "type": "misconception",
+  "importance": 6,
+  "generality": 4,
+  "figures": [
+    {
+      "file": "newtons_3rd_law_does_not_always_apply_yigv/img-20261116-wa0006.jpg",
+      "alt": "A 5kg weight sitting on a table, with two arrows drawn from its centre. One pointing down, labelled as gravitational force, one pointing up, labelled as normal force.",
+      "caption": "Example of a pair of opposing but equal forces",
+      "credit": "EP I lecture, Walter Pfeiffer, chapter 4"
+    }
+  ],
+  "attrs": {
+    "description": "The weight in the picture is in mechanical equilibrium due to the normal force of the table counteracting the gravitational force on the weight. \nBut this DOES NOT mean that the normal force is the reactionary force to gravity.\nReactionary forces have to be of the same kind of force. However, the normal force is a constraint arising from electromagnetic interactions of the tables atoms.\nThe reactionary force to the weight being pulled by the earth is the force, with which the earth is being pulled by the weight.",
+    "domain": "Classical mechanics"
+  }
+}
