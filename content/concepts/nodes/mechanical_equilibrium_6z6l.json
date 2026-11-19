@@ -1,0 +1,10 @@
+{
+  "id": "mechanical_equilibrium_6z6l",
+  "label": "Mechanical Equilibrium",
+  "type": "phenomenon",
+  "importance": 5,
+  "generality": 3,
+  "attrs": {
+    "description": "When the forces on an object are balanced so that there is no acceleration"
+  }
+}
