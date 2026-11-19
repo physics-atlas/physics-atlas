@@ -1,0 +1,11 @@
+{
+  "id": "why_we_care_about_newtons_3rd_law_i6ny",
+  "label": "Why we care about Newtons 3rd law",
+  "type": "fluff",
+  "importance": 5,
+  "generality": 3,
+  "attrs": {
+    "description": "Forces and reaction forces appear in every day life. For example, punching someone in the face makes your hand hurt.\nAction = The punch\nReactio = Hand pain",
+    "domain": "Classical mechanics"
+  }
+}
