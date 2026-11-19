@@ -1,0 +1,21 @@
+{
+  "id": "inertia_concept_test_zje1",
+  "label": "Inertia concept test",
+  "type": "resource",
+  "importance": 4,
+  "generality": 2,
+  "figures": [
+    {
+      "file": "inertia_concept_test_zje1/inertia-conceptest.jpg",
+      "alt": "Which of the following statements are true of inertia? List all that apply.\n\na) Inertia is a force.\nb)Inertia is a force which keeps stationary objects at rest and moving objects in motion at constant velocity.\nc) Inertia is a force which brings all objects to a rest position.\nd) All objects have inertia.\ne) A more massive object has more inertia than a less massive object.\nf) Fast-moving objects have more inertia than slow-moving objects.\ng) An object would not have any inertia in a gravity-free environment (if there is such a place).\nh) Inertia is the tendency of all objects to resist motion and ultimately stop.\ni) In a gravity-free environment (should there be one), a person with a lot of inertia would have the same ability to make a turn as a person with a small amount of inertia.",
+      "caption": "multiple choice question about inertia",
+      "credit": "https://www.physicsclassroom.com/review-session/newtons-laws/questions-with-links"
+    }
+  ],
+  "attrs": {
+    "description": "A multiple choice question examining conceptual knowledge about inertia",
+    "link": "https://www.physicsclassroom.com/review-session/newtons-laws/questions-with-links",
+    "mediaType": "quiz",
+    "estimatedTime": "5-15"
+  }
+}
