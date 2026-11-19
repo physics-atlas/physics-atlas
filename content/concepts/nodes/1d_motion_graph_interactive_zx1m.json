@@ -1,0 +1,20 @@
+{
+  "id": "1d_motion_graph_interactive_zx1m",
+  "label": "1d motion graph interactive",
+  "type": "resource",
+  "importance": 3,
+  "generality": 2,
+  "figures": [
+    {
+      "file": "1d_motion_graph_interactive_zx1m/kinematic-graphing.jpg",
+      "alt": "The visual interface of the simulation includes 3 fields labelling the initial velocity, the acceleration and the max time. These correspond to how a bicycle moves across the screen below. While the bike crosses the screen you can see the function of the motion with time on position, velocity and acceleration graphs.",
+      "credit": "screenshot from physics classroom"
+    }
+  ],
+  "attrs": {
+    "description": "Visualises how 1d motion can be represented on position, velocity and acceleration-time graphs.\nInitial exploration after an introduction.",
+    "link": "https://www.physicsclassroom.com/interactive/1d-kinematics/kinematic-graphs",
+    "mediaType": "other",
+    "estimatedTime": "10-30 mins"
+  }
+}
