@@ -1,0 +1,6 @@
+{
+  "id": "inertial_forces_txq0_e1",
+  "source": "inertial_forces_txq0",
+  "target": "force_q27c",
+  "relationship": "relates"
+}

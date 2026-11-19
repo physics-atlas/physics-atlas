@@ -1,0 +1,6 @@
+{
+  "id": "inertial_forces_txq0_e2",
+  "source": "inertial_forces_txq0",
+  "target": "point_mechanics_2hbo",
+  "relationship": "relates"
+}
