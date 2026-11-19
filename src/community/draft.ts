@@ -146,7 +146,6 @@ export interface Draft {
   relations: DraftRelation[];
   /** Edit only: ids of the concept's confirmed relations to remove */
   removals: string[];
-  claim: string;
   evidence: Evidence[];
   author: string;
   createdAt: string;
@@ -191,7 +190,6 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     pageBefore: 0,
     relations: [],
     removals: [],
-    claim: '',
     evidence: [],
     author: '',
     createdAt: now.toISOString(),
@@ -590,7 +588,6 @@ export function draftProposal(d: Draft, ctx: DraftContext): Proposal {
     state: 'open',
     author: { name: d.author.trim() || 'Anonymous' },
     createdAt: d.createdAt,
-    ...(d.claim.trim() ? { claim: d.claim.trim() } : {}),
     evidence: d.evidence.map((e) => ({ kind: e.kind, ref: e.ref.trim(), ...(e.note?.trim() ? { note: e.note.trim() } : {}) })),
     nodes: d.editOf ? [] : [node],
     ...(d.editOf ? { edits: [node] } : {}),
@@ -624,7 +621,6 @@ export type DraftField =
   | 'page'
   | 'generality'
   | 'importance'
-  | 'claim'
   | 'relations'
   | 'evidence'
   | 'other';
@@ -773,7 +769,7 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
     });
   });
   d.evidence.forEach((e, index) => {
-    if (!e.ref.trim()) out.push({ field: 'evidence', index, message: `Evidence ${index + 1} is empty.` });
+    if (!e.ref.trim()) out.push({ field: 'evidence', index, message: `Source ${index + 1} is empty.` });
   });
   if (out.length) return out;
   // The same rules the proposed layer applies — anything left is a format problem.
@@ -785,7 +781,7 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
         ? {
             field: 'evidence',
             index: evidence,
-            message: `Evidence ${evidence + 1} isn't a valid ${EVIDENCE_LABELS[p.evidence[evidence].kind]}.`,
+            message: `Source ${evidence + 1} isn't a valid ${EVIDENCE_LABELS[p.evidence[evidence].kind]}.`,
           }
         : { field: 'other', message },
     );
@@ -921,7 +917,6 @@ export function hasContent(d: Draft): boolean {
     d.editOf ||
       d.label.trim() ||
       d.description.trim() ||
-      d.claim.trim() ||
       d.equation.trim() ||
       (d.page ?? []).some((s) => s.trim()) ||
       d.figures.length ||
@@ -978,7 +973,7 @@ export function parseDraft(raw: unknown): Draft | null {
   if (!raw || typeof raw !== 'object') return null;
   const d = raw as Record<string, unknown>;
   if (![1, 2, 3].includes(d.version as number) || !isString(d.suffix) || !/^[a-z0-9]{4}$/.test(d.suffix)) return null;
-  for (const key of ['label', 'description', 'equation', 'claim', 'author', 'createdAt'] as const)
+  for (const key of ['label', 'description', 'equation', 'author', 'createdAt'] as const)
     if (!isString(d[key])) return null;
   if (d.type !== '' && !PROPOSABLE_TYPES.includes(d.type as NodeType)) return null;
   if (d.editOf !== undefined && !isString(d.editOf)) return null;
@@ -1078,8 +1073,9 @@ export function parseDraft(raw: unknown): Draft | null {
   // Before version 3, importance ran 1–50: the same depth is a fifth of it now.
   const importance =
     d.version !== 3 && typeof d.importance === 'number' ? Math.max(1, Math.round(d.importance / 5)) : (d.importance as number | undefined);
-  const { minutes: _m, ...stored } = raw as Draft & { minutes?: number };
-  void _m;
+  // Until 2026-11 a draft had minutes (now its time) and a claim (retired, Decision 49).
+  const { minutes: _m, claim: _c, ...stored } = raw as Draft & { minutes?: number; claim?: string };
+  void [_m, _c];
   return {
     ...stored,
     version: 3,

@@ -8,6 +8,7 @@ import type { Contents, PageFilter } from '../graph/contents';
 import type { PageRef } from '../lib/pageLinks';
 import TypeBadge from './TypeBadge';
 import ConceptPage from './pages/ConceptPage';
+import PageEditor from './pages/PageEditor';
 import RelationPage from './pages/RelationPage';
 import Sidebar from './pages/Sidebar';
 import type { SidebarView } from './pages/Sidebar';
@@ -49,9 +50,13 @@ interface PageViewProps {
   onShowOnMap: (id: string) => void;
   /** Changes when a navigation should move focus to the page's heading */
   focusTick: number;
+  /** The concept whose page opens in the editor (from the Community view's "Edit its page") */
+  editOnArrival?: string | null;
+  /** Opens the concept's edit draft in the Community view, to review and submit */
+  onReviewDraft: () => void;
 }
 
-export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick }: PageViewProps) {
+export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick, editOnArrival = null, onReviewDraft }: PageViewProps) {
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
   const contents = useMemo(() => buildContents(index), [index]);
   const allRelations = useMemo(() => relationTypes(graph.edges), [graph]);
@@ -65,6 +70,8 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
     text: '',
   }));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // The page being edited (Decision 49): its editor stays open until closed or another page opens.
+  const [editing, setEditing] = useState<string | null>(editOnArrival);
   const node = target.concept ? index.byId.get(target.concept) : undefined;
   const edge = target.relation ? graph.edges.find((e) => e.id === target.relation) : undefined;
 
@@ -169,6 +176,18 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
               setDepth(d);
               store(DEPTH_KEY, String(d));
             }}
+            onEditPage={() => setEditing(node.id)}
+            pageEditor={
+              editing === node.id ? (
+                <PageEditor
+                  node={node}
+                  graph={graph}
+                  section={contents.byId.get(node.id)?.number ?? ''}
+                  onReview={onReviewDraft}
+                  onClose={() => setEditing(null)}
+                />
+              ) : undefined
+            }
           />
         ) : edge ? (
           <RelationPage

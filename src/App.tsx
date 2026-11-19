@@ -211,6 +211,25 @@ export default function App() {
     setPageFocus((t) => t + 1);
   }, []);
   const openConceptPage = useCallback((id: string) => openPage({ concept: id }), [openPage]);
+  // Page editing lives on the page (Decision 49): the community editor opens a page with its
+  // editor, and the page's "Review and submit" opens the draft in the community editor.
+  const [pageEdit, setPageEdit] = useState<string | null>(null);
+  const [draftOnArrival, setDraftOnArrival] = useState(false);
+  const editPage = useCallback(
+    (id: string) => {
+      setPageEdit(id);
+      openPage({ concept: id });
+    },
+    [openPage],
+  );
+  const reviewDraft = useCallback(() => {
+    setDraftOnArrival(true);
+    setMode('community');
+  }, []);
+  useEffect(() => {
+    if (mode !== 'page') setPageEdit(null);
+    if (mode !== 'community') setDraftOnArrival(false);
+  }, [mode]);
   const openRelationPage = useCallback((id: string) => openPage({ relation: id }), [openPage]);
   // From a page back to the map, centred on its concept.
   const showOnMap = useCallback(
@@ -336,6 +355,8 @@ export default function App() {
             hintOpen={hintOpen}
             onOpenPage={openConceptPage}
             onOpenRelationPage={openRelationPage}
+            startEditing={mode === 'community' && draftOnArrival}
+            onEditPage={editPage}
           />
         )}
         {mode === 'page' && (
@@ -346,6 +367,8 @@ export default function App() {
               onOpen={openPage}
               onShowOnMap={showOnMap}
               focusTick={pageFocus}
+              editOnArrival={pageEdit}
+              onReviewDraft={reviewDraft}
             />
           </Suspense>
         )}

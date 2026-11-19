@@ -6,6 +6,24 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-77: the proposal form — required first, pages on the page, no claim
+
+**Status:** ✅ Implemented <!-- status-line: feature-77 -->
+**Planned:** 2026-11-18 — requested: separate "assumes" and "pictures"; remove the page editor from the card (every card gets a default base page) and move page editing to the page view; colour the editor's titles in the secondary colour; optional sections at the bottom, required first; remove the claim; "Evidence" → "Source/Evidence"
+**Implemented:** 2026-11-18
+
+### Implemented
+- `DraftEditor`: required (the concept, its kind's required fields, connections) then optional sections, each marked; assumes and pictures separate; `EquationFields`/`ResourceFields` split by `part`; `PageNote` in place of the page fields; claim section removed; Source/Evidence
+- `pages/PageEditor.tsx`, `ConceptPage` **Edit this page**, `PageView`; `App` wiring both ways (`editOnArrival`, `startEditing`)
+- `draft.ts`: no `claim` (dropped when an old draft is read); "Source N" messages
+- `App.css`: editor field titles in `--terra-ink`, the page editor's frame
+- `GraphView`: the zoom level of detail no longer runs on a map that was rebuilt (a page error when arriving with the editor open)
+- Tests: the retired claim; smoke: page editing → review in the Community view, no claim section
+- Decision 49
+
+### Review
+Not run — direct session.
+
 ## feature-76: the map as front page; "Show path to this" removed; terracotta accents
 
 **Status:** ✅ Implemented <!-- status-line: feature-76 -->

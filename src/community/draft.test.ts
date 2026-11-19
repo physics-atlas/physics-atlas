@@ -41,7 +41,6 @@ const jeans = (): Draft => ({
   type: 'property',
   description: 'Sample: the length scale above which gravity overcomes pressure support.',
   domains: ['Cosmology'],
-  claim: 'Sample claim with $\\lambda_J$.',
   evidence: [{ kind: 'arxiv', ref: '2101.01234', note: 'Sample' }],
   author: 'Sample author',
   relations: [
@@ -254,7 +253,7 @@ describe('draftProblems', () => {
   });
   it('points at the evidence row that is malformed', () => {
     const d = { ...jeans(), evidence: [jeans().evidence[0], { kind: 'doi' as const, ref: 'not-a-doi' }] };
-    expect(draftProblems(d, alone(d))).toEqual([{ field: 'evidence', index: 1, message: "Evidence 2 isn't a valid DOI." }]);
+    expect(draftProblems(d, alone(d))).toEqual([{ field: 'evidence', index: 1, message: "Source 2 isn't a valid DOI." }]);
   });
   it('asks for the equation of an equation', () => {
     const d = { ...jeans(), type: 'equation' as const };
@@ -280,22 +279,16 @@ describe('export', () => {
 });
 
 describe('pullRequestText', () => {
-  it('has the title, claim, the relations as sentences, evidence links and the files', () => {
+  it('has the title, the relations as sentences, source links and the files — and no claim', () => {
     const text = pullRequestText(jeans(), alone(jeans()));
     expect(text).toContain('# Add Jeans scale');
-    expect(text).toContain('Sample claim with $\\lambda_J$.');
+    expect(text).not.toContain('## Claim');
     expect(text).toContain('- Jeans scale is a condition of Structure Formation.');
     expect(text).toContain("- Zel'dovich approximation relates to Jeans scale.");
     expect(text).toContain('[arXiv:2101.01234](https://arxiv.org/abs/2101.01234) — Sample');
     expect(text).toContain(`content/concepts/nodes/${conceptId(jeans())}.json`);
     expect(text).toContain('Proposed by Sample author.');
     expect(text).not.toContain('## Depends on');
-  });
-  it('leaves the claim section out when there is no claim', () => {
-    const d = { ...jeans(), claim: '  ' };
-    const text = pullRequestText(d, alone(d));
-    expect(text).not.toContain('## Claim');
-    expect(text).toContain('## What it adds');
   });
 });
 
@@ -321,13 +314,14 @@ describe('generality and importance', () => {
   });
 });
 
-describe('the claim is optional', () => {
-  it('a draft without one exports, and its proposal has no claim field', () => {
-    const d = { ...jeans(), claim: '' };
+describe('the claim is retired (Decision 49)', () => {
+  it('a draft has none, and one saved before loses it: the proposal never carries a claim', () => {
+    const d = jeans();
     expect(draftProblems(d, alone(d))).toEqual([]);
-    const p = draftProposal(d, alone(d));
-    expect('claim' in p).toBe(false);
-    expect(proposalProblems(p, concepts)).toEqual([]);
+    expect('claim' in draftProposal(d, alone(d))).toBe(false);
+    const old = parseDraft({ ...jeans(), claim: 'Sample: an old claim.' })!;
+    expect('claim' in old).toBe(false);
+    expect('claim' in draftProposal(old, alone(old))).toBe(false);
   });
 });
 

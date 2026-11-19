@@ -626,6 +626,31 @@ if (!fromCard.title.startsWith('Einstein Field Equations —') || !fromCard.curr
   errors.push(`the page's title or contents marker: ${JSON.stringify(fromCard)}`);
 if (afterNext.url === fromCard.url || afterNext.focused !== 'atlas-page-title')
   errors.push(`Next didn't move to a new page with focus on its heading: ${JSON.stringify(afterNext)}`);
+
+// Writing a page happens on the page (Decision 49): "Edit this page" opens its depths in an
+// edit draft, and "Review and submit" opens that draft in the Community view's editor.
+{
+  await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
+  await page.goto(`${URL}/?mode=page&concept=einstein_eq`, { waitUntil: 'networkidle0' });
+  const press = (scope, label) =>
+    page.evaluate((s, l) => [...document.querySelectorAll(`${s} .draft-button`)].find((b) => b.textContent.includes(l))?.click(), scope, label);
+  await press('.atlas-page', 'Edit this page');
+  await page.waitForSelector('.atlas-page-editor textarea');
+  await page.type('.atlas-page-editor textarea', 'Smoke: a sentence on the page.');
+  await press('.atlas-page-editor', 'Review and submit');
+  await page.waitForSelector('.draft-editor', { timeout: 10000 });
+  const reviewed = await page.evaluate(() => ({
+    search: window.location.search,
+    title: document.querySelector('.draft-editor .map-card-title')?.textContent,
+    pageNote: document.querySelector('.draft-page-note')?.textContent ?? '',
+    claim: [...document.querySelectorAll('.draft-editor .block-heading')].some((h) => /claim/i.test(h.textContent)),
+  }));
+  console.log('page editing → review:', reviewed);
+  if (reviewed.search !== '?mode=community' || reviewed.title !== 'Propose an edit: Einstein Field Equations' || !reviewed.pageNote.includes('1 depth'))
+    errors.push(`the page's "Review and submit" didn't open its draft: ${JSON.stringify(reviewed)}`);
+  if (reviewed.claim) errors.push('the editor still has a claim section');
+  await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
+}
 if (neighbourLinks === 0) errors.push("the Neighbours view lists nothing for a page that's connected");
 await p4.screenshot({ path: `${OUT}/atlas-page.png` });
 await p4.close();

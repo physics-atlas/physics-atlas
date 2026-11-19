@@ -111,6 +111,10 @@ interface ConceptMapViewProps {
   onOpenPage?: (id: string) => void;
   /** Open a relation's atlas page */
   onOpenRelationPage?: (id: string) => void;
+  /** The proposal editor opens at once, on the active draft (from a page's "Review and submit") */
+  startEditing?: boolean;
+  /** A concept's page opens with its editor (the community editor's "Edit its page", Decision 49) */
+  onEditPage?: (id: string) => void;
 }
 
 export default function ConceptMapView({
@@ -131,6 +135,8 @@ export default function ConceptMapView({
   hintOpen = false,
   onOpenPage,
   onOpenRelationPage,
+  startEditing = false,
+  onEditPage,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -208,7 +214,7 @@ export default function ConceptMapView({
   // proposal each. The map shows each new concept as a ghost the proposer can
   // drag, and previews an edit on the confirmed concept itself.
   const drafts = useDrafts();
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(startEditing);
   const drafting = community && editorOpen && drafts.drafts.length > 0;
   const draft = drafting ? (drafts.drafts.find((d) => d.suffix === drafts.active) ?? drafts.drafts[0]) : null;
   const [near, setNear] = useState(NO_NEAR);
@@ -704,6 +710,7 @@ export default function ConceptMapView({
           >
             <Suspense fallback={<p className="concept-empty">Loading the editor…</p>}>
               <DraftEditor
+                onEditPage={onEditPage}
                 draft={draft}
                 update={(change) => drafts.update(draft.suffix, change)}
                 ctx={draftCtx}

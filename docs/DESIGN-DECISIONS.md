@@ -802,6 +802,19 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 49 — The proposal form: required first, pages written on the page, no claim (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Order | What a proposal needs comes first: **The concept** (name, kind, description, and the kind's own required fields — an equation's formula; a resource's link, kind and time), then **Connections**. Then the optional sections, each marked *optional* in its title: the kind's details (an equation's plain words, variables and representations; a formalism's formulas; a resource's accessibility), **Field and scale**, **What it assumes**, **Pictures** (two sections, no longer one), **Its page**, **Source/Evidence**, **About you**. **Check and export** stays last. |
+| Pages | Every concept has its page from the start, built from its card — definition, equation, assumptions, connections. The written depths are edited **on the page**: **✎ Edit this page** opens them in the concept's edit draft (the same one the Community editor opens, kept in the browser), with previews and the maths check; **Review and submit** opens the draft in the Community view. The form shows only a note: what the draft carries, and **Edit its page**. A new concept's page is written once it's on the map. |
+| Claim | Removed from the form and the draft. A draft saved with one drops it when read back; a proposal no longer carries one. Open proposals that already have one still show it on their card. |
+| Source/Evidence | The evidence section is **Source/Evidence**: **Add a source or evidence**, "Source 1 isn't a valid DOI". The data keeps its name (`evidence`). |
+| Colour | Every field's title in the editors (the form, the page editor) is in the accent's ink (`--terra-ink`, Decision 48), like the section titles. |
+
+**Open path:** a new concept's page written in the form again, for proposers who want to
+send the page with the concept.
+
 ## Decision 48 — The concept map is the front page; terracotta accents (2026-11)
 
 | Piece | Rule |

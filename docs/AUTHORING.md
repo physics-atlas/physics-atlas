@@ -535,9 +535,15 @@ maths won't typeset — the proposal editor runs the same maths check on each de
 in display (`\begin{equation}`, `\begin{aligned}`) has to be between `$$ … $$` on lines
 of its own, not `$ … $`. The site shows the files as they are (`src/data/pageSources.ts`):
 the format is parsed into page elements by `src/lib/pageText.ts`, never inserted as
-HTML. The proposal editor has a **Page** field: a text per depth, **Add a deeper level**,
-and a preview drawn by the same renderer as the published page; the page goes into the
-same pull request as its concept.
+HTML.
+
+A page is written **on the page itself** (Decision 49): **✎ Edit this page** opens a text
+per depth, **Add a deeper level**, and a preview drawn by the same renderer as the
+published page. The text goes into an edit draft of the concept, kept in the browser;
+**Review and submit** opens that draft in the Community view, and the page goes into the
+same pull request as the rest of the edit. A new concept needs no page of its own to be
+proposed: its page exists from the start, built from its card, and is written once the
+concept is on the map.
 
 ## `epistemicStatus`
 
@@ -566,9 +572,9 @@ exactly the files a merge adds:
    `content/concepts/edges/`.
 2. Run `npm run validate`. The files are already in the canonical format and carry no
    positions; the map lays the concept out like any other.
-3. The proposer's **pull-request text** (title, claim, what it adds, evidence) is the
-   description for the commit or pull request. The claim and evidence are for reviewers and
-   stay out of the concept files.
+3. The proposer's **pull-request text** (title, what it adds, sources and evidence) is the
+   description for the commit or pull request. The sources are for reviewers and stay out of
+   the concept files. (Proposals no longer carry a claim — Decision 49; older ones may.)
 4. Check `generality` (circle size, 1–10) and `importance` (zoom visibility, 1–10). The
    proposer may have suggested them; if a field is missing, set it yourself, or the concept
    falls back to a size and visibility estimated from its connections.

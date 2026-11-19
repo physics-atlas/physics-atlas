@@ -103,6 +103,8 @@ export default function ConceptPage({
   onOpen,
   depth,
   onDepth,
+  onEditPage,
+  pageEditor,
 }: {
   node: GraphNode;
   index: ConceptIndex;
@@ -114,6 +116,10 @@ export default function ConceptPage({
   /** The depth the reader last chose (pages with fewer show their deepest) */
   depth: number;
   onDepth: (d: number) => void;
+  /** Opens the page editor (Decision 49) */
+  onEditPage?: () => void;
+  /** The page editor, while it's open: it takes the written depths' place */
+  pageEditor?: ReactNode;
 }) {
   const entry = contents.byId.get(node.id)!;
   const description = 'description' in node.attrs ? node.attrs.description : undefined;
@@ -164,7 +170,12 @@ export default function ConceptPage({
         <p>
           <button type="button" className="draft-button" onClick={() => onShowOnMap(node.id)}>
             Show on the map
-          </button>
+          </button>{' '}
+          {onEditPage && !pageEditor && (
+            <button type="button" className="draft-button" onClick={onEditPage}>
+              <span aria-hidden>✎ </span>Edit this page
+            </button>
+          )}
         </p>
       </header>
 
@@ -177,7 +188,8 @@ export default function ConceptPage({
 
       {node.figures && node.figures.length > 0 && <Figures figures={node.figures} />}
 
-      {depthCount > 1 && (
+      {pageEditor}
+      {!pageEditor && depthCount > 1 && (
         <fieldset className="atlas-depths">
           <legend className="atlas-small-label">Depth</legend>
           <p className="atlas-filter-note" id="atlas-depth-hint">
@@ -200,7 +212,8 @@ export default function ConceptPage({
           </div>
         </fieldset>
       )}
-      {depthCount > 0 &&
+      {!pageEditor &&
+        depthCount > 0 &&
         (written === null ? (
           <p className="atlas-empty" role="status">
             Loading the page…
@@ -215,10 +228,10 @@ export default function ConceptPage({
             />
           )
         ))}
-      {depthCount === 0 && (
+      {!pageEditor && depthCount === 0 && (
         <p className="atlas-empty">
-          Nothing has been written for this page yet. Pages are written in Markdown and LaTeX, at as many depths as their authors want —
-          propose one from the Community view.
+          Nothing more has been written for this page yet — what's here comes from the concept's card. Pages are written in
+          Markdown and LaTeX, at as many depths as their authors want: <strong>Edit this page</strong> above.
         </p>
       )}
 

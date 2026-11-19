@@ -2,7 +2,6 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
 import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
-import { loadPage, PAGE_DEPTHS } from '../data/pageSources';
 import { figureUrl } from '../data/media';
 import vocabularyText from '../data/conceptVocabulary.json?raw';
 import { FIGURE_MAX_SIDE, FIGURE_TYPES, MAX_FIGURES } from '../community/figures';
@@ -37,10 +36,7 @@ import type { Evidence, EvidenceKind } from '../community/types';
 import type { SignedInUser, SubmitResult } from '../community/api';
 import { edgeConflicts } from '../graph/conflicts';
 import type { EdgeConflict, LabelMatch } from '../graph/conflicts';
-import { buildConceptIndex, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts, splitFluff } from '../graph/concepts';
-import { buildContents } from '../graph/contents';
-import { pageHref, relationHref } from '../lib/pageLinks';
-import type { LinkTarget } from '../lib/pageText';
+import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts } from '../graph/concepts';
 import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { FUN_TYPES } from '../graph/typeColors';
 import { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
@@ -50,7 +46,6 @@ import RichText, { MathText } from './RichText';
 import SearchBox from './SearchBox';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
-import PageText from './pages/PageText';
 import { pageMathProblems } from '../lib/pageMaths';
 import { equationSymbols, symbolKey } from '../lib/equationSymbols';
 
@@ -92,6 +87,8 @@ interface DraftEditorProps {
     loginHref: string;
     onSubmit: (publish: boolean) => Promise<SubmitResult>;
   } | null;
+  /** Opens a concept's atlas page with its page editor (Decision 49) */
+  onEditPage?: (conceptId: string) => void;
 }
 
 const RELATION_TYPES = Object.keys(EDGE_SENTENCE_TEMPLATES) as EdgeType[];
@@ -162,6 +159,7 @@ export default function DraftEditor({
   onDiscard,
   status,
   submission,
+  onEditPage,
 }: DraftEditorProps) {
   const uid = useId();
   const fieldId = (f: DraftField | string) => `${uid}-${f}`;
@@ -186,11 +184,6 @@ export default function DraftEditor({
       ),
     ],
     [draft, ctx],
-  );
-  // An edited concept's place in the atlas pages, so the page preview numbers its blocks as published.
-  const pageSection = useMemo(
-    () => (draft.editOf ? (buildContents(buildConceptIndex(splitFluff(ctx.confirmed).base)).byId.get(draft.editOf)?.number ?? '') : ''),
-    [draft.editOf, ctx.confirmed],
   );
   // What an assumption can point to: confirmed concepts, not itself, not ones already pointed to.
   const confirmedEntries = useMemo(() => {
@@ -410,92 +403,9 @@ export default function DraftEditor({
           />
         </Field>
 
-        {draft.type === 'equation' && <EquationFields draft={draft} update={update} fieldId={fieldId} />}
-        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
-        {draft.type === 'resource' && <ResourceFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'equation' && <EquationFields part="required" draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'resource' && <ResourceFields part="required" draft={draft} update={update} fieldId={fieldId} />}
 
-        {/* A resource has no field of physics of its own: what it helps understand does. */}
-        {draft.type !== 'resource' && (
-          <fieldset className="draft-domains">
-            <legend className="draft-label">
-              Field <span className="draft-optional">optional</span>
-            </legend>
-            {CONCEPT_DOMAINS.map((domain) => (
-              <label key={domain} className="draft-check">
-                <input
-                  type="checkbox"
-                  checked={draft.domains.includes(domain)}
-                  onChange={(e) =>
-                    set(
-                      'domains',
-                      e.target.checked
-                        ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
-                        : draft.domains.filter((d) => d !== domain),
-                    )
-                  }
-                />
-                {domain}
-              </label>
-            ))}
-          </fieldset>
-        )}
-
-        <Field
-          id={fieldId('generality')}
-          label={`Generality, 1–${GENERALITY_MAX}`}
-          hint={`How broad the idea is: 1 is very specific, ${GENERALITY_MAX} very general. On the map it sets the size of the circle, from small (1) to 40 times larger (${GENERALITY_MAX}) — watch your draft grow or shrink.`}
-          optional
-        >
-          <input
-            id={fieldId('generality')}
-            className="draft-input draft-number"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={GENERALITY_MAX}
-            step={1}
-            value={draft.generality ?? ''}
-            onChange={(e) => set('generality', e.target.value === '' ? undefined : Number(e.target.value))}
-            aria-describedby={fieldId('generality-hint')}
-          />
-        </Field>
-        <Field
-          id={fieldId('importance')}
-          label={`Importance, 1–${IMPORTANCE_MAX}`}
-          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 8 shows on the whole map, and each step lower needs about a 1.5× closer look, so 1 only appears when you're right next to it.`}
-          optional
-        >
-          <input
-            id={fieldId('importance')}
-            className="draft-input draft-number"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={IMPORTANCE_MAX}
-            step={1}
-            value={draft.importance ?? ''}
-            onChange={(e) => set('importance', e.target.value === '' ? undefined : Number(e.target.value))}
-            aria-describedby={fieldId('importance-hint')}
-          />
-        </Field>
-        <p className="draft-hint">Leave either empty and the curator sets it.</p>
-      </section>
-
-      <section className="rel-block draft-section" aria-labelledby={fieldId('h-details')}>
-        <h3 className="block-heading" id={fieldId('h-details')}>
-          What it assumes, pictures and its page
-        </h3>
-        <AssumptionFields
-          draft={draft}
-          update={update}
-          fieldId={fieldId}
-          concepts={ctx.confirmed.nodes}
-          entries={assumableEntries}
-        />
-
-        <FigureFields draft={draft} update={update} fieldId={fieldId} />
-
-        <PageFields draft={draft} update={update} fieldId={fieldId} sectionOf={pageSection} />
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-relations')}>
@@ -814,41 +724,125 @@ export default function DraftEditor({
         </details>
       </section>
 
-      <section className="rel-block draft-section" aria-labelledby={fieldId('h-claim')}>
-        <h3 className="block-heading" id={fieldId('h-claim')}>
-          The claim
+      {/* Everything below is optional — what a proposal needs is above. */}
+      {(draft.type === 'equation' || draft.type === 'formalism' || draft.type === 'resource') && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-more')}>
+        <h3 className="block-heading" id={fieldId('h-more')}>
+          {draft.type === 'equation' ? 'The equation in detail' : draft.type === 'formalism' ? 'Formulas' : 'Accessibility'} <span className="draft-optional">optional</span>
         </h3>
+        {draft.type === 'equation' && <EquationFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'resource' && <ResourceFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
+      </section>
+      )}
+
+      <section className="rel-block draft-section" aria-labelledby={fieldId('h-scale')}>
+        <h3 className="block-heading" id={fieldId('h-scale')}>
+          Field and scale <span className="draft-optional">optional</span>
+        </h3>
+        {/* A resource has no field of physics of its own: what it helps understand does. */}
+        {draft.type !== 'resource' && (
+          <fieldset className="draft-domains">
+            <legend className="draft-label">
+              Field <span className="draft-optional">optional</span>
+            </legend>
+            {CONCEPT_DOMAINS.map((domain) => (
+              <label key={domain} className="draft-check">
+                <input
+                  type="checkbox"
+                  checked={draft.domains.includes(domain)}
+                  onChange={(e) =>
+                    set(
+                      'domains',
+                      e.target.checked
+                        ? CONCEPT_DOMAINS.filter((d) => d === domain || draft.domains.includes(d))
+                        : draft.domains.filter((d) => d !== domain),
+                    )
+                  }
+                />
+                {domain}
+              </label>
+            ))}
+          </fieldset>
+        )}
+
         <Field
-          id={fieldId('claim')}
-          label="What reviewers vote on"
-          hint="Without a claim, reviewers vote on the concept and its connections as written. Markdown: **bold**, *italic*; maths in $…$, or $$…$$ on its own line."
+          id={fieldId('generality')}
+          label={`Generality, 1–${GENERALITY_MAX}`}
+          hint={`How broad the idea is: 1 is very specific, ${GENERALITY_MAX} very general. On the map it sets the size of the circle, from small (1) to 40 times larger (${GENERALITY_MAX}) — watch your draft grow or shrink.`}
           optional
         >
-          <textarea
-            id={fieldId('claim')}
-            className="draft-input"
-            rows={5}
-            value={draft.claim}
-            onChange={(e) => set('claim', e.target.value)}
-            aria-describedby={fieldId('claim-hint')}
+          <input
+            id={fieldId('generality')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={GENERALITY_MAX}
+            step={1}
+            value={draft.generality ?? ''}
+            onChange={(e) => set('generality', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('generality-hint')}
           />
         </Field>
-        {draft.claim.trim() && (
-          <div className="draft-preview proposal-claim">
-            <p className="draft-label">Preview</p>
-            <RichText source={draft.claim} />
-          </div>
-        )}
+        <Field
+          id={fieldId('importance')}
+          label={`Importance, 1–${IMPORTANCE_MAX}`}
+          hint={`How much of a landmark it is. On the map it sets how close you have to zoom before it appears: ${IMPORTANCE_MAX} always shows, 8 shows on the whole map, and each step lower needs about a 1.5× closer look, so 1 only appears when you're right next to it.`}
+          optional
+        >
+          <input
+            id={fieldId('importance')}
+            className="draft-input draft-number"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={IMPORTANCE_MAX}
+            step={1}
+            value={draft.importance ?? ''}
+            onChange={(e) => set('importance', e.target.value === '' ? undefined : Number(e.target.value))}
+            aria-describedby={fieldId('importance-hint')}
+          />
+        </Field>
+        <p className="draft-hint">Leave either empty and the curator sets it.</p>
+      </section>
+
+      <section className="rel-block draft-section" aria-labelledby={fieldId('h-assumes')}>
+        <h3 className="block-heading" id={fieldId('h-assumes')}>
+          What it assumes <span className="draft-optional">optional</span>
+        </h3>
+        <AssumptionFields
+          draft={draft}
+          update={update}
+          fieldId={fieldId}
+          concepts={ctx.confirmed.nodes}
+          entries={assumableEntries}
+        />
+      </section>
+
+      <section className="rel-block draft-section" aria-labelledby={fieldId('h-figures')}>
+        <h3 className="block-heading" id={fieldId('h-figures')}>
+          Pictures <span className="draft-optional">optional</span>
+        </h3>
+        <FigureFields draft={draft} update={update} fieldId={fieldId} />
+      </section>
+
+      <section className="rel-block draft-section" aria-labelledby={fieldId('h-page')}>
+        <h3 className="block-heading" id={fieldId('h-page')}>
+          Its page <span className="draft-optional">optional</span>
+        </h3>
+        <PageNote draft={draft} onEditPage={onEditPage} />
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-evidence')}>
         <h3 className="block-heading" id={fieldId('h-evidence')}>
-          Evidence <span className="rel-count">{draft.evidence.length}</span>
+          Source/Evidence <span className="rel-count">{draft.evidence.length}</span>{' '}
+          <span className="draft-optional">optional</span>
         </h3>
         <ol className="draft-evidence">
           {draft.evidence.map((e, i) => (
             <li key={i} className="draft-relation">
-              <Field id={fieldId(`kind-${i}`)} label={`Evidence ${i + 1}: kind`}>
+              <Field id={fieldId(`kind-${i}`)} label={`Source ${i + 1}: kind`}>
                 <select
                   id={fieldId(`kind-${i}`)}
                   className="draft-input"
@@ -892,7 +886,7 @@ export default function DraftEditor({
                   className="draft-button"
                   onClick={() => update((d) => ({ ...d, evidence: d.evidence.filter((_, j) => j !== i) }))}
                 >
-                  Remove evidence {i + 1}
+                  Remove source {i + 1}
                 </button>
               </div>
             </li>
@@ -903,13 +897,13 @@ export default function DraftEditor({
           className="draft-button"
           onClick={() => update((d) => ({ ...d, evidence: [...d.evidence, { kind: 'arxiv', ref: '' }] }))}
         >
-          Add evidence
+          Add a source or evidence
         </button>
       </section>
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-author')}>
         <h3 className="block-heading" id={fieldId('h-author')}>
-          About you
+          About you <span className="draft-optional">optional</span>
         </h3>
         <Field id={fieldId('author')} label="Your name" hint="Shown with the proposal. Sign-in replaces this later." optional>
           <input
@@ -1281,130 +1275,36 @@ function VariableRows({
 }
 
 /**
- * The concept's atlas page, in Markdown + LaTeX: one text per depth, as many
- * as the author wants, each going further. An edit leaves the page alone until
- * the author chooses to edit it (its text is loaded then). The preview is the
- * page's own renderer, so it shows what will be published.
+ * A concept's page is written on its atlas page, not here (Decision 49): every
+ * concept has one from the start, built from its card. This says where to
+ * write it, and what of it this draft already carries (drafts from before).
  */
-function PageFields({
-  draft,
-  update,
-  fieldId,
-  sectionOf,
-}: {
-  draft: Draft;
-  update: (change: (d: Draft) => Draft) => void;
-  fieldId: (name: string) => string;
-  /** The page's number in the atlas contents, for its numbered blocks (empty for a new concept) */
-  sectionOf: string;
-}) {
-  const [loading, setLoading] = useState(false);
-  const existing = draft.editOf ? (PAGE_DEPTHS[draft.editOf] ?? 0) : 0;
-  const startEditing = async () => {
-    if (!draft.editOf || !existing) {
-      update((d) => ({ ...d, page: [''], pageBefore: 0 }));
-      return;
-    }
-    setLoading(true);
-    const sources = await loadPage(draft.editOf);
-    setLoading(false);
-    update((d) => ({ ...d, page: sources, pageBefore: sources.length }));
-  };
-  const setDepth = (i: number, source: string) =>
-    update((d) => ({ ...d, page: (d.page ?? []).map((x, j) => (j === i ? source : x)) }));
-  // A link in the preview opens its page in a new tab, so the draft stays where it is.
-  const previewLink = (to: LinkTarget, children: ReactNode) => {
-    const href = 'url' in to ? to.url : 'concept' in to ? pageHref(to.concept) : relationHref(to.relation);
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {children ?? ('url' in to ? to.url : 'concept' in to ? to.concept : to.relation)}
-        <span className="visually-hidden"> (opens in a new tab)</span>
-      </a>
-    );
-  };
+function PageNote({ draft, onEditPage }: { draft: Draft; onEditPage?: (conceptId: string) => void }) {
+  const written = (draft.page ?? []).filter((x) => x.trim()).length;
   return (
-    <fieldset className="draft-page">
-      <legend className="draft-label">
-        Its page <span className="draft-optional">optional</span>
-      </legend>
-      <p className="draft-hint" id={fieldId('page-hint')}>
-        The concept's page in the atlas pages, in Markdown and LaTeX like the rest of the card. Write it at as many depths
-        as you like — depth 1 first, each deeper one going further; readers choose how deep to read. The page also shows
-        what the map knows (the definition, the equation, how it connects).
-      </p>
-      <details className="draft-page-help">
-        <summary>Writing a page, in short</summary>
-        <ul>
-          <li>
-            <code>## Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- a list item</code>,{' '}
-            <code>1. a numbered one</code>, a blank line between paragraphs.
-          </li>
-          <li>
-            Maths: <code>$E = mc^2$</code> in a sentence, <code>$$E = mc^2$$</code> as its own paragraph.
-          </li>
-          <li>
-            Blocks, numbered on the page: a line <code>::: definition</code> (or <code>theorem</code>, <code>lemma</code>,{' '}
-            <code>example</code>, <code>remark</code>, <code>checkpoint</code>; also <code>proof</code> and{' '}
-            <code>objectives</code>), an optional title after it, the text, then a line <code>:::</code>.
-          </li>
-          <li>
-            Links: <code>[[concept_id]]</code> or <code>[[concept_id|its name]]</code> to another page,{' '}
-            <code>[[relation:relation_id|words]]</code> to a relation's, <code>[words](https://…)</code> to the web.
-          </li>
-        </ul>
-      </details>
-      {draft.page === null ? (
-        <p className="draft-page-start">
-          {existing > 0
-            ? `This concept's page is written at ${existing} ${existing === 1 ? 'depth' : 'depths'}. `
-            : "This concept's page has nothing written yet. "}
-          <button type="button" className="draft-button" id={fieldId('page')} onClick={startEditing} disabled={loading}>
-            {loading ? 'Loading the page…' : existing > 0 ? 'Edit the page' : 'Write the page'}
-          </button>
+    <div className="draft-page-note">
+      {written > 0 && (
+        <p>
+          This draft carries {written === 1 ? 'one depth' : `${written} depths`} of the concept's page, proposed with it.
+        </p>
+      )}
+      {draft.editOf ? (
+        <p>
+          The concept's page — its definition, equation and connections, from the card — is there already. Write more of
+          it on the page itself.{' '}
+          {onEditPage && (
+            <button type="button" className="draft-button" onClick={() => onEditPage(draft.editOf!)}>
+              Edit its page
+            </button>
+          )}
         </p>
       ) : (
-        <>
-          {draft.page.map((source, i) => (
-            <div key={i} className="draft-relation draft-page-depth">
-              <Field id={fieldId(`page-${i}`)} label={`Depth ${i + 1}`}>
-                <textarea
-                  id={fieldId(`page-${i}`)}
-                  className="draft-input draft-textarea draft-mono"
-                  rows={i === 0 ? 8 : 6}
-                  value={source}
-                  onChange={(e) => setDepth(i, e.target.value)}
-                  aria-describedby={fieldId('page-hint')}
-                  spellCheck
-                />
-              </Field>
-              {source.trim() && (
-                <details className="draft-page-preview">
-                  <summary>Preview depth {i + 1}</summary>
-                  <PageText source={source} section={sectionOf} link={previewLink} />
-                </details>
-              )}
-              <div className="draft-row-actions">
-                <button
-                  type="button"
-                  className="draft-button"
-                  onClick={() => update((d) => ({ ...d, page: (d.page ?? []).filter((_, j) => j !== i) }))}
-                >
-                  Remove depth {i + 1}
-                </button>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="draft-button"
-            id={draft.page.length ? undefined : fieldId('page')}
-            onClick={() => update((d) => ({ ...d, page: [...(d.page ?? []), ''] }))}
-          >
-            {draft.page.length ? `Add a deeper level (depth ${draft.page.length + 1})` : 'Write depth 1'}
-          </button>
-        </>
+        <p>
+          Every concept gets a page in the atlas pages, built from this card. Once the concept is on the map, more of its
+          page can be written there, with <strong>Edit this page</strong>.
+        </p>
       )}
-    </fieldset>
+    </div>
   );
 }
 
@@ -1687,14 +1587,34 @@ function FigureFields({
  * it joins a learning path.
  */
 function ResourceFields({
+  part,
   draft,
   update,
   fieldId,
 }: {
+  part: 'required' | 'optional';
   draft: Draft;
   update: (change: (d: Draft) => Draft) => void;
   fieldId: (name: string) => string;
 }) {
+  if (part === 'optional')
+    return (
+      <Field
+        id={fieldId('accessibility')}
+        label="Accessibility"
+        hint="Who it works for and who it doesn't: keyboard or other input, zoom, captions or a transcript, screen readers, colour. Markdown."
+      >
+        <textarea
+          id={fieldId('accessibility')}
+          className="draft-input"
+          rows={4}
+          value={draft.accessibility}
+          placeholder={'- Works with the keyboard\n- Captions, no transcript'}
+          onChange={(e) => update((d) => ({ ...d, accessibility: e.target.value }))}
+          aria-describedby={fieldId('accessibility-hint')}
+        />
+      </Field>
+    );
   return (
     <>
       <Field id={fieldId('link')} label="Link" hint="Where to find it: a web address starting with https://.">
@@ -1749,22 +1669,6 @@ function ResourceFields({
           </Field>
         ))}
       </fieldset>
-      <Field
-        id={fieldId('accessibility')}
-        label="Accessibility"
-        hint="Who it works for and who it doesn't: keyboard or other input, zoom, captions or a transcript, screen readers, colour. Markdown."
-        optional
-      >
-        <textarea
-          id={fieldId('accessibility')}
-          className="draft-input"
-          rows={4}
-          value={draft.accessibility}
-          placeholder={'- Works with the keyboard\n- Captions, no transcript'}
-          onChange={(e) => update((d) => ({ ...d, accessibility: e.target.value }))}
-          aria-describedby={fieldId('accessibility-hint')}
-        />
-      </Field>
       <p className="draft-hint">
         Connect it under Connections with <strong>helps understand</strong> to the concepts it teaches: that's how it
         appears on their learning paths.
@@ -1852,20 +1756,25 @@ function FormulaFields({
   );
 }
 
-/** An equation's main form and its variables, then any other representations, each with its own. */
+/**
+ * An equation: its main form (required, with the concept), then — further down,
+ * optional — it in plain words, its variables, and other representations.
+ */
 function EquationFields({
+  part,
   draft,
   update,
   fieldId,
 }: {
+  part: 'required' | 'optional';
   draft: Draft;
   update: (change: (d: Draft) => Draft) => void;
   fieldId: (name: string) => string;
 }) {
   const setRep = (i: number, change: Partial<DraftRepresentation>) =>
     update((d) => ({ ...d, representations: d.representations.map((r, j) => (j === i ? { ...r, ...change } : r)) }));
-  return (
-    <>
+  if (part === 'required')
+    return (
       <Field id={fieldId('equation')} label="Equation (LaTeX)">
         <LatexInput
           id={fieldId('equation')}
@@ -1873,6 +1782,9 @@ function EquationFields({
           onChange={(equation) => update((d) => ({ ...d, equation }))}
         />
       </Field>
+    );
+  return (
+    <>
       <PlainWords
         id={fieldId('equation-plain')}
         value={draft.equationPlain}

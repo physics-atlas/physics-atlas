@@ -3567,3 +3567,37 @@ a.mode-tab {
   background: var(--surface-solid);
   color: var(--ink);
 }
+
+/* The editors (proposal card, page editor, Decision 49): every field's title in the
+   accent's ink, like the section titles — the form's structure reads at a glance. */
+.draft-editor .draft-label,
+.atlas-page-editor .draft-label {
+  color: var(--terra-ink);
+}
+
+/* Writing a page, on the page itself: framed like a card, with the accent's side border. */
+.atlas-page-editor {
+  margin: 16px 0 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--terra);
+  border-radius: 12px;
+  background: rgba(var(--panel-rgb), 0.6);
+}
+
+.atlas-page-editor h2 {
+  margin-top: 0;
+}
+
+.atlas-page-editor-actions {
+  margin-top: 16px;
+}
+
+.draft-page-note p {
+  margin: 0 0 8px;
+}
+
+/* "optional" beside a section title (a flex row, which drops the space before it). */
+.block-heading .draft-optional {
+  margin-left: 6px;
+}

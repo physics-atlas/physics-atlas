@@ -1301,6 +1301,8 @@ export default function GraphView({
     let fadeFrame = 0;
     const applyFade = () => {
       fadeFrame = 0;
+      // A map rebuilt (theme, React's development double mount) can still be called through the old ref.
+      if (cy.destroyed()) return;
       const z = cy.zoom();
       const overview = overviewZoom(cy, overviewInsets());
       // Zoomed in so far that a circle is bigger than the view: you're past it.

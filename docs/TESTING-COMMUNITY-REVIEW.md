@@ -318,9 +318,12 @@ afterwards.
   appears on the map.
 - **Drag the ghost** to work out where the idea fits. The concepts nearest it are offered as
   connections ("＋ Connect?"). **Clicking any concept on the map** connects it.
-- The **form** does everything without the canvas: name, kind (with its definition),
-  connections (search), relation as a full sentence, assumptions, description, field, the
-  claim (Markdown + LaTeX preview), evidence, your name.
+- The **form** does everything without the canvas. What a proposal needs comes first —
+  name, kind (with its definition), description, the kind's own required fields (an
+  equation's formula; a resource's link, kind and time), then connections (search, each
+  relation as a full sentence). Everything optional follows, each section marked
+  *optional*: the kind's details, field and scale, what it assumes, pictures, its page (a
+  note: pages are written on the page, Decision 49), Source/Evidence, your name.
 - **Conflict detection, live:** similar names ("Did you mean …?"), a relation that already
   exists, one that says the opposite, and loops of strict prerequisites.
 - The draft is **saved in this browser** and can be **exported**: the node and relation
@@ -427,17 +430,15 @@ on the map**.
    10.* Set it back to something in range. **Importance** (1–10) works the same way. It
    changes how far out the concept stays visible, which the ghost doesn't show, because a
    draft is always visible. Both fields are optional.
-3. The **claim** is optional too. Leave it empty and the export is still *Ready*, and the
-   pull-request text has no Claim section. Or write one with maths, e.g. `Growth stays linear
-   while $\delta \ll 1$.`; the preview below renders the formula.
-4. **Add evidence** with kind *arXiv id* and type `abc`. Under **Check and export**:
-   *Evidence 1 isn't a valid arXiv id.* Each item there is a button that jumps to its field.
+3. There's no claim any more (Decision 49): the pull-request text has no Claim section.
+4. **Add a source or evidence** with kind *arXiv id* and type `abc`. Under **Check and
+   export**: *Source 1 isn't a valid arXiv id.* Each item there is a button that jumps to its field.
    Change it to `2101.01234` (a placeholder).
 5. When nothing is missing, **Check and export** says *Ready* and offers:
    - **Download the files (N)**: one node file plus one file per relation. Chrome may ask
      once to allow several downloads.
-   - **Copy pull-request text**: title, claim, what it adds (as sentences), evidence links,
-     the file list.
+   - **Copy pull-request text**: title, what it adds (as sentences), source links, the file
+     list.
    - **Show the files**: exactly what's in each.
 6. Open a downloaded file: there's **no x, y or position** anywhere.
 
