@@ -19,7 +19,7 @@ import type { SessionUser } from './session';
 // submit one as a pull request, send feedback as an issue. Everything a browser can't be trusted with —
 // the App key, the OAuth secret, deciding who may submit — happens here.
 //
-//   GET  /api/me                 { configured, user, invited, canPublish }
+//   GET  /api/me                 { configured, user, invited, canPublish, canMakeMaps }
 //   GET  /api/auth/login         → GitHub, then back to ?return=
 //   GET  /api/auth/callback      GitHub sends the browser here → back, with ?signin=<reason> if it failed
 //   POST /api/auth/logout
@@ -97,6 +97,8 @@ async function experts(config: Config, gh: GitHub, now: number): Promise<Expert[
 const expertFor = (list: Expert[], login: string) => list.find((e) => e.github.toLowerCase() === login.toLowerCase());
 /** Direct publishing (Decision 43): marked in community/experts.json, and not switched off with DIRECT_PUBLISH. */
 const mayPublish = (config: Config, expert: Expert | undefined) => Boolean(config.directPublish && expert?.publish);
+/** Personal maps (Decision 50): marked "maps" in community/experts.json, once the database is bound. */
+const mayMakeMaps = (env: Env, expert: Expert | undefined) => Boolean(env.MAPS_DB && expert?.maps);
 
 async function openProposals(config: Config, gh: GitHub, now: number): Promise<Proposal[]> {
   const key = `${config.owner}/${config.repo}`;
@@ -146,6 +148,7 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           user,
           invited: Boolean(expert),
           canPublish: mayPublish(config, expert),
+          canMakeMaps: mayMakeMaps(env, expert),
           repo: `${config.owner}/${config.repo}`,
         });
       }

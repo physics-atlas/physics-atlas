@@ -100,6 +100,8 @@ export interface Expert {
   verified?: boolean;
   /** May publish directly: the pull request is merged as soon as it's opened (Decision 43) */
   publish?: boolean;
+  /** May create personal maps (Decision 50); editors and viewers of a map need no flag */
+  maps?: boolean;
   domains?: string[];
 }
 

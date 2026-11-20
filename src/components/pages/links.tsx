@@ -17,14 +17,15 @@ export interface Links {
   front: (children: ReactNode, extra?: LinkProps) => ReactNode;
 }
 
-export function makeLinks(open: (ref: PageRef) => void): Links {
+/** Links between pages; with `map`, between a personal map's pages (lib/mapScope.ts). */
+export function makeLinks(open: (ref: PageRef) => void, map: string | null = null): Links {
   const go = (ref: PageRef) => (e: MouseEvent<HTMLAnchorElement>) => {
     if (!isPlainClick(e)) return;
     e.preventDefault();
     open(ref);
   };
   const a = (ref: PageRef, children: ReactNode, extra: LinkProps = {}) => (
-    <a href={hrefOf(ref)} onClick={go(ref)} {...extra}>
+    <a href={hrefOf(ref, map)} onClick={go(ref)} {...extra}>
       {children}
     </a>
   );

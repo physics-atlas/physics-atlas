@@ -802,6 +802,36 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 51 — Personal maps keep only a GitHub account about a person (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Personal data | A signed-in person's GitHub **account number** and **username** — nothing else: no e-mail (never requested from GitHub), no name, no avatar, no IP address in the database. Plus what they write (maps, comments) and do (edits, membership). |
+| Link viewers and readers | Nothing stored. Learned ticks, drafts and preferences stay in the browser. |
+| Account deletion | Username and number are deleted; maps they own go with them; in others' maps their comments and edits stay as **"former member"** (`ON DELETE SET NULL`, `migrations/0001_personal_maps.sql`). On request, their comments are removed too. |
+| Who sees what | Members see the map, each other's usernames, comments and history; a share link shows the map only. |
+| Responsible | Guilherme Daudt and Sophie Ashworth, jointly (Art. 26 GDPR), based in Germany; contact morph_initiative@protonmail.com. |
+| Notice | Published at `?mode=privacy` (English) and `?mode=privacy&lang=de` (German), linked from the header and next to every "Sign in with GitHub"; text in `content/privacy/en.md` and `de.md` (the German file is the repository's one exception to "everything in English"); maintainers' notes in `docs/PRIVACY-NOTICE.md`. Supervisory authority: LDI NRW. No Impressum for now (private, no financial benefit) and no separate joint-controller arrangement. |
+| Fonts | Sora is served from the site (`@fontsource/sora`) instead of Google Fonts, which sent every visitor's IP address to Google (LG München I, 2022). The smoke test checks that reading the site contacts no third party. |
+
+## Decision 50 — Personal maps live in a database (Cloudflare D1) — accepted (2026-11)
+
+Personal maps (`.claude/plans/epic-personal-maps.md`): maps a user builds from scratch,
+referencing the atlas's concepts, shared with chosen editors, commenters and viewers, and
+with anyone holding a link. The pilot is one educator's course map, built with Sophie and
+mhardtke; long term, a premium feature for educators and researchers.
+
+| Option | Status |
+|---|---|
+| **Cloudflare D1 behind the existing Worker** (members, roles, links, comments, revision history in tables; editors sign in, link viewers don't) | ✅ **Accepted** 2026-11-20 — the schema is `migrations/0001_personal_maps.sql`, the binding `MAPS_DB`, set up by hand (docs/PERSONAL-MAPS-SETUP.md); who may create maps: `"maps": true` in `community/experts.json` |
+| One GitHub repo per map in an organisation | ↩ path: keeps git as the truth, but every edit is a commit, comments live outside the app, every editor needs GitHub |
+| Course maps as files in this repo | ↩ path: public to everyone, every change waits for a merge and deploy, no comments in the app |
+
+It lifts *"no own server or database"* (Decisions 18, 25; `CLAUDE.md`) for
+**personal maps only**: the atlas stays in git, reviewed through pull requests. A personal
+map uses the atlas's own format for concepts, relations and pages, so the same checks,
+renderer and accessibility apply, and a map can be exported to files.
+
 ## Decision 49 — The proposal form: required first, pages written on the page, no claim (2026-11)
 
 | Piece | Rule |

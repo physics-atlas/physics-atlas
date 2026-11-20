@@ -1,0 +1,34 @@
+{
+  "id": "sample-course",
+  "title": "Sample course map",
+  "description": "Sample: a course map as an educator would build it — two weeks of the course, each with its goal, on top of concepts used from the atlas.",
+  "refs": ["diff_geometry", "tangent_space", "tangent_vector", "parallel_transport", "lg_pt_3"],
+  "nodes": [
+    {
+      "id": "sample_week_1_goal",
+      "type": "learning_goal",
+      "label": "Sample week 1 goal",
+      "importance": 6,
+      "generality": 3,
+      "attrs": { "description": "Sample: a course learning goal, as the educator would write it." }
+    },
+    {
+      "id": "sample_week_2_goal",
+      "type": "learning_goal",
+      "label": "Sample week 2 goal",
+      "importance": 6,
+      "generality": 3,
+      "attrs": { "description": "Sample: the next week's learning goal, building on week 1." }
+    }
+  ],
+  "edges": [
+    { "id": "sample_course_e1", "source": "sample_week_1_goal", "target": "tangent_vector", "relationship": "is a learning goal of", "importance": 8 },
+    { "id": "sample_course_e2", "source": "sample_week_2_goal", "target": "parallel_transport", "relationship": "is a learning goal of", "importance": 8 },
+    { "id": "sample_course_e3", "source": "sample_week_1_goal", "target": "sample_week_2_goal", "relationship": "strict prerequisite for" }
+  ],
+  "pages": {
+    "sample_week_1_goal": [
+      "Sample: the page an educator writes for a week of the course — what students read, do and hand in.\n\n## Before the session\n\n- Sample: read the page on [[tangent_vector]].\n\n## In the session\n\nSample: a worked example, then questions in pairs."
+    ]
+  }
+}

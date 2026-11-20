@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { MapScope } from '../lib/mapScope';
 import type { RefObject } from 'react';
 import type { ConceptGraph } from '../data/types';
 import { buildConceptIndex, sentenceParts } from '../graph/concepts';
@@ -52,11 +53,22 @@ interface PageViewProps {
   focusTick: number;
   /** The concept whose page opens in the editor (from the Community view's "Edit its page") */
   editOnArrival?: string | null;
-  /** Opens the concept's edit draft in the Community view, to review and submit */
-  onReviewDraft: () => void;
+  /** Opens the concept's edit draft in the Community view, to review and submit; without it, pages aren't editable here */
+  onReviewDraft?: () => void;
+  /** In a personal map: the concepts it uses from the atlas (Decision 50) */
+  fromAtlas?: Set<string>;
 }
 
-export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick, editOnArrival = null, onReviewDraft }: PageViewProps) {
+export default function PageView({
+  graph,
+  target,
+  onOpen,
+  onShowOnMap,
+  focusTick,
+  editOnArrival = null,
+  onReviewDraft,
+  fromAtlas,
+}: PageViewProps) {
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
   const contents = useMemo(() => buildContents(index), [index]);
   const allRelations = useMemo(() => relationTypes(graph.edges), [graph]);
@@ -83,7 +95,9 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
     },
     [onOpen],
   );
-  const links = useMemo(() => makeLinks(open), [open]);
+  // Inside a personal map, every link stays in its pages (lib/mapScope.ts).
+  const map = useContext(MapScope);
+  const links = useMemo(() => makeLinks(open, map), [open, map]);
 
   // Each page is a page to assistive tech: its own title, focus on its heading.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -98,8 +112,8 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
           .replace(/\.$/, '')
       : '';
   useEffect(() => {
-    document.title = `${titleText ? `${titleText} — ` : ''}Atlas pages — Physics Atlas`;
-  }, [titleText]);
+    document.title = `${titleText ? `${titleText} — ` : ''}${map ? 'Map pages' : 'Atlas pages'} — Physics Atlas`;
+  }, [titleText, map]);
   const pageKey = target.relation ? `r:${target.relation}` : `c:${target.concept ?? ''}`;
   useEffect(() => {
     articleRef.current?.scrollTo?.({ top: 0 });
@@ -143,7 +157,7 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
         }}
       >
         <h2 className="atlas-sidebar-title" id="atlas-sidebar-title">
-          Atlas contents
+          {map ? 'Map contents' : 'Atlas contents'}
         </h2>
         <Sidebar
           view={view}
@@ -176,9 +190,10 @@ export default function PageView({ graph, target, onOpen, onShowOnMap, focusTick
               setDepth(d);
               store(DEPTH_KEY, String(d));
             }}
-            onEditPage={() => setEditing(node.id)}
+            fromAtlas={fromAtlas?.has(node.id) ?? false}
+            onEditPage={onReviewDraft ? () => setEditing(node.id) : undefined}
             pageEditor={
-              editing === node.id ? (
+              editing === node.id && onReviewDraft ? (
                 <PageEditor
                   node={node}
                   graph={graph}

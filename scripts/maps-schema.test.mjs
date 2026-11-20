@@ -1,0 +1,51 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+// The personal maps' D1 schema (migrations/0001_personal_maps.sql), applied to an
+// in-memory SQLite database — D1 is SQLite. Node's built-in node:sqlite needs
+// Node 22.13 or later; on an older Node these tests are skipped.
+const sqlite = await import('node:sqlite').catch(() => null);
+const schema = readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8');
+
+function database() {
+  const db = new sqlite.DatabaseSync(':memory:');
+  db.exec(schema);
+  db.exec('PRAGMA foreign_keys = ON;');
+  db.prepare('INSERT INTO users (id, github_id, github_login) VALUES (?, ?, ?)').run(1, 1001, 'sample-owner');
+  db.prepare('INSERT INTO users (id, github_id, github_login) VALUES (?, ?, ?)').run(2, 1002, 'sample-editor');
+  db.prepare("INSERT INTO maps (id, title, owner_id) VALUES ('m1', 'Sample course map', 1)").run();
+  db.prepare("INSERT INTO map_members (map_id, user_id, role) VALUES ('m1', 1, 'owner'), ('m1', 2, 'editor')").run();
+  return db;
+}
+
+describe.skipIf(!sqlite)('the personal maps database (migrations/0001)', () => {
+  it('keeps only a GitHub id and username about a person', () => {
+    const columns = (database().prepare('PRAGMA table_info(users)').all()).map((c) => c.name);
+    expect(columns).toEqual(['id', 'github_id', 'github_login', 'created_at']);
+  });
+
+  it('keeps a deleted member’s comments and edits, as "former member"', () => {
+    const db = database();
+    db.prepare("INSERT INTO comments (id, map_id, anchor, author_id, body) VALUES ('c1', 'm1', 'map', 2, 'Sample comment')").run();
+    db.prepare("INSERT INTO map_revisions (map_id, revision, user_id, changed) VALUES ('m1', 1, 2, '[]')").run();
+    db.prepare('DELETE FROM users WHERE id = 2').run();
+    expect(db.prepare("SELECT author_id, body FROM comments WHERE id = 'c1'").get()).toEqual({ author_id: null, body: 'Sample comment' });
+    expect(db.prepare("SELECT user_id FROM map_revisions WHERE map_id = 'm1'").get()).toEqual({ user_id: null });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM map_members WHERE user_id = 2").get()).toEqual({ n: 0 });
+  });
+
+  it('removes a map, with everything in it, when its owner deletes their account', () => {
+    const db = database();
+    db.prepare(`INSERT INTO map_items (map_id, kind, item_id, body, revision) VALUES ('m1', 'node', 'n1', '{}', 1)`).run();
+    db.prepare("INSERT INTO map_links (token, map_id) VALUES ('t', 'm1')").run();
+    db.prepare('DELETE FROM users WHERE id = 1').run();
+    for (const table of ['maps', 'map_members', 'map_items', 'map_links'])
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()).toEqual({ n: 0 });
+  });
+
+  it('accepts only the four roles, and links that only view', () => {
+    const db = database();
+    expect(() => db.prepare("INSERT INTO map_members (map_id, user_id, role) VALUES ('m1', 2, 'admin')").run()).toThrow();
+    expect(() => db.prepare("INSERT INTO map_links (token, map_id, role) VALUES ('t2', 'm1', 'editor')").run()).toThrow();
+  });
+});

@@ -37,13 +37,22 @@ const env: Env = {
 };
 
 /** A stand-in for GitHub: records what the backend writes, serves what it reads. */
-function fakeGitHub(invited: string[] = ['ada'], { issues = true, publishers = [] as string[], mergeStatus = 200 } = {}) {
+function fakeGitHub(
+  invited: string[] = ['ada'],
+  { issues = true, publishers = [] as string[], mapMakers = [] as string[], mergeStatus = 200 } = {},
+) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object; comments?: number }[] = [];
   const reviews = new Map<number, { user: { login: string }; state: string }[]>();
   let jwtSeen = '';
   const experts = {
-    experts: invited.map((github) => ({ github, name: 'Ada', verified: true, ...(publishers.includes(github) ? { publish: true } : {}) })),
+    experts: invited.map((github) => ({
+      github,
+      name: 'Ada',
+      verified: true,
+      ...(publishers.includes(github) ? { publish: true } : {}),
+      ...(mapMakers.includes(github) ? { maps: true } : {}),
+    })),
   };
   const reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
   const fetchImpl = async (input: string, init: RequestInit = {}) => {
@@ -376,6 +385,21 @@ describe('submitting a proposal', () => {
     const tree = gh.writes.find((w) => w.path.endsWith('/git/trees'))!.body as { tree: { path: string; sha?: null }[] };
     expect(tree.tree).toContainEqual({ path: 'content/concepts/nodes/vlasov_equation.json', mode: '100644', type: 'blob', content: expect.any(String) });
     expect(tree.tree).toContainEqual({ path: 'content/concepts/edges/e62.json', mode: '100644', type: 'blob', sha: null });
+  });
+});
+
+describe('personal maps (Decision 50)', () => {
+  it('are offered to experts marked "maps", once the maps database is bound', async () => {
+    const gh = fakeGitHub(['ada'], { mapMakers: ['ada'] });
+    const session = await signIn(gh);
+    const me = (e: Env) => call(gh, '/api/me', { headers: { cookie: session } }, e).then((r) => r.json());
+    expect(await me(env)).toMatchObject({ invited: true, canMakeMaps: false });
+    expect(await me({ ...env, MAPS_DB: {} })).toMatchObject({ canMakeMaps: true });
+    resetCaches();
+    const gh2 = fakeGitHub(['ada']);
+    const session2 = await signIn(gh2);
+    const me2 = await (await call(gh2, '/api/me', { headers: { cookie: session2 } }, { ...env, MAPS_DB: {} })).json();
+    expect(me2).toMatchObject({ invited: true, canMakeMaps: false });
   });
 });
 

@@ -2,7 +2,9 @@ import type { MouseEvent } from 'react';
 import type { GraphNode } from '../../data/types';
 import type { FurtherReached, Reached } from '../../graph/contents';
 import { TYPE_COLORS } from '../../graph/typeColors';
+import { useContext } from 'react';
 import { isPlainClick, pageHref } from '../../lib/pageLinks';
+import { MapScope } from '../../lib/mapScope';
 
 // A page's neighbourhood at a glance: the concept in the middle, what it's
 // connected to on the inner ring, and what those connect to on the outer one
@@ -28,6 +30,7 @@ export default function ConnectionsDiagram({
   second: FurtherReached[];
   onOpen: (id: string) => void;
 }) {
+  const map = useContext(MapScope);
   const angleOf = new Map<string, number>();
   const p1 = first.map((r, i) => {
     const a = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(first.length, 1);
@@ -73,13 +76,13 @@ export default function ConnectionsDiagram({
         <line key={`l1-${p.node.id}`} x1={CX} y1={CY} x2={p.x} y2={p.y} className="atlas-diagram-line1" />
       ))}
       {p2.map((p) => (
-        <a key={`n2-${p.node.id}`} href={pageHref(p.node.id)} onClick={open(p.node.id)} tabIndex={-1}>
+        <a key={`n2-${p.node.id}`} href={pageHref(p.node.id, map)} onClick={open(p.node.id)} tabIndex={-1}>
           <circle cx={p.x} cy={p.y} r={6} fill={TYPE_COLORS[p.node.type]} />
           {label(p.x, p.y, p.a, shorten(p.node.label, 22), 'atlas-diagram-label2')}
         </a>
       ))}
       {p1.map((p) => (
-        <a key={`n1-${p.node.id}`} href={pageHref(p.node.id)} onClick={open(p.node.id)} tabIndex={-1}>
+        <a key={`n1-${p.node.id}`} href={pageHref(p.node.id, map)} onClick={open(p.node.id)} tabIndex={-1}>
           <circle cx={p.x} cy={p.y} r={10} fill={TYPE_COLORS[p.node.type]} />
           {label(p.x, p.y, p.a, shorten(p.node.label, 26), 'atlas-diagram-label1')}
         </a>

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import {
@@ -36,10 +36,24 @@ import { resourceMeta } from '../graph/cardSections';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, pageHref } from '../lib/pageLinks';
+import { MapScope } from '../lib/mapScope';
 import { useFold } from '../lib/useFold';
 
 // The proposal card brings KaTeX — load both only when a proposal is opened.
 const ProposalCard = lazy(() => import('./ProposalCard'));
+
+/**
+ * A concept a personal map uses from the atlas: said in words, with the way to
+ * its atlas page (a full page load — it leaves the personal map).
+ */
+function FromAtlas({ id }: { id: string }) {
+  return (
+    <p className="concept-from-atlas">
+      <strong>From the atlas</strong> — shown as it is there, and kept up to date with it.{' '}
+      <a href={pageHref(id)}>Its atlas page</a>
+    </p>
+  );
+}
 
 /** The map's two arrangements, side by side in the control bar for comparison. */
 const ARRANGEMENTS: { key: Arrangement; label: string; title: string }[] = [
@@ -115,6 +129,8 @@ interface ConceptMapViewProps {
   startEditing?: boolean;
   /** A concept's page opens with its editor (the community editor's "Edit its page", Decision 49) */
   onEditPage?: (id: string) => void;
+  /** In a personal map: the concepts it uses from the atlas — marked on their card and in the list (Decision 50) */
+  fromAtlas?: Set<string>;
 }
 
 export default function ConceptMapView({
@@ -137,6 +153,7 @@ export default function ConceptMapView({
   onOpenRelationPage,
   startEditing = false,
   onEditPage,
+  fromAtlas,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -214,6 +231,8 @@ export default function ConceptMapView({
   // proposal each. The map shows each new concept as a ghost the proposer can
   // drag, and previews an edit on the confirmed concept itself.
   const drafts = useDrafts();
+  // Inside a personal map, a card's page link goes to that map's pages (lib/mapScope.ts).
+  const mapScope = useContext(MapScope);
   const [editorOpen, setEditorOpen] = useState(startEditing);
   const drafting = community && editorOpen && drafts.drafts.length > 0;
   const draft = drafting ? (drafts.drafts.find((d) => d.suffix === drafts.active) ?? drafts.drafts[0]) : null;
@@ -618,6 +637,7 @@ export default function ConceptMapView({
                         onClick={() => onFocus(n.id)}
                       >
                         {n.label}
+                        {fromAtlas?.has(n.id) && <span className="concept-via"> · from the atlas</span>}
                       </button>
                     </li>
                   ))}
@@ -779,6 +799,7 @@ export default function ConceptMapView({
             {selected && !listedProposal && (
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
+              {fromAtlas?.has(selected.id) && <FromAtlas id={selected.id} />}
               {selected.figures && selected.figures.length > 0 && (
                 <Suspense fallback={<p className="concept-empty">Loading the pictures…</p>}>
                   <Figures figures={selected.figures} />
@@ -866,7 +887,7 @@ export default function ConceptMapView({
                 {selected.type !== 'fluff' && onOpenPage && (
                   <a
                     className="map-card-page"
-                    href={pageHref(selected.id)}
+                    href={pageHref(selected.id, mapScope)}
                     onClick={(e) => {
                       if (!isPlainClick(e)) return;
                       e.preventDefault();
@@ -1094,7 +1115,8 @@ function CommunityAccount({
               Sign in with GitHub
             </a>
             <p className="community-account-note">
-              Only needed to submit a proposal. Physics Atlas reads your public GitHub profile — nothing else.
+              Only needed to submit a proposal. Physics Atlas keeps your GitHub username and account number — nothing
+              else. <a href="?mode=privacy">Privacy</a>
             </p>
             <p className="community-account-note">
               If GitHub shows a 404 page instead of asking you to authorise Physics Atlas, its GitHub App isn't open to

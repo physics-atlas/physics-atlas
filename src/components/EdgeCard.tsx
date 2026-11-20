@@ -6,7 +6,9 @@ import RelationSentence from './RelationSentence';
 import RichText from './RichText';
 import { goalRating } from '../graph/cardSections';
 import TypeBadge from './TypeBadge';
+import { useContext } from 'react';
 import { isPlainClick, relationHref } from '../lib/pageLinks';
+import { MapScope } from '../lib/mapScope';
 
 /**
  * A relation's card, opened by clicking its line (or "Details" in a concept's
@@ -30,6 +32,7 @@ export default function EdgeCard({
   /** Open the relation's atlas page (confirmed relations have one) */
   onOpenPage?: (id: string) => void;
 }) {
+  const map = useContext(MapScope);
   const type = normalizeRelationship(edge.relationship) ?? edge.relationship.trim();
   const ends = [
     { role: 'From', node: byId.get(edge.source), id: edge.source },
@@ -110,7 +113,7 @@ export default function EdgeCard({
         <div className="map-card-cta">
           <a
             className="map-card-page"
-            href={relationHref(edge.id)}
+            href={relationHref(edge.id, map)}
             onClick={(e) => {
               if (!isPlainClick(e)) return;
               e.preventDefault();

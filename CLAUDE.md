@@ -23,7 +23,8 @@ Design decisions + deliberately open alternatives:
 ## Language
 
 Everything in this repo is written in **English** — code, comments, docs, plans, reviews,
-backlog/roadmap entries and commit messages.
+backlog/roadmap entries and commit messages. The one exception: the German privacy notice,
+`content/privacy/de.md` (Decision 51).
 
 ## Stack Commands
 
@@ -56,7 +57,8 @@ sophie_scicom/
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,
 │   │                 # DraftEditor, ProposalCard, Legend, PageView (the atlas pages, lazy)
-│   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback), reads ?mode= (and ?concept=) from the URL
+│   ├── maps/         # personal maps (Decision 50): map.ts (format, resolveMap with the atlas, checks), fixtures.ts
+│   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback | privacy | map), reads ?mode= (and ?concept=, ?map=) from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
 ├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
@@ -139,9 +141,11 @@ second place for the same truth. No agent pushes; you do that by hand.
 
 ## Deliberately not now
 
-- No own server or database. The community-review epic (`.claude/plans/epic-community-review.md`,
-  Decisions 18 and 25) uses GitHub as the backend plus a small Cloudflare function (`server/`):
-  no database, nothing beyond that. Hosting is Cloudflare; CI is `.github/workflows/checks.yml`.
+- No own server or database **for the atlas**. The community-review epic (`.claude/plans/epic-community-review.md`,
+  Decisions 18 and 25) uses GitHub as the backend plus a small Cloudflare function (`server/`).
+  The one exception is **personal maps** (`.claude/plans/epic-personal-maps.md`, Decisions 50–51): a
+  Cloudflare D1 database (`migrations/`, binding `MAPS_DB`) holding only a GitHub id and username
+  per person. Hosting is Cloudflare; CI is `.github/workflows/checks.yml`.
 - No native mobile app.
 - No D3/React Flow rewrite (deliberate paths, see DESIGN-DECISIONS.md).
 - Agents don't invent new physics *content* — Sophie curates content.

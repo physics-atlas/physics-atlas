@@ -20,6 +20,8 @@ export interface Me {
   invited: boolean;
   /** May publish directly: the pull request is merged at once (Decision 43) */
   canPublish?: boolean;
+  /** May create personal maps (Decision 50): marked "maps", and the maps database is set up */
+  canMakeMaps?: boolean;
   /** "owner/name" proposals go to */
   repo?: string;
 }

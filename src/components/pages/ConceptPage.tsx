@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { NODE_TYPE_LABELS, RELATION_CATEGORIES, relationCategory } from '../../data/types';
 import type { GraphEdge, GraphNode } from '../../data/types';
-import { loadPage, PAGE_DEPTHS } from '../../data/pageSources';
+import { PageSourceContext } from '../../data/pageSources';
 import { assumptionsOf, effectiveGenerality, GENERALITY_MAX, normalizeRelationship } from '../../graph/concepts';
 import type { ConceptIndex } from '../../graph/concepts';
 import { CARD_SECTIONS, CONDITION_SECTIONS, conditionItems, sectionItems } from '../../graph/cardSections';
 import { connectionsOf, trail } from '../../graph/contents';
 import type { Contents } from '../../graph/contents';
+import { pageHref } from '../../lib/pageLinks';
 import type { PageRef } from '../../lib/pageLinks';
 import type { LinkTarget } from '../../lib/pageText';
 import EquationView, { FormulaView } from '../EquationView';
@@ -24,16 +25,17 @@ const typeOf = (e: GraphEdge) => normalizeRelationship(e.relationship) ?? e.rela
 
 /** A page's written depths, once loaded (null while loading, [] when there are none). */
 function useWrittenDepths(id: string) {
+  const source = useContext(PageSourceContext);
   const [state, setState] = useState<{ id: string; depths: string[] } | null>(null);
   useEffect(() => {
-    if (!PAGE_DEPTHS[id]) return;
+    if (!source.depths(id)) return;
     let live = true;
-    loadPage(id).then((depths) => live && setState({ id, depths }));
+    source.load(id).then((depths) => live && setState({ id, depths }));
     return () => {
       live = false;
     };
-  }, [id]);
-  if (!PAGE_DEPTHS[id]) return [];
+  }, [id, source]);
+  if (!source.depths(id)) return [];
   return state?.id === id ? state.depths : null;
 }
 
@@ -105,6 +107,7 @@ export default function ConceptPage({
   onDepth,
   onEditPage,
   pageEditor,
+  fromAtlas = false,
 }: {
   node: GraphNode;
   index: ConceptIndex;
@@ -120,6 +123,8 @@ export default function ConceptPage({
   onEditPage?: () => void;
   /** The page editor, while it's open: it takes the written depths' place */
   pageEditor?: ReactNode;
+  /** In a personal map: this concept is used from the atlas (Decision 50) */
+  fromAtlas?: boolean;
 }) {
   const entry = contents.byId.get(node.id)!;
   const description = 'description' in node.attrs ? node.attrs.description : undefined;
@@ -134,7 +139,7 @@ export default function ConceptPage({
   const path = trail(node.id, contents);
   const isChapter = entry.depth === 0;
   const written = useWrittenDepths(node.id);
-  const depthCount = PAGE_DEPTHS[node.id] ?? 0;
+  const depthCount = useContext(PageSourceContext).depths(node.id);
   const shownDepth = Math.min(Math.max(depth, 1), depthCount);
   const conn = connectionsOf(node.id, index);
   // The second-order list appears once per neighbour, under its first relation.
@@ -167,6 +172,12 @@ export default function ConceptPage({
           {node.epistemicStatus && ` · ${node.epistemicStatus}`}
         </p>
         <Placement id={node.id} index={index} contents={contents} links={links} />
+        {fromAtlas && (
+          <p className="concept-from-atlas">
+            <strong>From the atlas</strong> — this map uses the concept as it is on the atlas.{' '}
+            <a href={pageHref(node.id)}>Its atlas page</a>
+          </p>
+        )}
         <p>
           <button type="button" className="draft-button" onClick={() => onShowOnMap(node.id)}>
             Show on the map

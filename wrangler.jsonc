@@ -3,25 +3,35 @@
 // else — in practice /api/* — runs worker/index.ts, which hands /api/* to
 // server/api.ts. See docs/COMMUNITY-BACKEND-SETUP.md.
 {
-  // Must match the Worker's name in the Cloudflare dashboard.
-  "name": "physics-atlas",
-  "main": "worker/index.ts",
-  "compatibility_date": "2026-10-01",
-  "assets": {
-    "directory": "./dist",
-    "binding": "ASSETS",
-    // /api/* always reaches the backend, never the site's files.
-    "run_worker_first": ["/api/*"],
-    // The site only uses ?mode=… addresses, so an unknown path is a real 404 —
-    // not the main page (which would hide a missing backend).
-    "not_found_handling": "none"
-  },
-  // Keep the variables set in the dashboard (GITHUB_REPO, GITHUB_APP_ID, …):
-  // without this, every deploy would remove the ones not listed here.
-  // Secrets are kept either way.
-  "keep_vars": true,
-  // The backend's errors show under the Worker's "Logs" tab.
-  "observability": {
-    "enabled": true
-  }
+	// Must match the Worker's name in the Cloudflare dashboard.
+	"name": "physics-atlas",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-10-01",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		// /api/* always reaches the backend, never the site's files.
+		"run_worker_first": [
+			"/api/*"
+		],
+		// The site only uses ?mode=… addresses, so an unknown path is a real 404 —
+		// not the main page (which would hide a missing backend).
+		"not_found_handling": "none"
+	},
+	// Keep the variables set in the dashboard (GITHUB_REPO, GITHUB_APP_ID, …):
+	// without this, every deploy would remove the ones not listed here.
+	// Secrets are kept either way.
+	"keep_vars": true,
+	// The backend's errors show under the Worker's "Logs" tab.
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "MAPS_DB",
+			"database_name": "physics-atlas-maps",
+			"database_id": "8364070a-55a2-409c-8638-8b7b6967479a",
+			"remote": true
+		}
+	]
 }

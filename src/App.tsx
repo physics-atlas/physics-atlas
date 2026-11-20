@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
@@ -13,19 +13,29 @@ import { useMotion } from './lib/motion';
 import { hrefOf, isPlainClick, refFromSearch } from './lib/pageLinks';
 import type { PageRef } from './lib/pageLinks';
 import { useArrangement } from './lib/useArrangement';
+import { MapScope } from './lib/mapScope';
+import { mapPageSource, PageSourceContext } from './data/pageSources';
+import { sampleMap } from './maps/fixtures';
+import { resolveMap } from './maps/map';
+import type { ResolvedMap } from './maps/map';
+import { mapHref, pageHref } from './lib/pageLinks';
 import './App.css';
 
 // The atlas pages typeset maths and carry their own sidebar: loaded on first visit.
 const PageView = lazy(() => import('./components/PageView'));
 const FeedbackView = lazy(() => import('./components/FeedbackView'));
+const PrivacyView = lazy(() => import('./components/PrivacyView'));
 
-type Mode = 'concepts' | 'community' | 'page' | 'feedback';
+type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'map';
+type PrivacyLang = 'en' | 'de';
 
 const VIEW_TITLES: Record<Mode, string> = {
   concepts: 'Concept map',
   community: 'Community review',
   page: 'Atlas pages',
   feedback: 'Feedback',
+  privacy: 'Privacy',
+  map: 'Personal map',
 };
 
 /** The pages cover the confirmed, serious atlas — fluff is fun mode only. */
@@ -45,9 +55,40 @@ function initialMode(): Mode {
   if (m === 'community' || (m === 'concepts' && params.get('community') === '1')) return 'community';
   if (m === 'page') return 'page';
   if (m === 'feedback') return 'feedback';
+  if (m === 'privacy') return 'privacy';
+  // A personal map needs its id; a bare ?mode=map was the retired topic map's address.
+  if (m === 'map' && params.get('map')) return 'map';
   // The concept map is the front page (the home page was retired, Decision 48); the
   // retired topic views (map, explore, goal, topic) land on it too.
   return 'concepts';
+}
+
+/**
+ * Where in a personal map (Decision 50, Phase 1): `?mode=map&map=<id>` its map,
+ * `&view=pages` (with `&concept=…` or `&relation=…`) its pages.
+ */
+interface MapPlace {
+  map: string;
+  view: 'map' | 'pages';
+  page: PageRef;
+}
+
+function initialMapPlace(): MapPlace | null {
+  const params = new URLSearchParams(window.location.search);
+  const map = params.get('map');
+  if (params.get('mode') !== 'map' || !map) return null;
+  return { map, view: params.get('view') === 'pages' ? 'pages' : 'map', page: refFromSearch(window.location.search) };
+}
+
+/** The personal map an address names — for now one of the sample maps (Phase 2 reads saved ones). */
+function loadMap(id: string): ResolvedMap | null {
+  const m = sampleMap(id);
+  return m ? resolveMap(m, concepts) : null;
+}
+
+/** The privacy notice's language (Decision 51): from the address, else English. */
+function initialPrivacyLang(): PrivacyLang {
+  return new URLSearchParams(window.location.search).get('lang') === 'de' ? 'de' : 'en';
 }
 
 function initialConceptGoal(): string | null {
@@ -79,6 +120,20 @@ const seriousSearchEntries = conceptSearchEntries.filter((e) => !isFluff(e));
 
 export default function App() {
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [privacyLang, setPrivacyLang] = useState<PrivacyLang>(initialPrivacyLang);
+  const [mapPlace, setMapPlace] = useState<MapPlace | null>(initialMapPlace);
+  const personal = useMemo(() => (mode === 'map' && mapPlace ? loadMap(mapPlace.map) : null), [mode, mapPlace]);
+  const personalPages = useMemo(() => (personal ? mapPageSource(personal.map.pages ?? {}) : null), [personal]);
+  // A personal map's search finds its own concepts and the atlas concepts it uses.
+  const personalEntries = useMemo(
+    () =>
+      personal
+        ? personal.graph.nodes
+            .map((n) => ({ ref: n.id, title: n.label, context: NODE_TYPE_LABELS[n.type], color: TYPE_COLORS[n.type] }))
+            .sort((a, b) => a.title.localeCompare(b.title))
+        : [],
+    [personal],
+  );
   const [conceptGoal, setConceptGoal] = useState(initialConceptGoal);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string | null; tick: number }>({ id: null, tick: 0 });
@@ -119,7 +174,8 @@ export default function App() {
   const firstView = useRef(true);
   useEffect(() => {
     // An atlas page sets its own title and focuses its own heading.
-    if (mode !== 'page') document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
+    // An atlas page and the privacy notice set their own titles.
+    if (mode !== 'page' && mode !== 'privacy') document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
     if (firstView.current) {
       firstView.current = false;
       return;
@@ -172,7 +228,15 @@ export default function App() {
         ? hrefOf(pageRef)
         : conceptGoal && isConceptView(mode)
           ? `?mode=${mode}&goal=${encodeURIComponent(conceptGoal)}`
-          : mode === 'concepts'
+          : mode === 'privacy'
+            ? `?mode=privacy${privacyLang === 'de' ? '&lang=de' : ''}`
+            : mode === 'map' && mapPlace
+              ? mapPlace.view === 'pages'
+                ? mapPlace.page.relation
+                  ? `${mapHref(mapPlace.map)}&view=pages&relation=${encodeURIComponent(mapPlace.page.relation)}`
+                  : pageHref(mapPlace.page.concept ?? null, mapPlace.map)
+                : mapHref(mapPlace.map)
+            : mode === 'concepts'
             ? ''
             : `?mode=${mode}`;
     if (window.location.search === target) {
@@ -185,7 +249,7 @@ export default function App() {
     if (firstUrlSync.current) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
     firstUrlSync.current = false;
-  }, [mode, conceptGoal, pageRef]);
+  }, [mode, conceptGoal, pageRef, privacyLang, mapPlace]);
 
   useEffect(() => {
     const onPop = () => {
@@ -193,6 +257,8 @@ export default function App() {
       setConceptGoal(initialConceptGoal());
       setSelectedId(null);
       setPageRef(initialPage());
+      setPrivacyLang(initialPrivacyLang());
+      setMapPlace(initialMapPlace());
       setPageFocus((t) => t + 1);
     };
     window.addEventListener('popstate', onPop);
@@ -247,6 +313,19 @@ export default function App() {
     setMode('feedback');
   }, []);
 
+  // Inside a personal map: its map, centred on a concept; its pages.
+  const showOnPersonalMap = useCallback(
+    (id: string) => {
+      setMapPlace((p) => (p ? { ...p, view: 'map' } : p));
+      focusOn(id);
+    },
+    [focusOn],
+  );
+  const openMapPage = useCallback((ref: PageRef) => {
+    setMapPlace((p) => (p ? { ...p, view: 'pages', page: ref } : p));
+    setPageFocus((t) => t + 1);
+  }, []);
+
   // A search outside the map (on the feedback form) lands on the concept map, centred on the pick.
   const pickOnMap = useCallback(
     (id: string) => {
@@ -272,8 +351,18 @@ export default function App() {
           </p>
           {/* On the pages, a search opens the concept's page; elsewhere, it centres the map on it. */}
           <SearchBox
-            entries={mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
-            onPick={mode === 'page' ? openConceptPage : isConceptView(mode) ? focusOn : pickOnMap}
+            entries={personal ? personalEntries : mode === 'page' || !fun ? seriousSearchEntries : conceptSearchEntries}
+            onPick={
+              personal
+                ? mapPlace?.view === 'pages'
+                  ? (id) => openMapPage({ concept: id })
+                  : focusOn
+                : mode === 'page'
+                  ? openConceptPage
+                  : isConceptView(mode)
+                    ? focusOn
+                    : pickOnMap
+            }
           />
           {isConceptView(mode) && (
             <button
@@ -327,15 +416,64 @@ export default function App() {
           >
             Feedback
           </a>
+          <a
+            href="?mode=privacy"
+            className="header-feedback header-privacy"
+            aria-current={mode === 'privacy' ? 'page' : undefined}
+            onClick={(e) => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              setMode('privacy');
+            }}
+          >
+            Privacy
+          </a>
           <div className="header-settings" role="group" aria-label="Display settings">
             {motionButton}
             {paletteSelect}
             {themeButton}
           </div>
         </header>
+      {mode === 'map' && personal && mapPlace && (
+        <nav className="map-bar" aria-label="Personal map">
+          <p className="map-bar-title">
+            <span className="map-bar-kind">Personal map</span> {personal.map.title}
+          </p>
+          <ul className="map-bar-views">
+            {(['map', 'pages'] as const).map((view) => (
+              <li key={view}>
+                <a
+                  href={view === 'map' ? mapHref(personal.map.id) : pageHref(null, personal.map.id)}
+                  aria-current={mapPlace.view === view ? 'page' : undefined}
+                  className={`mode-tab ${mapPlace.view === view ? 'mode-tab-active' : ''}`}
+                  onClick={(e) => {
+                    if (!isPlainClick(e)) return;
+                    e.preventDefault();
+                    if (view === 'map') setMapPlace({ ...mapPlace, view: 'map' });
+                    else openMapPage({});
+                  }}
+                >
+                  {view === 'map' ? 'Map' : 'Pages'}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <a className="map-bar-back" href="/">
+            Back to the atlas
+          </a>
+          {personal.missingRefs.length > 0 && (
+            <p className="map-bar-note">
+              {personal.missingRefs.length === 1 ? 'One concept it uses is' : `${personal.missingRefs.length} concepts it uses are`} no
+              longer on the atlas: {personal.missingRefs.join(', ')}.
+            </p>
+          )}
+        </nav>
+      )}
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
-        {/* An atlas page's own heading is the view's h1, and the feedback form's. */}
-        {mode !== 'page' && mode !== 'feedback' && <h1 className="visually-hidden">{VIEW_TITLES[mode]}</h1>}
+        {/* An atlas page's own heading is the view's h1, and the feedback form's; a map's pages, too. */}
+        {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
+          <h1 className="visually-hidden">{mode === 'map' && personal ? `${personal.map.title} — personal map` : VIEW_TITLES[mode]}</h1>
+        )}
         {isConceptView(mode) && (
           <ConceptMapView
             graph={concepts}
@@ -376,6 +514,59 @@ export default function App() {
           <Suspense fallback={<p className="atlas-loading">Loading the feedback form…</p>}>
             <FeedbackView from={feedbackFrom} />
           </Suspense>
+        )}
+        {mode === 'privacy' && (
+          <Suspense fallback={<p className="atlas-loading">Loading the privacy notice…</p>}>
+            <PrivacyView lang={privacyLang} onLang={setPrivacyLang} />
+          </Suspense>
+        )}
+        {mode === 'map' && !personal && (
+          <div className="feedback-view">
+            <div className="feedback-panel">
+              <p>This map doesn't exist, or its link has been turned off.</p>
+              <p>
+                <a href="/">Back to the atlas</a>
+              </p>
+            </div>
+          </div>
+        )}
+        {mode === 'map' && personal && mapPlace && personalPages && (
+          <MapScope.Provider value={personal.map.id}>
+            {mapPlace.view === 'map' ? (
+              <ConceptMapView
+                key={personal.map.id}
+                graph={personal.graph}
+                progress={progress}
+                goalId={null}
+                onGoalChange={() => {}}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onFocus={focusOn}
+                focus={focus}
+                theme={theme}
+                arrangement={arrangement}
+                onArrangementChange={setArrangement}
+                hintOpen={hintOpen}
+                onOpenPage={(id) => openMapPage({ concept: id })}
+                onOpenRelationPage={(id) => openMapPage({ relation: id })}
+                fromAtlas={personal.refIds}
+              />
+            ) : (
+              <PageSourceContext.Provider value={personalPages}>
+                <Suspense fallback={<p className="atlas-loading">Loading the map's pages…</p>}>
+                  <PageView
+                    key={personal.map.id}
+                    graph={personal.graph}
+                    target={mapPlace.page}
+                    onOpen={openMapPage}
+                    onShowOnMap={showOnPersonalMap}
+                    focusTick={pageFocus}
+                    fromAtlas={personal.refIds}
+                  />
+                </Suspense>
+              </PageSourceContext.Provider>
+            )}
+          </MapScope.Provider>
         )}
       </main>
     </div>

@@ -3601,3 +3601,67 @@ a.mode-tab {
 .block-heading .draft-optional {
   margin-left: 6px;
 }
+
+/* A personal map (Decision 50): a bar under the header — what it is, its Map and Pages, and the way back. */
+.map-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 6px 20px;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--terra);
+  background: rgba(var(--panel-rgb), 0.82);
+}
+
+.map-bar-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.map-bar-kind {
+  margin-right: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terra-ink);
+}
+
+.map-bar-views {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-bar-views .mode-tab {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.map-bar-back {
+  margin-left: auto;
+}
+
+.map-bar-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-style: italic;
+}
+
+/* A concept a personal map uses from the atlas — said in words on its card and page. */
+.concept-from-atlas {
+  margin: 6px 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+/* The privacy notice: the other language, at the top. */
+.privacy-lang {
+  margin: 0 0 8px;
+  text-align: right;
+}

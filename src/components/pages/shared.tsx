@@ -1,10 +1,11 @@
-import { Fragment } from 'react';
+import { Fragment, useContext } from 'react';
 import type { GraphEdge } from '../../data/types';
 import { sentenceParts } from '../../graph/concepts';
 import type { ConceptIndex, ConceptMap } from '../../graph/concepts';
 import { pageNeighbours } from '../../graph/contents';
 import type { Contents } from '../../graph/contents';
 import type { Links } from './links';
+import { MapScope } from '../../lib/mapScope';
 
 // What the parts of the atlas pages share: a relation read as a sentence,
 // and Previous / Up / Next.
@@ -40,6 +41,7 @@ export function PageNav({
   links: Links;
   label: string;
 }) {
+  const map = useContext(MapScope);
   const { prev, next, up } = pageNeighbours(id, contents);
   const name = (x: string) => index.byId.get(x)?.label ?? x;
   return (
@@ -49,7 +51,7 @@ export function PageNav({
           {prev ? (
             links.concept(prev, <><span aria-hidden>← </span>Previous: {name(prev)}</>, { rel: 'prev' })
           ) : (
-            <span className="atlas-pagenav-none">Start of the atlas</span>
+            <span className="atlas-pagenav-none">{map ? 'Start of the map' : 'Start of the atlas'}</span>
           )}
         </li>
         <li>
@@ -61,7 +63,7 @@ export function PageNav({
           {next ? (
             links.concept(next, <>Next: {name(next)}<span aria-hidden> →</span></>, { rel: 'next' })
           ) : (
-            <span className="atlas-pagenav-none">End of the atlas</span>
+            <span className="atlas-pagenav-none">{map ? 'End of the map' : 'End of the atlas'}</span>
           )}
         </li>
       </ul>

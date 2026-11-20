@@ -15,6 +15,11 @@ export interface Env {
   SESSION_SECRET?: string;
   /** "off" turns direct publishing off for everyone, whatever community/experts.json says */
   DIRECT_PUBLISH?: string;
+  /**
+   * The personal maps' D1 database (Decision 50), bound in wrangler.jsonc as "MAPS_DB".
+   * Optional: until it's created and bound, personal maps are simply not offered.
+   */
+  MAPS_DB?: object;
 }
 
 export interface Config {

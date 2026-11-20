@@ -95,7 +95,10 @@ export default function FeedbackView({ from }: { from: string | null }) {
                 <strong>Not signed in.</strong> {signInProblemText(signInProblemOnLoad)}
               </p>
             )}
-            <p>Sign in with GitHub to send feedback — signing in is what keeps the form free of spam.</p>
+            <p>
+              Sign in with GitHub to send feedback — signing in is what keeps the form free of spam. Physics Atlas keeps
+              your GitHub username and account number — nothing else (<a href="?mode=privacy">privacy</a>).
+            </p>
             <p>
               <a className="draft-button draft-button-primary" href={loginHref(here)}>
                 Sign in with GitHub

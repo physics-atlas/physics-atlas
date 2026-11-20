@@ -36,6 +36,12 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1440, height: 900 });
+// Reading the site contacts no third party (Decision 51 — fonts are served from the site).
+const thirdParties = new Set();
+page.on('request', (r) => {
+  const u = new globalThis.URL(r.url());
+  if (/^https?:$/.test(u.protocol) && u.host !== new globalThis.URL(URL).host) thirdParties.add(u.host);
+});
 
 const errors = [];
 page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()));
@@ -206,8 +212,10 @@ await new Promise((r) => setTimeout(r, 400));
 const funOffAgain = await funState();
 console.log('fun mode:', { funOff, funOn, moved: funMoved.length, bubbleClicked, bubbleCard, funOffAgain });
 if (funOff.fluff || funOff.bubbles || funOff.legendFun) errors.push(`fun mode is not off by default: ${JSON.stringify(funOff)}`);
-if (funOn.fluff !== 1 || funOn.bubbles !== 5 || !funOn.legendFun)
-  errors.push(`fun mode should show 1 fluff concept, 5 lonely bubbles and the Fun legend: ${JSON.stringify(funOn)}`);
+// As many fluff concepts as the content has (Sophie adds them); the lonely bubbles are the map's own.
+const fluffCount = compiled.nodes.filter((n) => n.type === 'fluff').length;
+if (funOn.fluff !== fluffCount || funOn.bubbles !== 5 || !funOn.legendFun)
+  errors.push(`fun mode should show ${fluffCount} fluff concepts, 5 lonely bubbles and the Fun legend: ${JSON.stringify(funOn)}`);
 if (funMoved.length) errors.push(`fun mode moved ${funMoved.length} confirmed concepts`);
 if (!bubbleClicked.startsWith(`${bubbleCard}:`)) errors.push(`a bubble ("${bubbleClicked}") opened "${bubbleCard}"`);
 if (funOffAgain.fluff || funOffAgain.bubbles) errors.push(`turning fun mode off left ${JSON.stringify(funOffAgain)}`);
@@ -646,11 +654,63 @@ if (afterNext.url === fromCard.url || afterNext.focused !== 'atlas-page-title')
     claim: [...document.querySelectorAll('.draft-editor .block-heading')].some((h) => /claim/i.test(h.textContent)),
   }));
   console.log('page editing → review:', reviewed);
-  if (reviewed.search !== '?mode=community' || reviewed.title !== 'Propose an edit: Einstein Field Equations' || !reviewed.pageNote.includes('1 depth'))
+  if (reviewed.search !== '?mode=community' || reviewed.title !== 'Propose an edit: Einstein Field Equations' || !reviewed.pageNote.includes('one depth'))
     errors.push(`the page's "Review and submit" didn't open its draft: ${JSON.stringify(reviewed)}`);
   if (reviewed.claim) errors.push('the editor still has a claim section');
   await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
 }
+
+// The privacy notice (Decision 51), in English and German, linked from the header.
+{
+  // Other tabs were opened above: a background tab draws no frames, and a click waits for one.
+  await page.bringToFront();
+  await page.goto(`${URL}/`, { waitUntil: 'networkidle0' });
+  await page.click('.header-privacy');
+  await page.waitForSelector('.privacy-notice h1');
+  const en = await page.evaluate(() => ({ search: location.search, h1: document.querySelector('.privacy-notice h1')?.textContent, lang: document.querySelector('.privacy-notice')?.lang }));
+  await page.click('.privacy-lang a');
+  await page.waitForFunction(() => document.querySelector('.privacy-notice')?.lang === 'de');
+  const de = await page.evaluate(() => ({ search: location.search, h1: document.querySelector('.privacy-notice h1')?.textContent, focused: document.activeElement?.id }));
+  console.log('privacy:', { en, de });
+  if (en.search !== '?mode=privacy' || en.h1 !== 'Privacy' || en.lang !== 'en') errors.push(`the privacy notice: ${JSON.stringify(en)}`);
+  if (de.search !== '?mode=privacy&lang=de' || de.h1 !== 'Datenschutzerklärung' || de.focused !== 'privacy-title')
+    errors.push(`the German privacy notice: ${JSON.stringify(de)}`);
+}
+
+// A personal map (Decision 50, Phase 1): the sample course map, its map and its pages.
+{
+  await page.goto(`${URL}/?mode=map&map=sample-course`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0);
+  await page.evaluate(() => window.__cy.$id('tangent_vector').emit('tap'));
+  await page.waitForSelector('.map-card .concept-from-atlas');
+  const onMap = await page.evaluate(() => ({
+    nodes: window.__cy.nodes().length,
+    h1: document.querySelector('h1')?.textContent,
+    pageLink: document.querySelector('.map-card-page')?.getAttribute('href'),
+  }));
+  await page.click('.map-card-page');
+  await page.waitForSelector('.atlas-page .concept-from-atlas');
+  const onPage = await page.evaluate(() => ({
+    search: location.search,
+    links: [...document.querySelectorAll('.atlas-page a[href^="?"]')].map((a) => a.getAttribute('href')),
+    contents: document.querySelector('#atlas-sidebar-title, .atlas-sidebar h2')?.textContent,
+  }));
+  await page.goto(`${URL}/?mode=map&map=sample-course&view=pages&concept=sample_week_1_goal`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('.atlas-page h1');
+  const ownPage = await page.evaluate(() => ({
+    h1: document.querySelector('.atlas-page h1')?.textContent,
+    written: [...document.querySelectorAll('.atlas-page h2')].some((h) => h.textContent === 'Before the session'),
+    editable: [...document.querySelectorAll('.atlas-page .draft-button')].some((b) => b.textContent.includes('Edit this page')),
+  }));
+  console.log('personal map:', { onMap, onPage, ownPage });
+  if (onMap.nodes !== 7 || onMap.h1 !== 'Sample course map — personal map' || onMap.pageLink !== '?mode=map&map=sample-course&view=pages&concept=tangent_vector')
+    errors.push(`the sample course map: ${JSON.stringify(onMap)}`);
+  if (onPage.links.some((h) => !h.startsWith('?mode=map&map=sample-course') && !h.startsWith('?mode=page&concept=tangent_vector')))
+    errors.push(`a map page links out of the map: ${onPage.links.filter((h) => !h.startsWith('?mode=map')).join(', ')}`);
+  if (!ownPage.written || ownPage.editable) errors.push(`the map's own page: ${JSON.stringify(ownPage)}`);
+}
+console.log('third parties contacted:', [...thirdParties]);
+if (thirdParties.size) errors.push(`the site contacted third parties: ${[...thirdParties].join(', ')}`);
 if (neighbourLinks === 0) errors.push("the Neighbours view lists nothing for a page that's connected");
 await p4.screenshot({ path: `${OUT}/atlas-page.png` });
 await p4.close();

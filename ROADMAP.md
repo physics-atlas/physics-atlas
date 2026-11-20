@@ -6,6 +6,43 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-79: privacy notice live (EN/DE), font from the site; personal maps Phase 1
+
+**Status:** ✅ Implemented <!-- status-line: feature-79 -->
+**Planned:** 2026-11-21 — requested: serve the font from the site (`@fontsource/sora`); a German version of the notice; no Impressum or written arrangement for now; test the database; Phase 1 of personal maps
+**Implemented:** 2026-11-21
+
+### Implemented
+- `?mode=privacy` (`PrivacyView`, `content/privacy/en.md`, `de.md`): header link, links beside "Sign in with GitHub"; `lang` marked, focus to the title on switching language
+- Sora from `@fontsource/sora` (`src/main.tsx`); Google Fonts links removed from `index.html`
+- The D1 database checked: EU jurisdiction, migration applied, tables present
+- Personal maps Phase 1: `src/maps/` (format, `resolveMap`, `mapProblems`, the sample course map); `?mode=map&map=<id>` and `&view=pages`; the map bar; **From the atlas** marks; links and page text scoped to the map (`lib/mapScope.ts`, `PageSourceContext`)
+- Smoke: privacy EN/DE, no third party contacted, the sample map and its pages; fun mode's fluff count from the content; the tab brought to front before clicks (a background tab draws no frames)
+- Decision 51 updated; the plan's Phases 0–1
+
+### Review
+Not run — direct session.
+
+## feature-78: personal maps, Phase 0 — database decision, privacy, schema
+
+**Status:** ✅ Implemented — but for marking the educator `"maps": true` <!-- status-line: feature-78 -->
+**Planned:** 2026-11-20 — requested: personal maps (one educator's course map first, built with Sophie and mhardtke; shared by link; comments; pages with full accessibility; later a premium feature); keep only the GitHub account about a person; a privacy notice; start the plan's first step
+**Plan:** `.claude/plans/epic-personal-maps.md`
+
+### Implemented
+- Decision 50 accepted (Cloudflare D1, personal maps only); Decision 51 (privacy)
+- `migrations/0001_personal_maps.sql`: users (GitHub id and username only), maps, members and roles, share links, items, history, comments; "former member" on account deletion
+- `server`: `MAPS_DB` binding (optional), `"maps": true` in `experts.json`, `/api/me` `canMakeMaps`
+- Tests: `/api/me`; the schema against SQLite (`scripts/maps-schema.test.mjs`)
+- `docs/PERSONAL-MAPS-SETUP.md`; `docs/PRIVACY-NOTICE.md` (draft)
+
+### Still open
+- Create and bind the database; apply the migration; mark the educator
+- The notice's "Before publishing" list — the font from the site instead of Google Fonts first
+
+### Review
+Not run — direct session.
+
 ## feature-77: the proposal form — required first, pages on the page, no claim
 
 **Status:** ✅ Implemented <!-- status-line: feature-77 -->

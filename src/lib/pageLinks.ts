@@ -4,15 +4,28 @@ export interface PageRef {
   relation?: string;
 }
 
-/** A concept's page in the atlas pages (null: the front page with the chapters). */
-export const pageHref = (id: string | null): string =>
-  id ? `?mode=page&concept=${encodeURIComponent(id)}` : '?mode=page';
+/** A personal map (Decision 50): its map view. */
+export const mapHref = (map: string): string => `?mode=map&map=${encodeURIComponent(map)}`;
+
+/** A personal map's pages: one of its concepts' or relations', or its front page. */
+const mapPagesHref = (map: string, ref: PageRef): string =>
+  `${mapHref(map)}&view=pages${
+    ref.relation ? `&relation=${encodeURIComponent(ref.relation)}` : ref.concept ? `&concept=${encodeURIComponent(ref.concept)}` : ''
+  }`;
+
+/**
+ * A concept's page (null: the front page with the chapters) — in the atlas
+ * pages, or with `map`, in that personal map's pages (lib/mapScope.ts).
+ */
+export const pageHref = (id: string | null, map: string | null = null): string =>
+  map ? mapPagesHref(map, id ? { concept: id } : {}) : id ? `?mode=page&concept=${encodeURIComponent(id)}` : '?mode=page';
 
 /** A relation's page. */
-export const relationHref = (id: string): string => `?mode=page&relation=${encodeURIComponent(id)}`;
+export const relationHref = (id: string, map: string | null = null): string =>
+  map ? mapPagesHref(map, { relation: id }) : `?mode=page&relation=${encodeURIComponent(id)}`;
 
-export const hrefOf = (ref: PageRef): string =>
-  ref.relation ? relationHref(ref.relation) : pageHref(ref.concept ?? null);
+export const hrefOf = (ref: PageRef, map: string | null = null): string =>
+  ref.relation ? relationHref(ref.relation, map) : pageHref(ref.concept ?? null, map);
 
 /** The page an address points to (from `?mode=page&…`). */
 export function refFromSearch(search: string): PageRef {
