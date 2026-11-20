@@ -1,0 +1,32 @@
+{
+  "id": "continuity_equation_ktv0",
+  "label": "Continuity Equation",
+  "type": "equation",
+  "importance": 8,
+  "generality": 7,
+  "attrs": {
+    "description": "Equation describing how a quantity is transported when it is conserved. For example in a fluid, mass should be conserved, the continuity equation expresses that the change in mass in an area should be related to the current of mass leaving/arriving in that area.",
+    "equation": "\\frac{\\partial \\rho}{\\partial t} + \\nabla \\cdot \\mathbf{j} = 0",
+    "plain": "The change in density over time at a point plus the spatial change of the current out of that point is zero.",
+    "variables": [
+      {
+        "symbol": "\\rho",
+        "meaning": "density"
+      },
+      {
+        "symbol": "t",
+        "meaning": "time"
+      },
+      {
+        "symbol": "\\mathbf{j}",
+        "meaning": "current density"
+      }
+    ],
+    "conditions": [],
+    "representations": [
+      {
+        "name": "integrated version"
+      }
+    ]
+  }
+}

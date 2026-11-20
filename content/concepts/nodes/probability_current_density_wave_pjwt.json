@@ -1,0 +1,11 @@
+{
+  "id": "probability_current_density_wave_pjwt",
+  "label": "Probability current density (wave function)",
+  "type": "property",
+  "importance": 6,
+  "generality": 5,
+  "attrs": {
+    "description": "how probability of an object's location flows in time per area",
+    "domain": "Quantum mechanics"
+  }
+}
