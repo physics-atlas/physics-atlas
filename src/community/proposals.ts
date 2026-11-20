@@ -3,6 +3,7 @@ import type { ConceptGraph, GraphEdge, GraphNode, ResourceAttrs } from '../data/
 import vocab from '../data/conceptVocabulary.json';
 import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
 import { figureProblems } from './figures';
+import { relationRuleProblem } from './relationRules';
 import { relationPhrase, relationTypeProblems } from './relationTypes';
 import type { Evidence, GitHubReview, Proposal, ProposalState } from './types';
 
@@ -27,6 +28,10 @@ function nodeProblems(where: string, n: GraphNode): string[] {
     if (typeof a.link !== 'string' || !/^https?:\/\//.test(a.link)) problems.push(`${where}: resource "${n.id}" needs an http(s) link`);
     if (typeof a.mediaType !== 'string' || !vocab.mediaTypes.includes(a.mediaType))
       problems.push(`${where}: resource "${n.id}" has an unknown kind "${a.mediaType}"`);
+    if (a.mediaType === 'other' && (typeof a.mediaTypeOther !== 'string' || !a.mediaTypeOther.trim()))
+      problems.push(`${where}: resource "${n.id}" is of another kind — say which (mediaTypeOther)`);
+    if (a.mediaTypeOther !== undefined && a.mediaType !== 'other')
+      problems.push(`${where}: resource "${n.id}" has mediaTypeOther, which only a resource of kind "other" carries`);
     for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'] as const)
       if (a[key] !== undefined && (typeof a[key] !== 'string' || !a[key].trim()))
         problems.push(`${where}: resource "${n.id}" ${key} must be text, or left out`);
@@ -114,9 +119,15 @@ export function proposalProblems(p: Proposal, confirmed: ConceptGraph, others: P
   const depMissing = [...deps].some((d) => !others.some((o) => o.id === d));
   const ownEdges = new Set<string>();
   const typeOf = new Map(
-    [...confirmed.nodes, ...p.nodes, ...others.flatMap((o) => o.nodes)].map((n) => [n.id, n.type] as const),
+    [...confirmed.nodes, ...others.flatMap((o) => o.nodes), ...p.nodes, ...(p.edits ?? [])].map((n) => [n.id, n.type] as const),
   );
   for (const e of p.edges) {
+    const ruled = relationRuleProblem(
+      normalizeRelationship(e.relationship) ?? relationPhrase(e.relationship),
+      typeOf.get(e.source),
+      typeOf.get(e.target),
+    );
+    if (ruled) problems.push(`${where}: relation "${e.id}" — ${ruled}`);
     for (const key of ['importance', 'generality'] as const) {
       const v = e[key];
       if (v === undefined) continue;
@@ -222,6 +233,8 @@ const figuresText = (n: GraphNode) =>
 
 export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] {
   const attr = (n: GraphNode, key: string) => String((n.attrs as unknown as Record<string, unknown>)[key] ?? '');
+  const resourceKind = (n: GraphNode) =>
+    attr(n, 'mediaType') === 'other' && attr(n, 'mediaTypeOther') ? `other: ${attr(n, 'mediaTypeOther')}` : attr(n, 'mediaType');
   const rows: [string, string, string][] = [
     ['Name', before.label, after.label],
     ['Kind', NODE_TYPE_LABELS[before.type], NODE_TYPE_LABELS[after.type]],
@@ -229,7 +242,7 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['Field', attr(before, 'domain'), attr(after, 'domain')],
     ['Equation', attr(before, 'equation'), attr(after, 'equation')],
     ['Link', attr(before, 'link'), attr(after, 'link')],
-    ['Kind of resource', attr(before, 'mediaType'), attr(after, 'mediaType')],
+    ['Kind of resource', resourceKind(before), resourceKind(after)],
     ['Time', attr(before, 'estimatedTime'), attr(after, 'estimatedTime')],
     ['Reading time', attr(before, 'readingTime'), attr(after, 'readingTime')],
     ['Listening time', attr(before, 'listeningTime'), attr(after, 'listeningTime')],

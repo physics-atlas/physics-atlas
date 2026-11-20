@@ -105,11 +105,28 @@ if (!Array.isArray(data.edges)) {
 }
 if (typeof data.version !== 'number') errors.push('top-level "version" must be a number');
 
+// Mirrors src/community/relationRules.ts (Decision 52). A warning, not an error:
+// relations written before the rules stay valid until they're redone.
+function relationRuleProblem(type, source, target) {
+  const ends = [source, target];
+  const rule = ends.includes('resource')
+    ? { types: ['helps understand'], first: 'resource', why: 'an educational resource is connected with "helps understand", from the resource' }
+    : source === 'learning_goal' && target === 'learning_goal'
+      ? { types: ['is a prerequisite for', STRICT_PREREQ, 'helps understand'], why: 'two learning goals are connected with "is a prerequisite for", "strict prerequisite for" or "helps understand"' }
+      : ends.includes('learning_goal')
+        ? { types: [GOAL_OF], first: 'learning_goal', why: 'a learning goal is connected to a concept with "is a learning goal of", from the goal' }
+        : null;
+  if (!rule) return null;
+  if (!rule.types.includes(type)) return `"${type}" — ${rule.why}`;
+  if (rule.first && source !== rule.first && target === rule.first) return `points the wrong way — ${rule.why}`;
+  return null;
+}
+
 const ALLOWED_ATTRS = {
   equation: ['description', 'equation', 'plain', 'variables', 'conditions', 'representations', 'domain'],
   formalism: ['description', 'formulas', 'domain'],
   learning_goal: ['description'],
-  resource: ['description', 'link', 'mediaType', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'rating', 'reviewCount'],
+  resource: ['description', 'link', 'mediaType', 'mediaTypeOther', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'rating', 'reviewCount'],
 };
 const DEFAULT_ALLOWED_ATTRS = ['description', 'domain'];
 
@@ -142,6 +159,10 @@ function checkNodeAttrs(where, node) {
       errors.push(`${where}: missing "attrs.mediaType"`);
     else if (!MEDIA_TYPES.includes(attrs.mediaType))
       warn.push(`${where}: unknown mediaType "${attrs.mediaType}" — add it to conceptVocabulary.json if this is a new kind`);
+    else if (attrs.mediaType === 'other' && (typeof attrs.mediaTypeOther !== 'string' || !attrs.mediaTypeOther.trim()))
+      warn.push(`${where}: mediaType "other" — say which kind in "attrs.mediaTypeOther" ("podcast", "board game")`);
+    if (attrs.mediaTypeOther !== undefined && attrs.mediaType !== 'other')
+      errors.push(`${where}: attrs.mediaTypeOther is only for mediaType "other"`);
     if (attrs.estimatedMinutes !== undefined)
       errors.push(`${where}: attrs.estimatedMinutes is now "estimatedTime", as text — "20 min", "20–30 min"`);
     for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'])
@@ -309,6 +330,8 @@ for (const e of data.edges) {
         if (type === STRICT_PREREQ) strictPrereqsByNode.get(e.target)?.push(e.source);
         // "G is a learning goal of C" puts C on G's path, like "C is a strict prerequisite for G".
         if (type === GOAL_OF) goalOfByNode.get(e.source)?.push(e.target);
+        const ruled = relationRuleProblem(type, byId.get(e.source)?.type, byId.get(e.target)?.type);
+        if (ruled) warn.push(`${where}: ${ruled}`);
         // Fluff is fun mode only: it must never pull a joke into a learning path.
         if (type === STRICT_PREREQ && [e.source, e.target].some((id) => byId.get(id)?.type === 'fluff'))
           errors.push(`${where}: a fluff node can't be part of a "${STRICT_PREREQ}" relation — use "relates" or another relation`);

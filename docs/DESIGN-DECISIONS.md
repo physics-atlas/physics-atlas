@@ -802,6 +802,17 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 52 — Relations fixed by kind, "other" resources named, the editor groups by topic (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Educational resources | Connected only with **helps understand**, from the resource to what it teaches. |
+| Learning goals | Between two goals: **is a prerequisite for** (new, in *Learning order*; not part of a learning path, which follows only the strict one), **is a strict prerequisite for**, or **helps understand**. Between a goal and any other concept: only **is a learning goal of**, from the goal. A resource with a goal follows the resource rule. |
+| Where it holds | The editor's relation picker offers only the allowed relations for the pair (no **Other…**), says why under the field, and starts a new connection with the allowed one the right way round. Drafts and proposals with any other relation are refused (`src/community/relationRules.ts`). The content validator warns, rather than fails, on relations written before the rule (14 at the time), so Sophie can redo them. |
+| Other kind of resource | Choosing **Other** as the kind of resource asks **Which kind** (free text, required): `attrs.mediaTypeOther`, shown on the card instead of "other". |
+| Fluff | Defined as *a node meant for entertainment and shared suffering, mixed with useful physics information and advice*. Still fun mode only, never on a learning path. |
+| Editor order | Refines Decision 49: required before optional, **but topics stay together**. A kind's optional details (an equation in detail, a formalism's formulas, a resource's accessibility) now sit straight after **The concept**, before **Connections**, instead of after it. |
+
 ## Decision 51 — Personal maps keep only a GitHub account about a person (2026-11)
 
 | Piece | Rule |

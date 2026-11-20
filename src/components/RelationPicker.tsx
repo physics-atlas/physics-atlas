@@ -48,6 +48,8 @@ export default function RelationPicker({
   types,
   from,
   to,
+  allowOther = true,
+  describedBy,
   onChange,
 }: {
   /** The button's id — what the field's <label htmlFor> points at */
@@ -56,9 +58,12 @@ export default function RelationPicker({
   types: EdgeType[];
   from: string;
   to: string;
+  /** Offer "Other…" — not where a rule fixes the relations a pair may have (relationRules.ts) */
+  allowOther?: boolean;
+  describedBy?: string;
   onChange: (type: Choice) => void;
 }) {
-  const choices: Choice[] = [...types, OTHER_RELATION];
+  const choices: Choice[] = allowOther ? [...types, OTHER_RELATION] : types;
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(() => Math.max(0, choices.indexOf(value)));
@@ -136,6 +141,7 @@ export default function RelationPicker({
         aria-expanded={open}
         aria-controls={listId}
         aria-activedescendant={open ? optionId(active) : undefined}
+        aria-describedby={describedBy}
         onClick={() => (open ? setOpen(false) : openAt(choices.indexOf(value)))}
         onKeyDown={onKeyDown}
         onBlur={() => setOpen(false)}

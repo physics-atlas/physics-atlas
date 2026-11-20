@@ -138,7 +138,7 @@
     },
     "fluff": {
       "term": "Fluff",
-      "definition": "A playful node that isn't physics content: a joke, a pun, a famous thought experiment taken literally, or a fun fact about physics or physicists. Fluff only appears in fun mode and never joins a learning path.",
+      "definition": "A node meant for entertainment and shared suffering, mixed with useful physics information and advice. Fluff only appears in fun mode and never joins a learning path.",
       "examples": ["Schrödinger's cat, as an actual cat", "the spherical cow", "the coffee break that led to a discovery"],
       "distinctions": ["Not a misconception: a misconception is a documented, recurring error that learners make; fluff is a deliberate joke and makes no claim."]
     }
@@ -150,6 +150,7 @@
     "is a learning goal of": "{s} is a learning goal of {t}.",
     "is involved in": "{s} is involved in {t}.",
     "strict prerequisite for": "{s} is a strict prerequisite for {t}.",
+    "is a prerequisite for": "{s} is a prerequisite for {t}.",
     "relates": "{s} relates to {t}.",
     "helps understand": "{s} helps understand {t}.",
     "described by": "{s} is described by {t}.",
@@ -181,7 +182,7 @@
     "is a class of": "{s} is a class of {t}."
   },
   "relationCategories": [
-    { "key": "learning", "label": "Learning order", "description": "One concept comes before another in learning, or helps someone understand it.", "types": ["strict prerequisite for", "helps understand"] },
+    { "key": "learning", "label": "Learning order", "description": "One concept comes before another in learning, or helps someone understand it.", "types": ["strict prerequisite for", "is a prerequisite for", "helps understand"] },
     { "key": "dependence", "label": "Dependence", "description": "One concept needs, relies on or makes use of another.", "types": ["depends on", "requires", "uses"] },
     { "key": "derivation", "label": "Derivation", "description": "One concept follows from another: derived, approximated, or led to.", "types": ["is derived from", "is derived by", "approximates", "leads to"], "nests": true },
     { "key": "description", "label": "Description", "description": "One concept is described or expressed by another — a model, an equation, a formalism.", "types": ["describes", "described by", "expressed by", "can be described by"], "nests": true },

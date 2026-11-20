@@ -41,6 +41,7 @@ import type { ConceptIndex, ConceptMap } from '../graph/concepts';
 import { FUN_TYPES } from '../graph/typeColors';
 import { CONCEPT_CARD_TITLE_ID } from './ConceptCard';
 import RelationPicker from './RelationPicker';
+import { fittingRelation, relationRule } from '../community/relationRules';
 import RelationSentence from './RelationSentence';
 import RichText, { MathText } from './RichText';
 import SearchBox from './SearchBox';
@@ -250,7 +251,7 @@ export default function DraftEditor({
     const key = `r${Date.now().toString(36)}`;
     update((d) => ({
       ...d,
-      relations: [...d.relations, { key, source: pairFrom, target, relationship: 'relates' }],
+      relations: [...d.relations, { key, ...fittingRelation(pairFrom, byId.get(pairFrom)?.type, target, byId.get(target)?.type) }],
     }));
     setPairFrom(null);
     setNote(`Added a relation between ${byId.get(pairFrom)?.label} and ${byId.get(target)?.label}.`);
@@ -408,6 +409,18 @@ export default function DraftEditor({
 
       </section>
 
+      {/* The kind's optional details stay beside its required fields (Decision 52). */}
+      {(draft.type === 'equation' || draft.type === 'formalism' || draft.type === 'resource') && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-more')}>
+        <h3 className="block-heading" id={fieldId('h-more')}>
+          {draft.type === 'equation' ? 'The equation in detail' : draft.type === 'formalism' ? 'Formulas' : 'Accessibility'} <span className="draft-optional">optional</span>
+        </h3>
+        {draft.type === 'equation' && <EquationFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
+        {draft.type === 'resource' && <ResourceFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
+      </section>
+      )}
+
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-relations')}>
         <h3 className="block-heading" id={fieldId('relations')} tabIndex={-1}>
           <span id={fieldId('h-relations')}>Connections</span>
@@ -518,6 +531,8 @@ export default function DraftEditor({
             const from = byId.get(edge.source)?.label ?? edge.source;
             const to = byId.get(edge.target)?.label ?? edge.target;
             const type = normalizeRelationship(r.relationship) ?? 'relates';
+            const kindOf = (x: string) => (x === own ? draft.type : byId.get(x)?.type);
+            const rule = relationRule(kindOf(edge.source), kindOf(edge.target));
             const waitingOn = [edge.source, edge.target]
               .filter((x) => x !== own && !index.byId.has(x))
               .map(pendingTitle)
@@ -533,11 +548,13 @@ export default function DraftEditor({
                     dropped.
                   </p>
                 )}
-                <Field id={fieldId(`relations-${i}`)} label="Relation">
+                <Field id={fieldId(`relations-${i}`)} label="Relation" hint={rule?.why}>
                   <RelationPicker
                     id={fieldId(`relations-${i}`)}
                     value={r.newCategory !== undefined ? OTHER_RELATION : type}
-                    types={RELATION_TYPES}
+                    types={rule ? rule.types : RELATION_TYPES}
+                    allowOther={!rule}
+                    describedBy={rule ? fieldId(`relations-${i}-hint`) : undefined}
                     from={from}
                     to={to}
                     onChange={(t) =>
@@ -587,7 +604,7 @@ export default function DraftEditor({
                     </Field>
                   </div>
                 )}
-                {[edge.source, edge.target].some((x) => (x === own ? draft.type : byId.get(x)?.type) === 'learning_goal') && (
+                {[edge.source, edge.target].some((x) => kindOf(x) === 'learning_goal') && (
                   <fieldset className="draft-variables">
                     <legend className="draft-label">
                       For this goal <span className="draft-optional">optional</span>
@@ -723,18 +740,6 @@ export default function DraftEditor({
           )}
         </details>
       </section>
-
-      {/* Everything below is optional — what a proposal needs is above. */}
-      {(draft.type === 'equation' || draft.type === 'formalism' || draft.type === 'resource') && (
-        <section className="rel-block draft-section" aria-labelledby={fieldId('h-more')}>
-        <h3 className="block-heading" id={fieldId('h-more')}>
-          {draft.type === 'equation' ? 'The equation in detail' : draft.type === 'formalism' ? 'Formulas' : 'Accessibility'} <span className="draft-optional">optional</span>
-        </h3>
-        {draft.type === 'equation' && <EquationFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
-        {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
-        {draft.type === 'resource' && <ResourceFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
-      </section>
-      )}
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-scale')}>
         <h3 className="block-heading" id={fieldId('h-scale')}>
@@ -1645,6 +1650,18 @@ function ResourceFields({
           ))}
         </select>
       </Field>
+      {draft.mediaType === 'other' && (
+        <Field id={fieldId('mediaTypeOther')} label="Which kind" hint="In a word or two: a podcast, a board game, a worksheet…">
+          <input
+            id={fieldId('mediaTypeOther')}
+            className="draft-input"
+            value={draft.mediaTypeOther}
+            onChange={(e) => update((d) => ({ ...d, mediaTypeOther: e.target.value }))}
+            aria-describedby={fieldId('mediaTypeOther-hint')}
+            autoComplete="off"
+          />
+        </Field>
+      )}
       <fieldset className="draft-variables">
         <legend className="draft-label">How long it takes</legend>
         <p className="draft-hint">

@@ -121,6 +121,8 @@ export interface ResourceAttrs {
   link: string;
   /** One of conceptVocabulary.json "mediaTypes" (text, video, quiz, other) */
   mediaType: string;
+  /** What kind it is in words, when mediaType is "other": "podcast", "board game" */
+  mediaTypeOther?: string;
   /** Free text, so a range fits: "20–30 min" */
   estimatedTime?: string;
   /** Free text: "15 min" */

@@ -196,10 +196,14 @@ export function goalRating(edge: GraphEdge): string {
     .join(' · ');
 }
 
+/** A resource's kind as it reads: its own words for an "other" kind ("podcast"), else the kind. */
+export const resourceKindName = (a: Pick<ResourceAttrs, 'mediaType' | 'mediaTypeOther'>): string =>
+  a.mediaType === 'other' && a.mediaTypeOther?.trim() ? a.mediaTypeOther.trim() : a.mediaType;
+
 /** "Video · 20–30 min · reading: 15 min · listening: 1 h" — the times as written, free text. */
 export function resourceMeta(a: ResourceAttrs): string {
   return [
-    a.mediaType,
+    resourceKindName(a),
     a.estimatedTime,
     a.readingTime && `reading: ${a.readingTime}`,
     a.listeningTime && `listening: ${a.listeningTime}`,

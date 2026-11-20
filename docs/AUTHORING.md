@@ -99,7 +99,7 @@ The 17 types (key → what it means), from `src/data/conceptVocabulary.json`:
 | `learning_goal` | Learning goal — a "can do X" outcome; a small, minimal node (no `domain`). |
 | `resource` | Educational resource — a text, video or quiz (no `domain`); proposable in the editor. |
 | `misconception` | Misconception — a common wrong idea, linked to the concept it's about. |
-| `fluff` | Fluff — a joke, pun or fun fact, not physics content. Only shown in **fun mode** (below). |
+| `fluff` | Fluff — meant for entertainment and shared suffering, mixed with useful physics information and advice. Only shown in **fun mode** (below). |
 
 ### Fluff and fun mode
 
@@ -153,7 +153,7 @@ it. Every type currently has one.
 | `formalism` | `description`, `formulas` (optional: `{equation, name?, variables?}[]` — how the formalism works, LaTeX), `domain` (optional) |
 | `equation` | `description`, `equation` (the main formula, LaTeX), `plain` (optional: what it says in plain words, no symbols), `variables` (`{symbol, meaning, plain?}[]`, symbols in LaTeX), `conditions` (`string[]`), `representations` (other forms, below), `domain` (optional) |
 | `learning_goal` | `description` only — **no `domain`** |
-| `resource` | `link` (http/https), `mediaType` (`mediaTypes` in conceptVocabulary.json: text, video, quiz, other), how long it takes as text — `estimatedTime`, `readingTime`, `listeningTime` (at least one; a range fits: `"20–30 min"`), `accessibility` (optional, Markdown: who it works for and who it doesn't — input, zoom, captions, screen readers), `description` (optional: what it covers), `rating` (0–5) and `reviewCount` (integer) — both optional — **no `domain`** |
+| `resource` | `link` (http/https), `mediaType` (`mediaTypes` in conceptVocabulary.json: text, video, quiz, other — with `other`, say which kind in `mediaTypeOther`, e.g. `"podcast"`), how long it takes as text — `estimatedTime`, `readingTime`, `listeningTime` (at least one; a range fits: `"20–30 min"`), `accessibility` (optional, Markdown: who it works for and who it doesn't — input, zoom, captions, screen readers), `description` (optional: what it covers), `rating` (0–5) and `reviewCount` (integer) — both optional — **no `domain`** |
 
 ### Equations: LaTeX, and more than one way to write them
 
@@ -206,6 +206,7 @@ fails validation. The 30 known relationships (an assumption isn't one of them: i
 | `relationship` | Sentence template |
 |---|---|
 | `strict prerequisite for` | `{s} is a strict prerequisite for {t}.` |
+| `is a prerequisite for` | `{s} is a prerequisite for {t}.` |
 | `relates` | `{s} relates to {t}.` |
 | `helps understand` | `{s} helps understand {t}.` |
 | `described by` | `{s} is described by {t}.` |
@@ -265,7 +266,7 @@ the relations on a page; a new type has to fit one of them:
 
 | Category | Relationships |
 |---|---|
-| Learning order | strict prerequisite for, helps understand |
+| Learning order | strict prerequisite for, is a prerequisite for, helps understand |
 | Dependence | depends on, requires, uses |
 | Derivation | is derived from, is derived by, approximates, leads to |
 | Description | describes, described by, expressed by |
@@ -275,6 +276,12 @@ the relations on a page; a new type has to fit one of them:
 | Occurrence | exhibits, happens in, applies to |
 | Conditions | is a condition of, valid under, under |
 | Association | relates, links (when no more specific kind fits) |
+
+**Relations fixed by kind** (Decision 52, `src/community/relationRules.ts`): an educational
+resource is connected only with `helps understand`, from the resource; two learning goals
+with `is a prerequisite for`, `strict prerequisite for` or `helps understand`; a learning
+goal and any other concept only with `is a learning goal of`, from the goal. The editor
+offers only these; the validator warns about older relations that break the rule.
 
 Three of them — Classification and parts, Description and Derivation — are **nesting
 kinds** (`"nests": true`): in the atlas pages' contents a relation of these kinds counts as

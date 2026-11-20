@@ -15,7 +15,8 @@ import type {
 import { FIGURE_MAX_BYTES, FIGURE_TYPES, MAX_FIGURES, figurePath, figureSlug } from './figures';
 import type { FigureExt, FigureUpload } from './figures';
 import { relationPhrase, relationTypeProblems, withRelationTypes } from './relationTypes';
-import { GENERALITY_MAX, IMPORTANCE_MAX, sentenceParts } from '../graph/concepts';
+import { relationRuleProblem } from './relationRules';
+import { GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship, sentenceParts } from '../graph/concepts';
 import type { ConceptMap } from '../graph/concepts';
 import { TYPE_ORDER } from '../graph/typeColors';
 import { evidenceHref, nodeChanges, proposalProblems } from './proposals';
@@ -123,6 +124,8 @@ export interface Draft {
   /** Educational resources: where it is, what kind it is, how long it takes (free text, a range fits) and who it works for */
   link: string;
   mediaType: string;
+  /** What kind it is, in the proposer's words, when mediaType is "other" */
+  mediaTypeOther: string;
   estimatedTime: string;
   readingTime: string;
   listeningTime: string;
@@ -180,6 +183,7 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     formulas: [],
     link: '',
     mediaType: '',
+    mediaTypeOther: '',
     estimatedTime: '',
     readingTime: '',
     listeningTime: '',
@@ -208,6 +212,7 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
     description: typeof attrs.description === 'string' ? attrs.description : '',
     link: typeof attrs.link === 'string' ? attrs.link : '',
     mediaType: typeof attrs.mediaType === 'string' ? attrs.mediaType : '',
+    mediaTypeOther: typeof attrs.mediaTypeOther === 'string' ? attrs.mediaTypeOther : '',
     estimatedTime: typeof attrs.estimatedTime === 'string' ? attrs.estimatedTime : '',
     readingTime: typeof attrs.readingTime === 'string' ? attrs.readingTime : '',
     listeningTime: typeof attrs.listeningTime === 'string' ? attrs.listeningTime : '',
@@ -272,7 +277,7 @@ const inRange = (v: number, max: number) => Number.isInteger(v) && v >= 1 && v <
 const EQUATION_ONLY = ['equation', 'variables', 'conditions', 'representations'];
 const FORMALISM_ONLY = ['formulas'];
 /** A resource's fields the form edits, and the ones it keeps (a curated rating) */
-const RESOURCE_EDITED = ['link', 'mediaType', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility'];
+const RESOURCE_EDITED = ['link', 'mediaType', 'mediaTypeOther', 'estimatedTime', 'readingTime', 'listeningTime', 'accessibility'];
 const RESOURCE_ONLY = ['rating', 'reviewCount'];
 
 /** A stored representation (or, before representations had formulas, just its name) as the form edits it. */
@@ -393,6 +398,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
             ...(description ? { description } : {}),
             link: d.link.trim(),
             mediaType: d.mediaType,
+            ...(d.mediaType === 'other' && d.mediaTypeOther.trim() ? { mediaTypeOther: d.mediaTypeOther.trim() } : {}),
             ...Object.fromEntries(
               (['estimatedTime', 'readingTime', 'listeningTime', 'accessibility'] as const)
                 .map((k) => [k, d[k].trim()] as const)
@@ -617,6 +623,7 @@ export type DraftField =
   | 'figures'
   | 'link'
   | 'mediaType'
+  | 'mediaTypeOther'
   | 'time'
   | 'page'
   | 'generality'
@@ -652,6 +659,8 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
     if (!/^https?:\/\/\S+\.\S+/.test(d.link.trim()))
       out.push({ field: 'link', message: 'Give the address of the resource (starting with https://).' });
     if (!MEDIA_TYPES.includes(d.mediaType)) out.push({ field: 'mediaType', message: 'Choose what kind of resource it is.' });
+    else if (d.mediaType === 'other' && !d.mediaTypeOther.trim())
+      out.push({ field: 'mediaTypeOther', message: 'Say what kind of resource it is — a podcast, a game, a worksheet…' });
     if (![d.estimatedTime, d.readingTime, d.listeningTime].some((t) => t.trim()))
       out.push({ field: 'time', message: 'Say roughly how long it takes — a time or a range, or the reading or listening time.' });
   }
@@ -740,8 +749,20 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
   ]);
   const categories = RELATION_CATEGORIES.map((c) => c.key);
   const newTypes = new Map<string, string>();
+  const kindOf = (ref: string): NodeType | '' | undefined =>
+    ref === NEW_CONCEPT || ref === d.editOf
+      ? d.type
+      : (ctx.confirmed.nodes.find((x) => x.id === ref) ??
+          ctx.proposals.flatMap((p) => p.nodes).find((x) => x.id === ref) ??
+          ctx.drafts.find((x) => draftRef(x.suffix) === ref))?.type;
   d.relations.forEach((r, index) => {
     const n = index + 1;
+    const ruled = relationRuleProblem(
+      r.newCategory !== undefined ? relationPhrase(r.relationship) : (normalizeRelationship(r.relationship) ?? r.relationship),
+      kindOf(r.source),
+      kindOf(r.target),
+    );
+    if (ruled) out.push({ field: 'relations', index, message: `Relation ${n}: ${ruled}` });
     if (!known.has(r.source) || !known.has(r.target))
       out.push({
         field: 'relations',
@@ -1044,7 +1065,7 @@ export function parseDraft(raw: unknown): Draft | null {
   if (d.minutes !== undefined && typeof d.minutes !== 'number') return null;
   // Added 2026-11: times as free text (a range fits), who a resource works for, an
   // equation in plain words. A draft's minutes become its estimated time.
-  for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'equationPlain'] as const)
+  for (const key of ['estimatedTime', 'readingTime', 'listeningTime', 'accessibility', 'equationPlain', 'mediaTypeOther'] as const)
     if (d[key] !== undefined && !isString(d[key])) return null;
   const text = (key: string) => (d[key] as string | undefined) ?? '';
   const estimatedTime = d.estimatedTime === undefined && typeof d.minutes === 'number' ? `${d.minutes} min` : text('estimatedTime');
@@ -1084,6 +1105,7 @@ export function parseDraft(raw: unknown): Draft | null {
     readingTime: text('readingTime'),
     listeningTime: text('listeningTime'),
     accessibility: text('accessibility'),
+    mediaTypeOther: text('mediaTypeOther'),
     removals: removals as string[],
     variables: variables as EquationVariable[],
     representations: withPlain(representations),

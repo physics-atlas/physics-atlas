@@ -34,6 +34,7 @@ import Legend from './Legend';
 import RelationSentence from './RelationSentence';
 import ResourceInfo from './ResourceInfo';
 import { resourceMeta } from '../graph/cardSections';
+import { fittingRelation } from '../community/relationRules';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, pageHref } from '../lib/pageLinks';
@@ -339,7 +340,7 @@ export default function ConceptMapView({
       ...d,
       relations: [
         ...d.relations,
-        { key: `r${Date.now().toString(36)}${d.relations.length}`, source: NEW_CONCEPT, target: ref, relationship: 'relates' },
+        { key: `r${Date.now().toString(36)}${d.relations.length}`, ...fittingRelation(NEW_CONCEPT, d.type, ref, byMapId.get(ref)?.type) },
       ],
     }));
     setDraftStatus(

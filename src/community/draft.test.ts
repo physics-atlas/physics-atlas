@@ -666,9 +666,21 @@ describe('educational resources', () => {
     const reading: Draft = { ...resource(), estimatedTime: '', listeningTime: '', readingTime: '15 min' };
     expect(draftProblems(reading, alone(reading))).toEqual([]);
   });
-  it('takes "other" as a kind', () => {
-    const d: Draft = { ...resource(), mediaType: 'other' };
+  it('takes "other" as a kind, said in words', () => {
+    const unsaid: Draft = { ...resource(), mediaType: 'other' };
+    expect(draftProblems(unsaid, alone(unsaid)).map((p) => p.field)).toEqual(['mediaTypeOther']);
+    const d: Draft = { ...unsaid, mediaTypeOther: ' podcast ' };
     expect(draftProblems(d, alone(d))).toEqual([]);
+    expect(draftNode(d, concepts).attrs).toMatchObject({ mediaType: 'other', mediaTypeOther: 'podcast' });
+    expect(proposalProblems(draftProposal(d, alone(d)), concepts)).toEqual([]);
+    const video: Draft = { ...d, mediaType: 'video' };
+    expect('mediaTypeOther' in draftNode(video, concepts).attrs).toBe(false);
+  });
+  it('connects a resource only with "helps understand", from the resource', () => {
+    const d: Draft = { ...resource(), relations: [{ key: 'r1', source: NEW_CONCEPT, target: 'structure_formation', relationship: 'relates' }] };
+    expect(draftProblems(d, alone(d)).map((p) => p.message)).toEqual([expect.stringMatching(/helps understand/)]);
+    const backwards: Draft = { ...resource(), relations: [{ key: 'r1', source: 'structure_formation', target: NEW_CONCEPT, relationship: 'helps understand' }] };
+    expect(draftProblems(backwards, alone(backwards)).map((p) => p.message)).toEqual([expect.stringMatching(/Swap/)]);
   });
   it("reads an older draft's minutes as its time", () => {
     const { estimatedTime: _t, readingTime: _r, listeningTime: _l, accessibility: _a, ...old } = resource();
