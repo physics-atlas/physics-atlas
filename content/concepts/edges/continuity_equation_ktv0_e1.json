@@ -1,0 +1,6 @@
+{
+  "id": "continuity_equation_ktv0_e1",
+  "source": "continuity_equation_ktv0",
+  "target": "probability_current_density_wave_pjwt",
+  "relationship": "relates"
+}
