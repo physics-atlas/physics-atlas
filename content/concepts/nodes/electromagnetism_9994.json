@@ -1,0 +1,10 @@
+{
+  "id": "electromagnetism_9994",
+  "label": "Electromagnetism",
+  "type": "theory",
+  "importance": 10,
+  "generality": 10,
+  "attrs": {
+    "description": "The theory describing electric and magnetic fields and how they are different aspect of one underlying field."
+  }
+}
