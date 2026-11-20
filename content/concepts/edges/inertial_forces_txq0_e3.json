@@ -1,0 +1,6 @@
+{
+  "id": "inertial_forces_txq0_e3",
+  "source": "inertial_forces_txq0",
+  "target": "acceleration_vxlc",
+  "relationship": "relates"
+}
