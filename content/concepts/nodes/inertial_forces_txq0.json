@@ -1,8 +1,10 @@
 {
   "id": "inertial_forces_txq0",
-  "label": "Inertial forces",
+  "label": "Inertial Force",
   "type": "property",
   "attrs": {
-    "description": "Tesyttu"
-  }
+    "description": "Forces that arise due to being in a non-inertial (accelerating) reference frame. eg.coriolis force is experienced by us because the earth is rotating."
+  },
+  "importance": 4,
+  "generality": 3
 }
