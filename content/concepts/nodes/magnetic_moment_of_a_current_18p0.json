@@ -1,0 +1,48 @@
+{
+  "id": "magnetic_moment_of_a_current_18p0",
+  "label": "magnetic moment of a current",
+  "type": "equation",
+  "importance": 4,
+  "generality": 3,
+  "attrs": {
+    "description": "When a charge moves it creates a magnetic field, if it circles in a loop it create a magnetic dipole moment.  the strength of the moment is determined by the current and the area of the loop. For a generic current distribution the degree of how much in a circle the current is going is determined.",
+    "equation": "\\boldsymbol{\\mu} = I A \\hat{\\mathbf{n}}",
+    "plain": "A magnetic dipole has a field like a bar magnet. The magnetic moment describes how strongly this \"magnet\" would interact with an external magnetic field and its direction. The magnetic moment is found from multiplying the current with the area the current encloses and is perpendicular to the loop by the right hand rule.",
+    "variables": [
+      {
+        "symbol": "\\boldsymbol{\\mu}",
+        "meaning": "magnetic moment"
+      },
+      {
+        "symbol": "I",
+        "meaning": "current"
+      },
+      {
+        "symbol": "A",
+        "meaning": "area of the current loop"
+      },
+      {
+        "symbol": "\\hat{\\mathbf{n}}",
+        "meaning": "unit vector normal to the loop"
+      }
+    ],
+    "conditions": [],
+    "representations": [
+      {
+        "name": "For a general current distribution",
+        "equation": "\\boldsymbol{\\mu} = \\frac{1}{2} \\int \\mathbf{r} \\times \\mathbf{J}(\\mathbf{r}) \\, d^3r",
+        "plain": "the magnetic moment is the integral over space of the cross product of the Current density with the position vector",
+        "variables": [
+          {
+            "symbol": "\\mathbf{r}",
+            "meaning": "position vector"
+          },
+          {
+            "symbol": "\\mathbf{J}",
+            "meaning": "current density"
+          }
+        ]
+      }
+    ]
+  }
+}
