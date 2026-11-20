@@ -91,6 +91,8 @@ sophie_scicom/
   `src/data/conceptLayout.json` (generated, not committed); a change to the layout code re-runs it — no cache key to bump.
   A second arrangement, **Even** (`src/graph/evenLayout.ts`, Decision 47): stress majorization, no gravity, no
   concept on a line; shipped beside the clustered one and chosen in the map's control bar.
+  **For now Even is the only one** (`CLUSTERED_LAYOUT = false` in `conceptLayout.ts`): the clustered
+  search is skipped at build time and its switch hidden; the code stays.
 
 ## Subsystems (scope selection for the live-qa agent)
 

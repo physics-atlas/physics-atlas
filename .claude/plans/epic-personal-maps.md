@@ -1,7 +1,6 @@
 # Epic: personal maps (course maps first)
 
-**Status:** Phase 1 done — 2026-11-21. Phase 0 done but for marking the educator in
-`experts.json`. Next: Phase 2 (saved maps and editing).
+**Status:** Phases 0 and 1 done — 2026-11-21. Next: Phase 2 (saved maps and editing).
 
 ## Context
 
@@ -102,7 +101,7 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
 - ✅ Set-up steps: `docs/PERSONAL-MAPS-SETUP.md`. ✅ Privacy notice drafted: `docs/PRIVACY-NOTICE.md`.
 - ✅ **By hand:** the database created (EU jurisdiction, `physics-atlas-maps`), bound as
   `MAPS_DB`, migration applied (checked 2026-11-21: 7 tables + Wrangler's, no migration pending).
-- ☐ **By hand:** mark the educator `"maps": true` in `community/experts.json` on `main`.
+- ✅ **By hand:** `"maps": true` on `main` for gdaudt, sophelsa, mhardtke and subutayebru (2026-11-21).
 - ✅ The notice published at `?mode=privacy`, English and German (`content/privacy/`); the font
   served from the site (`@fontsource/sora`); no Impressum or joint-controller arrangement for now.
 - ☐ Limits for the pilot (maps per user, items per map) — set with Phase 2's API.

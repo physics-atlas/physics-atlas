@@ -29,6 +29,7 @@ import type { Progress } from '../lib/useProgress';
 import ConceptCard, { CONCEPT_CARD_TITLE_ID, EDGE_CARD_TITLE_ID } from './ConceptCard';
 import GraphView from './GraphView';
 import type { Arrangement, DraftOverlay } from './GraphView';
+import { CLUSTERED_LAYOUT } from '../graph/conceptLayout';
 import Legend from './Legend';
 import RelationSentence from './RelationSentence';
 import ResourceInfo from './ResourceInfo';
@@ -972,7 +973,7 @@ export default function ConceptMapView({
           arrangement={arrangement}
           extraControls={
             <>
-              <span className="graph-control-group" role="group" aria-label="Arrangement of the map">
+              {CLUSTERED_LAYOUT && <span className="graph-control-group" role="group" aria-label="Arrangement of the map">
                 {ARRANGEMENTS.map((a) => (
                   <button
                     key={a.key}
@@ -985,7 +986,7 @@ export default function ConceptMapView({
                     {a.label}
                   </button>
                 ))}
-              </span>
+              </span>}
               {community && (
                 <>
                   <button

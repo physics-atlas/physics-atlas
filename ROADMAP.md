@@ -25,7 +25,7 @@ Not run — direct session.
 
 ## feature-78: personal maps, Phase 0 — database decision, privacy, schema
 
-**Status:** ✅ Implemented — but for marking the educator `"maps": true` <!-- status-line: feature-78 -->
+**Status:** ✅ Implemented <!-- status-line: feature-78 -->
 **Planned:** 2026-11-20 — requested: personal maps (one educator's course map first, built with Sophie and mhardtke; shared by link; comments; pages with full accessibility; later a premium feature); keep only the GitHub account about a person; a privacy notice; start the plan's first step
 **Plan:** `.claude/plans/epic-personal-maps.md`
 

@@ -879,6 +879,14 @@ Measured on the current graph (one connected group, 90 concepts):
 | Clustered | 5 | 5 | 4 | 0.65 |
 | Even | 12 | 0 | 2 | 0.46 |
 
+**Update (2026-11-21): Clustered switched off for now.** With the atlas grown to one group of
+112 concepts, the clustered search made a fresh build take ~15 minutes (Cloudflare and CI
+build without the cached `conceptLayout.json`), and Even reads better. `CLUSTERED_LAYOUT = false`
+in `src/graph/conceptLayout.ts`: the build skips the clustered search (layout step ~80 s), every
+map shows Even, and the control bar has no arrangement switch. The code and its tests stay;
+`true` brings it back. Making `untangle` and `clearLines` score only what a move changes (as
+`swapNodes` does) instead of the whole layout per trial is the path to affording it again.
+
 **Open paths:** Even has more crossings — stress layouts keep distances, not planarity; a
 crossing-aware term in the stress, or a planarization step, could take more out. Concepts
 are still sized by generality in both; an Even variant with uniform sizes is possible.

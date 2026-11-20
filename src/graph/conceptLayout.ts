@@ -35,6 +35,13 @@ const NODE_LABEL_WIDTH = 140;
 export const NODE_LABEL_MARGIN = 4;
 /** Arrangements tried per component; the best one is kept. */
 export const SEARCH_SEEDS = 24;
+/**
+ * Whether the clustered arrangement is offered (Decision 47). Off for now: on
+ * one 112-concept group its search made a build take ~15 minutes, and Even
+ * reads better. Off, the build skips its search, the map shows Even only and
+ * the control bar has no arrangement switch. The code stays; `true` brings it back.
+ */
+export const CLUSTERED_LAYOUT = false;
 const COMPONENT_GAP = 120 * SPACING;
 const LONE_NODE_GAP = 40 * SPACING;
 

@@ -13,6 +13,7 @@ import type { NodeBox, Pos, Positions, Segment, SegmentLabel, SegmentLabels } fr
 import {
   ARROW_SCALE,
   arrangeConceptComponent,
+  CLUSTERED_LAYOUT,
   conceptLayoutInput,
   EDGE_WIDTH,
   EDGE_LABEL_MAX,
@@ -1095,8 +1096,10 @@ export default function GraphView({
   fluff = null,
   selectedEdgeId = null,
   onSelectEdge,
-  arrangement = 'clustered',
+  arrangement: chosenArrangement = 'clustered',
 }: GraphViewProps) {
+  // With the clustered arrangement switched off, every map shows Even.
+  const arrangement: Arrangement = CLUSTERED_LAYOUT ? chosenArrangement : 'even';
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const arrangementRef = useRef(arrangement);

@@ -237,8 +237,11 @@ if (!conceptProgress.includes(`"concept:${goalPath[0]}"`))
 await page.screenshot({ path: `${OUT}/concepts-goal.png` });
 
 // The map's two arrangements (Decision 47): Even moves the map, Clustered brings it back.
-{
-  await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+// With the clustered one switched off (CLUSTERED_LAYOUT), there is no switch to try.
+await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+if (!(await page.$('[aria-label="Arrangement of the map"]'))) {
+  console.log('arrangement switch: off (CLUSTERED_LAYOUT) — the map shows Even only');
+} else {
   const where = () => page.evaluate(() => Object.fromEntries(window.__cy.nodes().map((n) => [n.id(), { ...n.position() }])));
   const pick = (label) =>
     page.evaluate((l) => [...document.querySelectorAll('.graph-control')].find((b) => b.textContent.trim() === l)?.click(), label);

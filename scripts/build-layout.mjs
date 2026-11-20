@@ -46,8 +46,9 @@ if (existsSync(OUT)) {
 }
 const started = Date.now();
 const round = (pos) => Object.fromEntries(Object.entries(pos).map(([id, p]) => [id, { x: Math.round(10 * p.x) / 10, y: Math.round(10 * p.y) / 10 }]));
-const components = layout.searchConceptLayout(input).map(round);
+// The clustered arrangement only while it's offered (CLUSTERED_LAYOUT): its search is the slow part.
+const components = layout.CLUSTERED_LAYOUT ? layout.searchConceptLayout(input).map(round) : [];
 // The map's second arrangement, Even (Decision 47): no gravity, even spacing.
 const even = evenLayout.searchEvenLayout(input).map(round);
 writeFileSync(OUT, JSON.stringify({ key: input.key, code: codeHash, components, even }) + '\n');
-console.log(`✓ laid out ${input.components.length} groups, both views, in ${((Date.now() - started) / 1000).toFixed(1)} s → src/data/conceptLayout.json`);
+console.log(`✓ laid out ${input.components.length} groups, ${layout.CLUSTERED_LAYOUT ? 'both views' : 'Even only'}, in ${((Date.now() - started) / 1000).toFixed(1)} s → src/data/conceptLayout.json`);
