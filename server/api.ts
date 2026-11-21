@@ -8,6 +8,7 @@ import type { Proposal } from '../src/community/types';
 import { readConfig } from './config';
 import type { Config, Env } from './config';
 import { randomToken } from './crypto';
+import { handleMaps } from './maps';
 import { GitHub, GitHubError, SignInError } from './github';
 import type { Fetch } from './github';
 import { VOCABULARY_PATH, branchFor, decodeProposal, filesFor, parseExperts, pullRequestBody } from './proposalPr';
@@ -140,6 +141,21 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
   const user = await openSession(readCookie(request, SESSION_COOKIE), config.sessionSecret, now);
 
   try {
+    if (url.pathname === '/api/maps' || url.pathname.startsWith('/api/maps/')) {
+      if (!env.MAPS_DB) return json({ error: 'Personal maps are not set up yet.' }, 503);
+      try {
+        return await handleMaps(request, url, {
+          db: env.MAPS_DB,
+          user,
+          mayCreate: async () => (user ? mayMakeMaps(env, expertFor(await experts(config, gh, now), user.login)) : false),
+          gh,
+          now,
+        });
+      } catch (e) {
+        console.error(e);
+        return json({ error: 'The map could not be read or saved just now. Please try again in a minute.' }, 502);
+      }
+    }
     switch (route) {
       case 'GET /api/me': {
         const expert = user ? expertFor(await experts(config, gh, now), user.login) : undefined;
@@ -149,6 +165,8 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
           invited: Boolean(expert),
           canPublish: mayPublish(config, expert),
           canMakeMaps: mayMakeMaps(env, expert),
+          // Members of a map need no flag: anyone signed in can be added to one.
+          maps: Boolean(env.MAPS_DB),
           repo: `${config.owner}/${config.repo}`,
         });
       }

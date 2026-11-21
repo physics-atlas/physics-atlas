@@ -1,6 +1,6 @@
 # Epic: personal maps (course maps first)
 
-**Status:** Phases 0 and 1 done — 2026-11-21. Next: Phase 2 (saved maps and editing).
+**Status:** Phases 0 and 1 done; Phase 2 part 1 done — 2026-11-21. Next: Phase 2 part 2 (the editor saving into a map).
 
 ## Context
 
@@ -104,7 +104,7 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
 - ✅ **By hand:** `"maps": true` on `main` for gdaudt, sophelsa, mhardtke and subutayebru (2026-11-21).
 - ✅ The notice published at `?mode=privacy`, English and German (`content/privacy/`); the font
   served from the site (`@fontsource/sora`); no Impressum or joint-controller arrangement for now.
-- ☐ Limits for the pilot (maps per user, items per map) — set with Phase 2's API.
+- ✅ Limits for the pilot — set with Phase 2's API.
 - **Exit:** the database bound; `/api/me` says `canMakeMaps: true` for the educator.
 
 ### Phase 1 — A map that isn't the atlas *(read-only, from a fixture)* — ✅ done 2026-11-21
@@ -126,11 +126,24 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
 - **Note:** a bare `?mode=map` (the retired topic map's address) still lands on the atlas map.
 
 ### Phase 2 — Saved maps and editing
-- API: create a map, list "My maps", read, save items (with the revision for conflicts —
-  someone else's newer save is merged or shown, never silently overwritten).
-- The editor (the proposal form's fields and checks) saves into the map instead of a pull
-  request; a page edited on its page, as on the atlas (Decision 49).
-- Members: the owner adds editors by GitHub handle.
+- ✅ API (`server/maps.ts`): create a map, list "My maps", read, save items with the revision
+  the map was opened at — per item: someone else's newer save of the same item is refused (409)
+  and the map shown as it now is, never silently overwritten; saves of different items both stay.
+  Every save is checked whole (`mapProblems`) and recorded in `map_revisions`. Tested against the
+  real schema (Node's SQLite standing in for D1).
+- ✅ `?mode=maps` (**My maps**); a saved map opens from the server (members only; signed out, it
+  asks to sign in). The sample map is gone.
+- ✅ The map bar's panel: rename; add an atlas concept by search; remove one (with the map's own
+  relations to it); members.
+- ✅ Members: the owner adds editors, commenters or viewers by GitHub username (the server looks up
+  the account id); removes them; anyone may leave.
+- ✅ Limits for the pilot: 20 maps per owner, 1000 items per map, 50 members (`LIMITS` in `server/maps.ts`).
+- ✅ The first course map, seeded (`scripts/seed-map.mjs`, `scripts/maps-seed/newtonian-mechanics.json`):
+  owner walterpfeiffer1; sophelsa, mhardtke, onedandelion, gdaudt editors; the atlas's subgraph from
+  Newtonian (Classical) Mechanics — without its relation to Newtonian gravity — to Four-velocity,
+  by its relation to Velocity only (22 concepts). **By hand:** run the seed (`docs/PERSONAL-MAPS-SETUP.md`).
+- ☐ **Part 2:** the editor (the proposal form's fields and checks) saves a map's own concepts and
+  relations into the map instead of a pull request; a page edited on its page, as on the atlas (Decision 49).
 - **Exit:** the educator, Sophie and mhardtke can build one map together; history recorded.
 
 ### Phase 3 — Comments *(the pilot's asynchronous work)*

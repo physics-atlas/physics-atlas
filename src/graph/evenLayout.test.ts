@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { clearLines, EVEN_GAP, evenScore, stressLayout } from './evenLayout';
-import { countNodeOverlaps, createRng } from './layoutOptimize';
+import { clearLines, EVEN_GAP, evenScore, evenWeights, stressLayout, untangleSameLevel } from './evenLayout';
+import type { ConceptLayoutInput } from './conceptLayout';
+import { countCrossings, countNodeOverlaps, createRng } from './layoutOptimize';
 import type { NodeBox, Positions, Segment } from './layoutOptimize';
 import { EDGE_LABEL_MIN, relationFontSize } from './concepts';
 
@@ -45,6 +46,49 @@ describe('the Even arrangement', () => {
     const cleared = clearLines(segments, pos, boxes);
     expect(countNodeOverlaps(segments, cleared, boxes)).toBe(0);
     expect(evenScore(segments, cleared, boxes).crossings).toBe(0);
+  });
+});
+
+describe('crossings between relations of the same standing (Decision 54)', () => {
+  // One component: four overview concepts (importance 9) and two details (2); all the same size.
+  const ids = ['a', 'b', 'c', 'd', 'x', 'y'];
+  const segments: Segment[] = [
+    ['a', 'b'],
+    ['c', 'd'],
+    ['x', 'y'],
+  ];
+  const input: ConceptLayoutInput = {
+    components: [{ ids, segments, labels: [], ties: [] }],
+    loneIds: [],
+    boxes: Object.fromEntries(ids.map((id) => [id, box(10)])),
+    importance: { a: 9, b: 9, c: 9, d: 9, x: 2, y: 2 },
+    key: 'test',
+  };
+
+  it('weighs a crossing of two overview relations above one of an overview relation and a detail', () => {
+    const { cross } = evenWeights(input, 0);
+    expect(cross(0, 1)).toBeGreaterThan(cross(0, 2));
+    expect(cross(0, 2)).toBe(1);
+  });
+
+  it('takes out the overview crossing, moving only what it needs, and never ends worse', () => {
+    // a–b and c–d cross at the overview; x–y sits apart.
+    const start: Positions = {
+      a: { x: 0, y: 0 },
+      b: { x: 400, y: 400 },
+      c: { x: 400, y: 0 },
+      d: { x: 0, y: 400 },
+      x: { x: 900, y: 0 },
+      y: { x: 900, y: 400 },
+    };
+    expect(countCrossings(segments.slice(0, 2), start)).toBe(1);
+    const pos = untangleSameLevel(input, 0, start);
+    expect(countCrossings(segments.slice(0, 2), pos)).toBe(0);
+    expect(countNodeOverlaps(segments, pos, input.boxes)).toBe(0);
+    const weights = evenWeights(input, 0);
+    expect(evenScore(segments, pos, input.boxes, [], weights).crossings).toBeLessThan(
+      evenScore(segments, start, input.boxes, [], weights).crossings,
+    );
   });
 });
 

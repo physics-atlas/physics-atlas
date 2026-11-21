@@ -8,6 +8,8 @@ import { handle, resetCaches } from './api';
 import type { Env } from './config';
 import { base64url, fromBase64url, pemToPkcs8 } from './crypto';
 import { decodeProposal, encodeProposal } from './proposalPr';
+import { sealSession } from './session';
+import type { D1Database, D1Statement } from './d1';
 
 const ORIGIN = 'https://atlas.example';
 
@@ -39,7 +41,7 @@ const env: Env = {
 /** A stand-in for GitHub: records what the backend writes, serves what it reads. */
 function fakeGitHub(
   invited: string[] = ['ada'],
-  { issues = true, publishers = [] as string[], mapMakers = [] as string[], mergeStatus = 200 } = {},
+  { issues = true, publishers = [] as string[], mapMakers = [] as string[], mergeStatus = 200, people = {} as Record<string, number> } = {},
 ) {
   const writes: { method: string; path: string; body: unknown }[] = [];
   const pulls: { number: number; html_url: string; title: string; body: string; created_at: string; user: { login: string }; pull_request: object; comments?: number }[] = [];
@@ -79,6 +81,11 @@ function fakeGitHub(
     if (path === `${r}/issues` && method === 'GET') return reply(pulls);
     const reviewList = /\/pulls\/(\d+)\/reviews$/.exec(path);
     if (reviewList && method === 'GET') return reply(reviews.get(Number(reviewList[1])) ?? []);
+    const person = /^\/users\/([\w-]+)$/.exec(path);
+    if (person) {
+      const login = Object.keys(people).find((l) => l.toLowerCase() === person[1].toLowerCase());
+      return login ? reply({ login, id: people[login], name: null }) : reply({ message: 'Not Found' }, 404);
+    }
     if (path === `${r}/git/ref/heads/main`) return reply({ object: { sha: 'base-sha' } });
     if (path === `${r}/git/commits/base-sha`) return reply({ tree: { sha: 'base-tree' } });
     writes.push({ method, path, body });
@@ -394,12 +401,145 @@ describe('personal maps (Decision 50)', () => {
     const session = await signIn(gh);
     const me = (e: Env) => call(gh, '/api/me', { headers: { cookie: session } }, e).then((r) => r.json());
     expect(await me(env)).toMatchObject({ invited: true, canMakeMaps: false });
-    expect(await me({ ...env, MAPS_DB: {} })).toMatchObject({ canMakeMaps: true });
+    expect(await me({ ...env, MAPS_DB: mapsDb() })).toMatchObject({ canMakeMaps: true, maps: true });
     resetCaches();
     const gh2 = fakeGitHub(['ada']);
     const session2 = await signIn(gh2);
-    const me2 = await (await call(gh2, '/api/me', { headers: { cookie: session2 } }, { ...env, MAPS_DB: {} })).json();
-    expect(me2).toMatchObject({ invited: true, canMakeMaps: false });
+    const me2 = await (await call(gh2, '/api/me', { headers: { cookie: session2 } }, { ...env, MAPS_DB: mapsDb() })).json();
+    expect(me2).toMatchObject({ invited: true, canMakeMaps: false, maps: true });
+  });
+});
+
+/**
+ * The maps database: D1 is SQLite, so Node's built-in SQLite stands in for it
+ * with the real schema (migrations/0001). Needs Node 22.13 or later.
+ */
+interface SqliteDb {
+  exec(sql: string): void;
+  prepare(sql: string): { get(...v: unknown[]): unknown; all(...v: unknown[]): unknown[]; run(...v: unknown[]): unknown };
+}
+// Node's own modules, by name: the server's TypeScript doesn't know Node's types.
+const nodeModule = (name: string) => import(/* @vite-ignore */ name).catch(() => null);
+const sqlite = (await nodeModule('node:sqlite')) as { DatabaseSync: new (path: string) => SqliteDb } | null;
+const { readFileSync } = (await nodeModule('node:fs')) as { readFileSync: (path: URL, encoding: 'utf8') => string };
+function mapsDb(): D1Database & { raw: SqliteDb } {
+  const raw = new sqlite!.DatabaseSync(':memory:');
+  raw.exec(readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8'));
+  const statement = (sql: string, values: unknown[] = []): D1Statement & { exec: () => unknown } => {
+    const args = () => values.map((v) => (v === undefined ? null : v));
+    return {
+      bind: (...v: unknown[]) => statement(sql, v),
+      first: async <T,>() => (raw.prepare(sql).get(...args()) ?? null) as T | null,
+      all: async <T,>() => ({ results: raw.prepare(sql).all(...args()) as T[] }),
+      run: async () => raw.prepare(sql).run(...args()),
+      exec: () => raw.prepare(sql).run(...args()),
+    };
+  };
+  return {
+    raw,
+    prepare: (sql) => statement(sql),
+    batch: async (list) => {
+      raw.exec('BEGIN');
+      try {
+        const out = list.map((s) => (s as ReturnType<typeof statement>).exec());
+        raw.exec('COMMIT');
+        return out;
+      } catch (e) {
+        raw.exec('ROLLBACK');
+        throw e;
+      }
+    },
+  };
+}
+
+describe.skipIf(!sqlite)('saved personal maps (Decision 50, Phase 2)', () => {
+  const people = { ada: 42, Bob: 43, cleo: 44 };
+  const as = (login: string) => sealSession({ login, id: people[login as keyof typeof people], name: login }, env.SESSION_SECRET!).then((v) => `atlas_session=${encodeURIComponent(v)}`);
+  async function setUp() {
+    const gh = fakeGitHub(['ada'], { mapMakers: ['ada'], people });
+    const db = mapsDb();
+    const e = { ...env, MAPS_DB: db };
+    const req = async (who: string | null, method: string, path: string, body?: unknown, origin = ORIGIN) =>
+      call(
+        gh,
+        path,
+        {
+          method,
+          headers: { origin, 'content-type': 'application/json', ...(who ? { cookie: await as(who) } : {}) },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        e,
+      );
+    const created = await (await req('ada', 'POST', '/api/maps', { title: 'Sample course map' })).json();
+    return { db, req, id: created.id as string };
+  }
+  const ref = (id: string) => ({ kind: 'ref', id, body: {} });
+
+  it('are created by those marked "maps", and seen only by their members', async () => {
+    const { req, id } = await setUp();
+    expect(id).toMatch(/^[\w-]{16}$/);
+    expect((await (await req('ada', 'GET', '/api/maps')).json()).maps).toMatchObject([{ id, title: 'Sample course map', role: 'owner' }]);
+    expect((await req('Bob', 'POST', '/api/maps', { title: 'Sample' })).status).toBe(403);
+    expect((await req('Bob', 'GET', `/api/maps/${id}`)).status).toBe(404);
+    expect((await (await req('Bob', 'GET', '/api/maps')).json()).maps).toEqual([]);
+    expect((await req(null, 'GET', `/api/maps/${id}`)).status).toBe(401);
+    expect((await req('ada', 'POST', '/api/maps', { title: 'Sample' }, 'https://elsewhere.example')).status).toBe(403);
+  });
+
+  it('take members by GitHub username; an editor saves, a viewer only reads, and the history keeps who did what', async () => {
+    const { db, req, id } = await setUp();
+    expect((await req('ada', 'POST', `/api/maps/${id}/members`, { login: '@bob', role: 'editor' })).status).toBe(200);
+    expect((await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'nobody-here', role: 'editor' })).status).toBe(404);
+    const added = await (await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'cleo', role: 'viewer' })).json();
+    expect(added.members).toEqual([
+      { login: 'ada', role: 'owner' },
+      { login: 'Bob', role: 'editor' },
+      { login: 'cleo', role: 'viewer' },
+    ]);
+    expect((await req('Bob', 'POST', `/api/maps/${id}/members`, { login: 'cleo', role: 'editor' })).status).toBe(403);
+    const saved = await (await req('Bob', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [ref('velocity_7r85'), ref('four_velocity')] })).json();
+    expect(saved).toMatchObject({ revision: 1, role: 'editor', map: { refs: ['four_velocity', 'velocity_7r85'] } });
+    expect((await req('cleo', 'POST', `/api/maps/${id}/save`, { base: 1, changes: [ref('force_q27c')] })).status).toBe(403);
+    expect((await (await req('cleo', 'GET', `/api/maps/${id}`)).json()).map.refs).toEqual(['four_velocity', 'velocity_7r85']);
+    expect(db.raw.prepare('SELECT revision, user_id, changed FROM map_revisions').all()).toEqual([
+      { revision: 1, user_id: (db.raw.prepare('SELECT id FROM users WHERE github_id = 43').get() as { id: number }).id, changed: '["ref:velocity_7r85","ref:four_velocity"]' },
+    ]);
+  });
+
+  it('never overwrite a newer save of the same item; saves of different items both stay', async () => {
+    const { req, id } = await setUp();
+    const node = (label: string) => ({ kind: 'node', id: 'sample_goal', body: { id: 'sample_goal', type: 'learning_goal', label, attrs: { description: 'Sample.' } } });
+    expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [node('Sample goal')] })).status).toBe(200);
+    // Opened at revision 0: a different item is fine, the same one is a conflict.
+    expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [ref('velocity_7r85')] })).status).toBe(200);
+    const clash = await req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [node('Sample goal, renamed')] });
+    expect(clash.status).toBe(409);
+    expect(await clash.json()).toMatchObject({ conflicts: ['node:sample_goal'], current: { revision: 2, map: { nodes: [{ label: 'Sample goal' }] } } });
+    expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 2, changes: [node('Sample goal, renamed')], title: 'Sample, renamed' })).status).toBe(200);
+    expect((await (await req('ada', 'GET', `/api/maps/${id}`)).json()).map).toMatchObject({ title: 'Sample, renamed', nodes: [{ label: 'Sample goal, renamed' }] });
+  });
+
+  it('refuse a save that does not fit the map, whole', async () => {
+    const { req, id } = await setUp();
+    const out = (changes: unknown[]) => req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes });
+    expect((await out([ref('no_such_concept')])).status).toBe(422);
+    const dangling = await out([{ kind: 'edge', id: 'sample_e1', body: { id: 'sample_e1', source: 'velocity_7r85', target: 'four_velocity', relationship: 'relates' } }]);
+    expect(dangling.status).toBe(422);
+    expect((await dangling.json()).problems.join(' ')).toMatch(/isn't in the map/);
+    expect((await out([{ kind: 'page', id: 'x', body: 'not depths' }])).status).toBe(400);
+    expect((await out([ref('velocity_7r85'), ref('velocity_7r85')])).status).toBe(400);
+    expect((await (await req('ada', 'GET', `/api/maps/${id}`)).json()).revision).toBe(0);
+  });
+
+  it('let the owner remove a member and anyone leave, but never remove the owner', async () => {
+    const { req, id } = await setUp();
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'bob', role: 'editor' });
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'cleo', role: 'commenter' });
+    expect((await req('Bob', 'DELETE', `/api/maps/${id}/members/cleo`)).status).toBe(403);
+    expect((await req('Bob', 'DELETE', `/api/maps/${id}/members/ada`)).status).toBe(409);
+    expect((await req('Bob', 'DELETE', `/api/maps/${id}/members/bob`)).status).toBe(204);
+    expect((await req('Bob', 'GET', `/api/maps/${id}`)).status).toBe(404);
+    expect((await (await req('ada', 'DELETE', `/api/maps/${id}/members/cleo`)).json()).members).toEqual([{ login: 'ada', role: 'owner' }]);
   });
 });
 

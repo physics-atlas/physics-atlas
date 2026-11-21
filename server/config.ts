@@ -1,5 +1,6 @@
 // The backend's settings, from Cloudflare environment variables / secrets.
 // See docs/COMMUNITY-BACKEND-SETUP.md for how to create each one.
+import type { D1Database } from './d1';
 
 export interface Env {
   /** "owner/name" of the repository proposals go to — a test repository while trying it out */
@@ -19,7 +20,7 @@ export interface Env {
    * The personal maps' D1 database (Decision 50), bound in wrangler.jsonc as "MAPS_DB".
    * Optional: until it's created and bound, personal maps are simply not offered.
    */
-  MAPS_DB?: object;
+  MAPS_DB?: D1Database;
 }
 
 export interface Config {

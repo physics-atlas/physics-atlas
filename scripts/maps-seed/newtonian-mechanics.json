@@ -1,0 +1,36 @@
+{
+  "//": "A personal map made before the app could make it (Phase 2): node scripts/seed-map.mjs scripts/maps-seed/newtonian-mechanics.json. Its concepts are the atlas's subgraph from Newtonian (Classical) Mechanics — without its relation to Newtonian gravity — to Four-velocity, by its relation to Velocity only (as of 2026-11-21). The owner can rename it in the app.",
+  "id": "j72XBjI9PGIG8jtT",
+  "title": "Newtonian mechanics",
+  "owner": "walterpfeiffer1",
+  "members": {
+    "sophelsa": "editor",
+    "mhardtke": "editor",
+    "onedandelion": "editor",
+    "gdaudt": "editor"
+  },
+  "refs": [
+    "1d_motion_graph_game_z32b",
+    "1d_motion_graph_interactive_zx1m",
+    "acceleration_vxlc",
+    "force_q27c",
+    "four_velocity",
+    "i_can_calculate_the_average_velocity_jsmf",
+    "identify_the_points_at_which_the_n35u",
+    "inertia_concept_test_zje1",
+    "inertial_forces_txq0",
+    "mass_inertial_1tw1",
+    "mechanical_equilibrium_6z6l",
+    "newton_i_ovgb",
+    "newton_ii_f_ma_smym",
+    "newton_iii_6451",
+    "newtonian_classical_mechanics_d0e1",
+    "newtons_3rd_law_does_not_always_apply_yigv",
+    "point_mechanics_2hbo",
+    "point_particle_jgrz",
+    "position_28im",
+    "velocity_7r85",
+    "why_we_care_about_newtons_3rd_law_i6ny",
+    "zero_velocity_implies_zero_acceleration_ypil"
+  ]
+}

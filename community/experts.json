@@ -2,6 +2,7 @@
   "experts": [{ "github": "gdaudt", "name": "Guilherme Daudt", "maps": true, "verified": true, "publish": true },
               { "github": "sophelsa", "name": "Sophie Ashworth", "maps": true, "verified": true, "publish": true },
               { "github": "mhardtke", "name": "Max Hardtke", "maps": true, "verified": true, "publish": true },
-              { "github": "onedandelion", "name": "Daniel ", "verified": true, "publish": true },
+              { "github": "onedandelion", "name": "Daniel Delesky", "verified": true, "publish": true },
+              { "github": "walterpfeiffer1", "name": "Walter Pfeiffer", "maps": true, "verified": true, "publish": false },
             {"github": "subutayebru", "name": "Ebru Subutay", "maps": true, "verified": true, "publish": true}]
 }

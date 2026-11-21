@@ -6,6 +6,25 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-80: personal maps Phase 2, part 1 — saved maps, members, atlas concepts; the first course map
+
+**Status:** ✅ Implemented <!-- status-line: feature-80 -->
+**Planned:** 2026-11-21 — requested: start Phase 2; remove the sample map; a map for walterpfeiffer1 with sophelsa, mhardtke, onedandelion (and gdaudt) as collaborators, holding the subgraph from Newtonian (Classical) Mechanics (not its relation to Newtonian gravity) to Four-velocity (by its relation to Velocity only)
+**Implemented:** 2026-11-21
+
+### Implemented
+- `server/maps.ts`: `/api/maps` — list, create (those marked "maps"), read (members only), save (per-item revision check: someone else's newer save of the same item is a 409 with the map as it now is; saves of different items both stay; the whole save is checked with `mapProblems`; history in `map_revisions`), members by GitHub username (owner), leave; pilot limits; `/api/me` says `maps`
+- `src/maps/items.ts` (rows ↔ map, applying a save), `src/maps/api.ts`; the sample map and `fixtures.ts` removed
+- `?mode=maps` (**My maps**, header link when signed in); a saved map loads from the server; the map bar's **Edit map and members** panel: rename, add an atlas concept by search, remove one (with the map's own relations to it), members
+- `scripts/seed-map.mjs` + `scripts/maps-seed/newtonian-mechanics.json`: the course map's 22 atlas concepts, owner walterpfeiffer1, four editors — SQL to run by hand with Wrangler; running it again changes nothing
+- Tests: the API against the real schema (Node's SQLite as D1), items, the seed; smoke: a saved map served by a stand-in backend, its panel, My maps
+
+### Not yet (Phase 2, part 2)
+- The proposal editor saving a map's own concepts and relations; a page edited on its page
+
+### Review
+Not run — direct session.
+
 ## feature-79: privacy notice live (EN/DE), font from the site; personal maps Phase 1
 
 **Status:** ✅ Implemented <!-- status-line: feature-79 -->

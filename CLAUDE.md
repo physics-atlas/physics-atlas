@@ -57,10 +57,10 @@ sophie_scicom/
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,
 │   │                 # DraftEditor, ProposalCard, Legend, PageView (the atlas pages, lazy)
-│   ├── maps/         # personal maps (Decision 50): map.ts (format, resolveMap with the atlas, checks), fixtures.ts
-│   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback | privacy | map), reads ?mode= (and ?concept=, ?map=) from the URL
+│   ├── maps/         # personal maps (Decision 50): map.ts (format, resolveMap with the atlas, checks), items.ts (saved rows ↔ map), api.ts
+│   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback | privacy | guide | map | maps), reads ?mode= (and ?concept=, ?map=) from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
-├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests
+├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests; maps.ts — personal maps in D1
 ├── worker/           # the Cloudflare Worker script: /api/* → server/api.ts, the rest → static assets
 ├── community/        # experts.json — the invite list while the repo is private
 ├── scripts/          # compile-concepts.mjs (content → src/data), check-pages.mjs (the atlas pages),
@@ -92,7 +92,8 @@ sophie_scicom/
   A second arrangement, **Even** (`src/graph/evenLayout.ts`, Decision 47): stress majorization, no gravity, no
   concept on a line; shipped beside the clustered one and chosen in the map's control bar.
   **For now Even is the only one** (`CLUSTERED_LAYOUT = false` in `conceptLayout.ts`): the clustered
-  search is skipped at build time and its switch hidden; the code stays.
+  search is skipped at build time and its switch hidden; the code stays. Even's last step takes out
+  crossings between relations of the same standing, zoom level by zoom level (Decision 54).
 
 ## Subsystems (scope selection for the live-qa agent)
 

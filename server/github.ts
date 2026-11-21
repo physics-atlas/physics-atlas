@@ -118,6 +118,17 @@ export class GitHub {
     return this.call<GitHubUser>('/user', { token: t.access_token });
   }
 
+  /** A GitHub account by its username — its id and current login — or null if there's none. */
+  async userByLogin(login: string): Promise<{ id: number; login: string } | null> {
+    try {
+      const u = await this.call<GitHubUser>(`/users/${encodeURIComponent(login)}`, { token: await this.appToken() });
+      return { id: u.id, login: u.login };
+    } catch (e) {
+      if (e instanceof GitHubError && e.status === 404) return null;
+      throw e;
+    }
+  }
+
   /** A text file from the base branch, or null if it isn't there. */
   async readFile(path: string): Promise<string | null> {
     const { owner, repo, base } = this.config;

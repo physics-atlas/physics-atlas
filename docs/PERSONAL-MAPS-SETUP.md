@@ -71,7 +71,22 @@ pilot, the educator:
 People they add to a map as editors, commenters or viewers need no flag, and people with
 the map's link need no account at all.
 
-## 5. Privacy, before anyone uses it
+## 5. A map made ahead of time (optional)
+
+A map can be made before its owner first signs in, from a seed file in `scripts/maps-seed/`
+(the owner, the members and their roles, the atlas concepts it uses):
+
+```bash
+node scripts/seed-map.mjs scripts/maps-seed/newtonian-mechanics.json > seed.sql
+npx wrangler d1 execute physics-atlas-maps --remote --file seed.sql
+```
+
+The script asks GitHub's public API for each username's account id (the database keys people by
+it). Running the SQL again changes nothing once the map exists. The map is then at
+`?mode=map&map=<its id>`, and under **My maps** for each member once they sign in. Delete
+`seed.sql` afterwards; it isn't needed again.
+
+## 6. Privacy, before anyone uses it
 
 - **Request logs:** in the Worker's *Observability* settings, keep log retention short and
   don't add logging of IP addresses or share-link tokens. The notice states the retention.

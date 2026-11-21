@@ -319,4 +319,17 @@ describe('untangle', () => {
     expect(countCrossings(segments, pos)).toBe(0);
     expect(countBoxOverlaps(pos, boxes) + countNodeOverlaps(segments, pos, boxes)).toBe(0);
   });
+  it('moves only the concepts it may, when told which', () => {
+    const ids = ['a', 'b', 'c', 'd'];
+    const boxes = Object.fromEntries(ids.map((id) => [id, box(8, 0, 0)]));
+    const segments: Segment[] = [['a', 'b'], ['b', 'c'], ['c', 'd'], ['d', 'a'], ['a', 'c'], ['b', 'd']];
+    const square: Positions = { a: { x: 0, y: 0 }, b: { x: 400, y: 0 }, c: { x: 400, y: 400 }, d: { x: 0, y: 400 } };
+    const { pos } = untangle(segments, square, boxes, [], 6, new Set(['a']));
+    for (const id of ['b', 'c', 'd']) expect(pos[id]).toEqual(square[id]);
+    expect(countCrossings(segments, pos)).toBe(0);
+  });
+  it('weighs crossings when given a weight', () => {
+    const pos: Positions = { a: { x: 0, y: 0 }, b: { x: 10, y: 10 }, c: { x: 10, y: 0 }, d: { x: 0, y: 10 } };
+    expect(countCrossings([['a', 'b'], ['c', 'd']], pos, () => 7)).toBe(7);
+  });
 });

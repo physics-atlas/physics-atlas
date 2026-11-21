@@ -190,6 +190,8 @@ export interface ConceptLayoutInput {
   /** Concepts with neither: they share one row */
   loneIds: string[];
   boxes: Record<string, NodeBox>;
+  /** Each concept's importance as the map uses it: when zooming in reveals it */
+  importance: Record<string, number>;
   /** Changes whenever anything the layout depends on does */
   key: string;
 }
@@ -199,6 +201,7 @@ export function conceptLayoutInput(graph: ConceptGraph): ConceptLayoutInput {
   const index = buildConceptIndex(graph);
   const degree = (id: string) => index.degree.get(id) ?? 0;
   const boxes = Object.fromEntries(graph.nodes.map((n) => [n.id, conceptNodeBox(n, degree(n.id))]));
+  const importance = Object.fromEntries(graph.nodes.map((n) => [n.id, nodeLabelLayout(n, degree(n.id)).importance]));
   const ties: Segment[] = graph.nodes.flatMap((n) =>
     assumedConceptIds(n).filter((a) => index.byId.has(a)).map((a) => [n.id, a] as Segment),
   );
@@ -244,7 +247,7 @@ export function conceptLayoutInput(graph: ConceptGraph): ConceptLayoutInput {
     components.flatMap((c) => [...c.segments, ...c.ties.map(([a, b]) => [a, `assumes:${b}`] as Segment)]),
     `concepts|${shape.join('|')}|${names.join('|')}`,
   );
-  return { components, loneIds, boxes, key };
+  return { components, loneIds, boxes, importance, key };
 }
 
 /** The seeds a component's search tries, the quick first arrangement first. */

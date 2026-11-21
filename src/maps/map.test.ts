@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { concepts } from '../data/loadConcepts';
-import { pageMathProblems } from '../lib/pageMaths';
-import { parsePage } from '../lib/pageText';
-import { SAMPLE_MAPS, sampleMap } from './fixtures';
+import { applyChanges, changeProblem, itemsOf, mapFromItems } from './items';
+import { removeRefChanges } from './api';
 import { mapProblems, resolveMap } from './map';
 import type { PersonalMap } from './map';
 
@@ -63,20 +62,40 @@ describe('mapProblems', () => {
   });
 });
 
-describe('the sample maps', () => {
-  it.each(SAMPLE_MAPS.map((m) => [m.id, m] as const))('%s fits the atlas, uses only atlas concepts that exist, and its pages show', (_id, m) => {
-    expect(mapProblems(m, concepts)).toEqual([]);
-    expect(resolveMap(m, concepts).missingRefs).toEqual([]);
-    for (const depths of Object.values(m.pages ?? {}))
-      for (const d of depths) {
-        expect(parsePage(d).problems).toEqual([]);
-        expect(pageMathProblems(d)).toEqual([]);
-      }
+describe('a saved map, as items (Phase 2)', () => {
+  it('turns into the same map, and back', () => {
+    const m = map({ pages: { goal: ['Sample page.'] } });
+    const back = mapFromItems(m, itemsOf(m));
+    expect(back.refs.sort()).toEqual([...m.refs].sort());
+    expect(back.nodes).toEqual(m.nodes);
+    expect(back.edges).toEqual(m.edges);
+    expect(back.pages).toEqual(m.pages);
   });
 
-  it('include the sample course map, every own text marked as a sample', () => {
-    const m = sampleMap('sample-course')!;
-    expect(m.title).toMatch(/^Sample/);
-    for (const n of m.nodes) expect('description' in n.attrs ? n.attrs.description : '').toMatch(/^Sample/);
+  it('applies a save: written whole, or removed', () => {
+    const next = applyChanges(map(), [
+      { kind: 'ref', id: 'four_velocity', body: {} },
+      { kind: 'node', id: 'goal', body: { ...map().nodes[0], label: 'Sample goal, renamed' } },
+      { kind: 'ref', id: 'tangent_vector', body: null },
+    ]);
+    expect(next.refs).toEqual(['four_velocity', 'parallel_transport']);
+    expect(next.nodes[0].label).toBe('Sample goal, renamed');
+  });
+
+  it('takes an atlas concept out with the map’s own relations to it', () => {
+    const changes = removeRefChanges(map(), 'parallel_transport');
+    expect(changes).toEqual([
+      { kind: 'ref', id: 'parallel_transport', body: null },
+      { kind: 'edge', id: 'm_e1', body: null },
+    ]);
+    expect(mapProblems(applyChanges(map(), changes), concepts)).toEqual([]);
+  });
+
+  it('refuses a change it can’t store', () => {
+    expect(changeProblem({ kind: 'ref', id: 'four_velocity', body: {} })).toBeNull();
+    expect(changeProblem({ kind: 'topic', id: 'x', body: {} })).toMatch(/unknown kind/);
+    expect(changeProblem({ kind: 'node', id: 'a b', body: {} })).toMatch(/item id/);
+    expect(changeProblem({ kind: 'node', id: 'a', body: { id: 'b' } })).toMatch(/id differs/);
+    expect(changeProblem({ kind: 'page', id: 'a', body: 'text' })).toMatch(/list of depths/);
   });
 });

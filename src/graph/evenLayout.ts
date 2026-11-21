@@ -3,7 +3,8 @@
 // comfortable distance from the others, set by how far apart they are in the
 // graph (stress majorization), then the same clean-up as the clustered view
 // (names given their room, crossings taken out) and one more step: no concept
-// sits on a line it isn't part of. Pure geometry, like conceptLayout.ts — the
+// sits on a line it isn't part of. Last, crossings between relations of the same
+// standing are taken out zoom level by zoom level (Decision 54). Pure geometry, like conceptLayout.ts — the
 // build works it out once and ships it beside the clustered one.
 import type { ConceptLayoutInput } from './conceptLayout';
 import {
@@ -23,7 +24,7 @@ import {
   swapNodes,
   untangle,
 } from './layoutOptimize';
-import type { LayoutScore, NodeBox, Positions, Segment, SegmentLabels } from './layoutOptimize';
+import type { CrossWeight, LayoutScore, NodeBox, Positions, Segment, SegmentLabels } from './layoutOptimize';
 
 /** Free room between two concepts' boxes along a relation — wider than the clustered view's. */
 export const EVEN_GAP = 140;
@@ -43,17 +44,73 @@ const LINE_CLEARANCE = 10;
 const reach = (b: NodeBox) => Math.hypot(b.right - b.left, b.bottom - b.top) / 2;
 
 /**
+ * How the last step weighs a crossing (Decision 54), and a line through a concept.
+ * Without them (the search before it), each counts 1.
+ */
+export interface EvenWeights {
+  cross: CrossWeight;
+  through: number;
+}
+
+/** The zoom levels, as importance thresholds (`revealZoom`): the overview's first, then each closer one. */
+const ZOOM_LEVELS = [8, 6, 4, 2, -Infinity];
+/** Extra cost of a crossing between two relations of the same standing, over one between unlike ones. */
+const ALIKE_WEIGHT = 8;
+/** A line through a concept: dearer than a concept's crossings could add up to, so never traded for them. */
+const THROUGH_WEIGHT = 100;
+
+/** The zoom level a concept first shows at: an index into ZOOM_LEVELS, 0 for the overview. */
+const zoomLevel = (importance: number) => ZOOM_LEVELS.findIndex((L) => importance >= L);
+
+/**
+ * A relation's standing: the zoom level it shows from (zooming in reveals
+ * concepts by importance, a relation once both its ends show) and how thick
+ * it's drawn (its more general concept's size, as `edgeWeight`; 0–1, log scale,
+ * within the component).
+ */
+export function relationStanding(input: ConceptLayoutInput, comp: number) {
+  const { segments } = input.components[comp];
+  const level = (id: string) => zoomLevel(input.importance[id] ?? 1);
+  const levels = segments.map(([s, t]) => Math.max(level(s), level(t)));
+  const wide = segments.map(([s, t]) => Math.log(Math.max(input.boxes[s].radius, input.boxes[t].radius)));
+  const lo = Math.min(...wide), span = Math.max(...wide) - lo || 1;
+  return { levels, thickness: wide.map((w) => (w - lo) / span) };
+}
+
+/**
+ * Weighs a crossing by how alike its two relations are (Decision 54): two of
+ * the same standing — shown from the same zoom level, drawn about as thick —
+ * are read together as equals, and their crossing costs most (9); one level
+ * apart, about half; a landmark's line crossing a detail's costs 1, as the eye
+ * reads them apart. The total number of crossings isn't the aim. A table built
+ * once per component (relations²); a lookup is all a crossing test adds.
+ */
+export function evenWeights(input: ConceptLayoutInput, comp: number): EvenWeights {
+  const { levels, thickness } = relationStanding(input, comp);
+  const n = levels.length;
+  const table = new Uint8Array(n * n);
+  for (let e = 0; e < n; e++)
+    for (let f = 0; f < n; f++) {
+      const alike = Math.max(0, 1 - Math.abs(levels[e] - levels[f]) / 2) * (1 - Math.abs(thickness[e] - thickness[f]) / 2);
+      table[e * n + f] = 1 + Math.round(ALIKE_WEIGHT * alike);
+    }
+  return { cross: (e, f) => table[e * n + f], through: THROUGH_WEIGHT };
+}
+
+/**
  * Lower is better. For this view a line through a concept is as bad as two
- * lines crossing: both come first, then the other tangles, then length.
+ * lines crossing: both come first, then the other tangles, then length. With
+ * `weights`, crossings are weighed by how alike their relations are.
  */
 export function evenScore(
   segments: Segment[],
   pos: Positions,
   boxes: Record<string, NodeBox>,
   labels: SegmentLabels = [],
+  weights?: EvenWeights,
 ): LayoutScore {
   return {
-    crossings: countCrossings(segments, pos) + countNodeOverlaps(segments, pos, boxes),
+    crossings: countCrossings(segments, pos, weights?.cross) + (weights?.through ?? 1) * countNodeOverlaps(segments, pos, boxes),
     tangles:
       countBoxOverlaps(pos, boxes) +
       countCrowded(pos, boxes) +
@@ -139,9 +196,10 @@ export function clearLines(
   start: Positions,
   boxes: Record<string, NodeBox>,
   labels: SegmentLabels = [],
+  weights?: EvenWeights,
 ): Positions {
   let pos: Positions = Object.fromEntries(Object.entries(start).map(([id, p]) => [id, { ...p }]));
-  let score = evenScore(segments, pos, boxes, labels);
+  let score = evenScore(segments, pos, boxes, labels, weights);
   for (let round = 0; round < CLEAR_ROUNDS; round++) {
     let moved = false;
     for (const seg of segments)
@@ -161,7 +219,7 @@ export function clearLines(
             const shift = sign * k * (half + LINE_CLEARANCE) - side;
             const at = { x: here.x + nx * shift, y: here.y + ny * shift };
             pos[id] = at;
-            const next = evenScore(segments, pos, boxes, labels);
+            const next = evenScore(segments, pos, boxes, labels, weights);
             if (betterScore(next, best?.score ?? score)) best = { at, score: next };
           }
         pos[id] = best ? best.at : here;
@@ -172,7 +230,7 @@ export function clearLines(
       }
     if (!moved) break;
     const separated = removeOverlaps(pos, boxes);
-    const s = evenScore(segments, separated, boxes, labels);
+    const s = evenScore(segments, separated, boxes, labels, weights);
     if (betterScore(s, score) || countBoxOverlaps(pos, boxes) > 0) {
       pos = separated;
       score = s;
@@ -249,8 +307,41 @@ export function searchEvenLayout(input: ConceptLayoutInput): Positions[] {
       .slice(0, SWAP_FINALISTS)
       .map((f) => refineEven(input, i, f.pos))
       .sort(order);
-    return refineEven(input, i, finalists[0].pos, true).pos;
+    return untangleSameLevel(input, i, refineEven(input, i, finalists[0].pos, true).pos);
   });
+}
+
+/**
+ * The last step (Decision 54): takes crossings out one zoom level at a time —
+ * first among the concepts the overview shows, then, with those held in place,
+ * moving only what the next level adds, and so on — then moves concepts off
+ * lines again. A crossing depends on its two relations' four concepts only,
+ * so a level held in place can't gain one between its own relations later.
+ * Kept only if it lowers the crossings between relations of the same standing
+ * (`evenWeights`) without a line through a concept. Each pass sees only its
+ * level's relations: a few seconds.
+ */
+export function untangleSameLevel(input: ConceptLayoutInput, comp: number, start: Positions): Positions {
+  const c = input.components[comp];
+  const { boxes } = input;
+  const weights = evenWeights(input, comp);
+  const importance = (id: string) => input.importance[id] ?? 1;
+  let pos = start;
+  let held = Infinity;
+  for (const level of ZOOM_LEVELS) {
+    const shown = new Set(c.ids.filter((id) => importance(id) >= level));
+    const movable = new Set([...shown].filter((id) => importance(id) < held));
+    held = level;
+    const visible = c.segments.flatMap((seg, e) => (shown.has(seg[0]) && shown.has(seg[1]) ? [e] : []));
+    if (!movable.size || !visible.length) continue;
+    const segments = visible.map((e) => c.segments[e]);
+    const labels = visible.map((e) => c.labels[e]);
+    pos = untangle(segments, pos, boxes, labels, undefined, movable).pos;
+  }
+  pos = clearLines(c.segments, pos, boxes, c.labels, weights);
+  return betterScore(evenScore(c.segments, pos, boxes, c.labels, weights), evenScore(c.segments, start, boxes, c.labels, weights))
+    ? pos
+    : start;
 }
 
 /**

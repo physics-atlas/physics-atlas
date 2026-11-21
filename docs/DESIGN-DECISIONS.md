@@ -802,6 +802,46 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 54 — Even: fewer crossings between relations of the same standing (2026-11)
+
+**Aim:** at each zoom level, the relations you see together (the ones of the same standing)
+cross as little as possible. The total number of crossings isn't the aim: a landmark's line
+crossing a detail's matters little, since they show and read apart.
+
+| Piece | Rule |
+|---|---|
+| A relation's standing | The zoom level it shows from (`ZOOM_LEVELS` 8 / 6 / 4 / 2 / rest, by `revealZoom`: a relation shows once both its concepts do, so the less important one decides) and how thick it's drawn (its more general concept's size). `relationStanding` in `src/graph/evenLayout.ts`. |
+| Weight of a crossing | `evenWeights`: 1 + 8 × alike, where alike is 1 for the same level and thickness, ½ one level apart, 0 from two apart (and less the more the thicknesses differ). A line through a concept costs 100, so it's never traded for crossings. A table per component; a lookup is all a crossing test adds. |
+| The step | `untangleSameLevel`, after the existing search: crossings taken out one zoom level at a time — the overview's concepts among themselves, then, with those held, moving only what the next level adds (`untangle` gained `movable`), and so on; then concepts off lines again. Kept only if the weighted score improves. A crossing depends only on its two relations' four concepts, so a held level can't gain one between its own relations later. |
+| Cost | ~3 s of the layout step (~76 s in all). |
+
+Measured on the current graph (112 concepts; relations per level 41 / 40 / 48 / 24):
+
+| | Same-level crossings (overview / 2.4× / 5.7× / 13.5×) | All crossings | Lines through concepts |
+|---|---|---|---|
+| Before | 1 / 2 / 0 / 0 — 3 | 13 | 0 |
+| With the step | 1 / 1 / 0 / 0 — 2 | 14 | 0 |
+
+**Tried and not kept** (same measure, same graph):
+- The weights inside the whole search (seed choice, swaps, untangle): 2 same-level, but up to 22
+  crossings in all and a line through a concept.
+- **Building the map zoom level by zoom level** (not kept in the code: the overview's concepts laid out
+  by stress among themselves, held, the next level placed among them): the overview reached 0
+  crossings, but the deeper levels had many more (up to 24 in all); with an untangle per level,
+  332 s. As extra seeds beside the normal ones: no better than the step above.
+- Weighting each crossing by how much of the zoom range it shows (rather than by likeness).
+
+**Open paths:** the one overview crossing left seems structural for stress layouts of this
+graph; building by level removes it at the cost of deeper levels — worth retrying if the
+overview matters more than the closer levels. A crossing-aware stress term remains open (Decision 47).
+
+## Decision 53 — An atlas guide page replaces "How to read this map" (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Page | **Atlas guide** (`?mode=guide`): how to use the map (cards for concepts and connections, colour, size, zoom, search), the atlas pages, proposing an edit or a concept and submitting it as a pull request, how to become a contributor or moderator (by e-mail), and what we're working on (the layout; moving through the atlas by its pages). Text in `content/guide/en.md`, drawn by the pages' renderer like the privacy notice. |
+| Header | The **Atlas guide** link takes the place of the **How to read this map** button, on every view. The short map guide still greets a visitor on the map for a few seconds; its content is in the guide page now. |
+
 ## Decision 52 — Relations fixed by kind, "other" resources named, the editor groups by topic (2026-11)
 
 | Piece | Rule |

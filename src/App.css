@@ -844,6 +844,17 @@ body {
   border-color: var(--accent-ink);
 }
 
+a.map-hint-toggle {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+a.map-hint-toggle[aria-current='page'] {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+
 .concept-map-view .map-hint {
   bottom: auto;
   top: 12px;
@@ -3649,6 +3660,103 @@ a.mode-tab {
   flex-basis: 100%;
   margin: 0;
   font-style: italic;
+}
+
+.map-bar-panel {
+  margin-left: auto;
+}
+
+.map-bar-panel + .map-bar-back {
+  margin-left: 0;
+}
+
+/* A saved map's contents and members (Phase 2): under the bar, three columns that wrap. */
+.map-panel {
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: 8px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--terra);
+  background: rgba(var(--panel-rgb), 0.94);
+  color: var(--ink);
+}
+
+.map-panel-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+}
+
+.map-panel-part {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.map-panel-heading {
+  margin: 0;
+  font-size: 16px;
+}
+
+.map-panel .search {
+  flex: none;
+  margin-left: 0;
+}
+
+.map-panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.map-panel-row .draft-input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.map-panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.map-panel-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-panel-remove {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.map-panel-role,
+.map-panel-note {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.map-panel-note {
+  margin: 0;
+}
+
+.map-panel-problems {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.maps-list {
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
 }
 
 /* A concept a personal map uses from the atlas — said in words on its card and page. */

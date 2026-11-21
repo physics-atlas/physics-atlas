@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ConceptMapView, { MAP_HINT_ID } from './components/ConceptMapView';
+import ConceptMapView from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
@@ -15,7 +15,10 @@ import type { PageRef } from './lib/pageLinks';
 import { useArrangement } from './lib/useArrangement';
 import { MapScope } from './lib/mapScope';
 import { mapPageSource, PageSourceContext } from './data/pageSources';
-import { sampleMap } from './maps/fixtures';
+import { fetchMe, loginHref } from './community/api';
+import type { Me } from './community/api';
+import { readMap } from './maps/api';
+import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
 import type { ResolvedMap } from './maps/map';
 import { mapHref, pageHref } from './lib/pageLinks';
@@ -25,8 +28,11 @@ import './App.css';
 const PageView = lazy(() => import('./components/PageView'));
 const FeedbackView = lazy(() => import('./components/FeedbackView'));
 const PrivacyView = lazy(() => import('./components/PrivacyView'));
+const GuideView = lazy(() => import('./components/GuideView'));
+const MapsView = lazy(() => import('./components/MapsView'));
+const MapPanel = lazy(() => import('./components/MapPanel'));
 
-type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'map';
+type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'guide' | 'map' | 'maps';
 type PrivacyLang = 'en' | 'de';
 
 const VIEW_TITLES: Record<Mode, string> = {
@@ -35,7 +41,9 @@ const VIEW_TITLES: Record<Mode, string> = {
   page: 'Atlas pages',
   feedback: 'Feedback',
   privacy: 'Privacy',
+  guide: 'Atlas guide',
   map: 'Personal map',
+  maps: 'My maps',
 };
 
 /** The pages cover the confirmed, serious atlas — fluff is fun mode only. */
@@ -56,6 +64,8 @@ function initialMode(): Mode {
   if (m === 'page') return 'page';
   if (m === 'feedback') return 'feedback';
   if (m === 'privacy') return 'privacy';
+  if (m === 'guide') return 'guide';
+  if (m === 'maps') return 'maps';
   // A personal map needs its id; a bare ?mode=map was the retired topic map's address.
   if (m === 'map' && params.get('map')) return 'map';
   // The concept map is the front page (the home page was retired, Decision 48); the
@@ -80,11 +90,11 @@ function initialMapPlace(): MapPlace | null {
   return { map, view: params.get('view') === 'pages' ? 'pages' : 'map', page: refFromSearch(window.location.search) };
 }
 
-/** The personal map an address names — for now one of the sample maps (Phase 2 reads saved ones). */
-function loadMap(id: string): ResolvedMap | null {
-  const m = sampleMap(id);
-  return m ? resolveMap(m, concepts) : null;
-}
+/** A saved personal map, as the server answered for the map in the address (Phase 2). */
+type MapLoad =
+  | { id: string; state: 'loading' }
+  | { id: string; state: 'ready'; saved: SavedMap }
+  | { id: string; state: 'failed'; status: number; error: string };
 
 /** The privacy notice's language (Decision 51): from the address, else English. */
 function initialPrivacyLang(): PrivacyLang {
@@ -122,7 +132,29 @@ export default function App() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [privacyLang, setPrivacyLang] = useState<PrivacyLang>(initialPrivacyLang);
   const [mapPlace, setMapPlace] = useState<MapPlace | null>(initialMapPlace);
-  const personal = useMemo(() => (mode === 'map' && mapPlace ? loadMap(mapPlace.map) : null), [mode, mapPlace]);
+  const [me, setMe] = useState<Me | null>(null);
+  useEffect(() => {
+    void fetchMe().then(setMe);
+  }, []);
+  // The saved map in the address, read from the server whenever another map is opened.
+  const [mapLoad, setMapLoad] = useState<MapLoad | null>(null);
+  const wantedMap = mode === 'map' ? (mapPlace?.map ?? null) : null;
+  useEffect(() => {
+    if (!wantedMap) return;
+    let live = true;
+    setMapLoad((l) => (l?.id === wantedMap && l.state === 'ready' ? l : { id: wantedMap, state: 'loading' }));
+    void readMap(wantedMap).then((r) => {
+      if (!live) return;
+      setMapLoad(r.ok ? { id: wantedMap, state: 'ready', saved: r.value } : { id: wantedMap, state: 'failed', status: r.status, error: r.error });
+    });
+    return () => {
+      live = false;
+    };
+  }, [wantedMap]);
+  const savedMap = mapLoad && mapLoad.id === wantedMap && mapLoad.state === 'ready' ? mapLoad.saved : null;
+  const onMapSaved = useCallback((saved: SavedMap) => setMapLoad({ id: saved.map.id, state: 'ready', saved }), []);
+  const [mapPanelOpen, setMapPanelOpen] = useState(false);
+  const personal: ResolvedMap | null = useMemo(() => (savedMap ? resolveMap(savedMap.map, concepts) : null), [savedMap]);
   const personalPages = useMemo(() => (personal ? mapPageSource(personal.map.pages ?? {}) : null), [personal]);
   // A personal map's search finds its own concepts and the atlas concepts it uses.
   const personalEntries = useMemo(
@@ -145,7 +177,7 @@ export default function App() {
   const [pageRef, setPageRef] = useState<PageRef>(initialPage);
   const [pageFocus, setPageFocus] = useState(0);
   // The map guide greets a visitor on the map, steps aside after a few seconds,
-  // and stays one click away ("How to read this map"). Opened again, it stays.
+  // and the header's "Atlas guide" (Decision 53) explains the rest.
   const [hintOpen, setHintOpen] = useState(false);
   const greeted = useRef(false);
   useEffect(() => {
@@ -175,7 +207,7 @@ export default function App() {
   useEffect(() => {
     // An atlas page sets its own title and focuses its own heading.
     // An atlas page and the privacy notice set their own titles.
-    if (mode !== 'page' && mode !== 'privacy') document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
+    if (mode !== 'page' && mode !== 'privacy' && mode !== 'guide') document.title = `${VIEW_TITLES[mode]} — Physics Atlas`;
     if (firstView.current) {
       firstView.current = false;
       return;
@@ -326,6 +358,15 @@ export default function App() {
     setPageFocus((t) => t + 1);
   }, []);
 
+  const openSavedMap = useCallback((id: string) => {
+    setMapPlace({ map: id, view: 'map', page: {} });
+    setMode('map');
+  }, []);
+  const leaveMap = useCallback(() => {
+    setMapPanelOpen(false);
+    setMode('maps');
+  }, []);
+
   // A search outside the map (on the feedback form) lands on the concept map, centred on the pick.
   const pickOnMap = useCallback(
     (id: string) => {
@@ -364,17 +405,18 @@ export default function App() {
                     : pickOnMap
             }
           />
-          {isConceptView(mode) && (
-            <button
-              type="button"
-              className="map-hint-toggle"
-              aria-expanded={hintOpen}
-              aria-controls={MAP_HINT_ID}
-              onClick={() => setHintOpen((o) => !o)}
-            >
-              {hintOpen ? 'Hide the map guide' : 'How to read this map'}
-            </button>
-          )}
+          <a
+            href="?mode=guide"
+            className="map-hint-toggle"
+            aria-current={mode === 'guide' ? 'page' : undefined}
+            onClick={(e) => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              setMode('guide');
+            }}
+          >
+            Atlas guide
+          </a>
           <nav className="mode-tabs" aria-label="Views">
             <button
               className={`mode-tab ${mode === 'concepts' ? 'mode-tab-active' : ''}`}
@@ -404,6 +446,20 @@ export default function App() {
               Community
             </button>
           </nav>
+          {me?.maps && me.user && (
+            <a
+              href="?mode=maps"
+              className="header-feedback"
+              aria-current={mode === 'maps' ? 'page' : undefined}
+              onClick={(e) => {
+                if (!isPlainClick(e)) return;
+                e.preventDefault();
+                setMode('maps');
+              }}
+            >
+              My maps
+            </a>
+          )}
           <a
             href="?mode=feedback"
             className="header-feedback"
@@ -458,6 +514,17 @@ export default function App() {
               </li>
             ))}
           </ul>
+          {savedMap && me?.user && (
+            <button
+              type="button"
+              className="draft-button map-bar-panel"
+              aria-expanded={mapPanelOpen}
+              aria-controls="map-panel"
+              onClick={() => setMapPanelOpen((o) => !o)}
+            >
+              {savedMap.role === 'owner' || savedMap.role === 'editor' ? 'Edit map and members' : 'Contents and members'}
+            </button>
+          )}
           <a className="map-bar-back" href="/">
             Back to the atlas
           </a>
@@ -469,9 +536,16 @@ export default function App() {
           )}
         </nav>
       )}
+      {mode === 'map' && savedMap && me?.user && mapPanelOpen && (
+        <div id="map-panel">
+          <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
+            <MapPanel saved={savedMap} login={me.user.login} onSaved={onMapSaved} onLeft={leaveMap} onShow={showOnPersonalMap} />
+          </Suspense>
+        </div>
+      )}
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
         {/* An atlas page's own heading is the view's h1, and the feedback form's; a map's pages, too. */}
-        {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
+        {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && mode !== 'guide' && mode !== 'maps' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
           <h1 className="visually-hidden">{mode === 'map' && personal ? `${personal.map.title} — personal map` : VIEW_TITLES[mode]}</h1>
         )}
         {isConceptView(mode) && (
@@ -520,10 +594,32 @@ export default function App() {
             <PrivacyView lang={privacyLang} onLang={setPrivacyLang} />
           </Suspense>
         )}
+        {mode === 'guide' && (
+          <Suspense fallback={<p className="atlas-loading">Loading the guide…</p>}>
+            <GuideView />
+          </Suspense>
+        )}
+        {mode === 'maps' && (
+          <Suspense fallback={<p className="atlas-loading">Loading your maps…</p>}>
+            <MapsView me={me} onOpen={openSavedMap} />
+          </Suspense>
+        )}
         {mode === 'map' && !personal && (
           <div className="feedback-view">
             <div className="feedback-panel">
-              <p>This map doesn't exist, or its link has been turned off.</p>
+              {!mapLoad || mapLoad.state === 'loading' ? (
+                <p role="status">Opening the map…</p>
+              ) : mapLoad.state === 'failed' && mapLoad.status === 401 ? (
+                <p>
+                  This map is open to its members only.{' '}
+                  <a className="draft-button community-signin" href={loginHref(window.location.pathname + window.location.search)}>
+                    Sign in with GitHub
+                  </a>{' '}
+                  to open it.
+                </p>
+              ) : (
+                <p>{mapLoad.state === 'failed' ? mapLoad.error : ''}</p>
+              )}
               <p>
                 <a href="/">Back to the atlas</a>
               </p>

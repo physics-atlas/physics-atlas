@@ -22,6 +22,8 @@ export interface Me {
   canPublish?: boolean;
   /** May create personal maps (Decision 50): marked "maps", and the maps database is set up */
   canMakeMaps?: boolean;
+  /** Personal maps are set up (the maps database is bound): anyone signed in may be a member of one */
+  maps?: boolean;
   /** "owner/name" proposals go to */
   repo?: string;
 }

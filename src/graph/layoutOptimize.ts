@@ -187,10 +187,18 @@ function crosses([s1, t1]: Segment, [s2, t2]: Segment, pos: Positions): boolean 
   return ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d);
 }
 
-export function countCrossings(segments: Segment[], pos: Positions): number {
+/**
+ * What a crossing of relations e and f (segment indexes) costs: 1 by default;
+ * the Even view weighs it by how alike the two relations are (Decision 54).
+ * Whole numbers, so sums stay exact.
+ */
+export type CrossWeight = (e: number, f: number) => number;
+const unitWeight: CrossWeight = () => 1;
+
+export function countCrossings(segments: Segment[], pos: Positions, weight: CrossWeight = unitWeight): number {
   let n = 0;
   for (let i = 0; i < segments.length; i++)
-    for (let j = i + 1; j < segments.length; j++) if (crosses(segments[i], segments[j], pos)) n++;
+    for (let j = i + 1; j < segments.length; j++) if (crosses(segments[i], segments[j], pos)) n += weight(i, j);
   return n;
 }
 
@@ -737,6 +745,8 @@ const UNTANGLE_ANGLES = 24;
  * and goes to the one that scores best — fewest crossings first. A spot is
  * only taken if the concept would overlap or crowd nothing there and no more
  * lines would pass through a circle: a crossing isn't traded for a worse knot.
+ * With `movable`, only those concepts move; the rest stay put, though they
+ * still count (the Even view's zoom levels, Decision 54).
  */
 export function untangle(
   segments: Segment[],
@@ -744,6 +754,7 @@ export function untangle(
   boxes: Record<string, NodeBox>,
   labels: SegmentLabels = [],
   rounds = 6,
+  movable?: Set<string>,
 ): { pos: Positions; score: LayoutScore } {
   const pos = copy(start);
   const ids = Object.keys(pos);
@@ -761,6 +772,7 @@ export function untangle(
         if (crosses(segments[e], segments[f], pos)) for (const id of [...segments[e], ...segments[f]]) ends.add(id);
     let moved = false;
     for (const id of [...ends].sort()) {
+      if (movable && !movable.has(id)) continue;
       const here = pos[id];
       const spots: Pos[] = [];
       const others = around.get(id)!.map((e) => {

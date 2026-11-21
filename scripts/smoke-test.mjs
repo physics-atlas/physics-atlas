@@ -171,7 +171,7 @@ console.log('equation typeset:', typeset, '· view kept on deselect:', viewOn.zo
 if (typeset < 2) errors.push('the Einstein equations card shows no typeset formula');
 if (viewOn.zoom !== viewOff.zoom || Math.abs(viewOn.pan.x - viewOff.pan.x) > 0.5)
   errors.push('clicking off a concept moved the view');
-if (!guide.hidden || guide.button !== 'How to read this map') errors.push(`the map guide didn't step aside: ${JSON.stringify(guide)}`);
+if (!guide.hidden || guide.button !== 'Atlas guide') errors.push(`the map guide didn't step aside: ${JSON.stringify(guide)}`);
 
 // --- Fun mode: off by default; lonely concepts get speech bubbles, fluff appears,
 //     and nothing on the map moves ---
@@ -663,10 +663,18 @@ if (afterNext.url === fromCard.url || afterNext.focused !== 'atlas-page-title')
   await page.evaluate(() => localStorage.removeItem('physics-atlas-proposal-drafts-v2'));
 }
 
+// Other tabs were opened above: a background tab draws no frames, and a click waits for one.
+await page.bringToFront();
+
+// The atlas guide (Decision 53), linked from the header in place of the map guide's button.
+await page.goto(`${URL}/?mode=concepts`, { waitUntil: 'networkidle0' });
+await page.click('.map-hint-toggle');
+await page.waitForSelector('.atlas-guide h1');
+const guidePage = await page.evaluate(() => ({ search: location.search, sections: document.querySelectorAll('.atlas-guide h2').length }));
+if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`the atlas guide didn't open: ${JSON.stringify(guidePage)}`);
+
 // The privacy notice (Decision 51), in English and German, linked from the header.
 {
-  // Other tabs were opened above: a background tab draws no frames, and a click waits for one.
-  await page.bringToFront();
   await page.goto(`${URL}/`, { waitUntil: 'networkidle0' });
   await page.click('.header-privacy');
   await page.waitForSelector('.privacy-notice h1');
@@ -680,37 +688,90 @@ if (afterNext.url === fromCard.url || afterNext.focused !== 'atlas-page-title')
     errors.push(`the German privacy notice: ${JSON.stringify(de)}`);
 }
 
-// A personal map (Decision 50, Phase 1): the sample course map, its map and its pages.
+// A saved personal map (Decision 50, Phase 2), served by a stand-in for the maps
+// backend: its map and pages, its panel (add an atlas concept, members), My maps.
 {
-  await page.goto(`${URL}/?mode=map&map=sample-course`, { waitUntil: 'networkidle0' });
-  await page.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0);
-  await page.evaluate(() => window.__cy.$id('tangent_vector').emit('tap'));
-  await page.waitForSelector('.map-card .concept-from-atlas');
-  const onMap = await page.evaluate(() => ({
+  const pm = await browser.newPage();
+  await pm.setViewport({ width: 1440, height: 900 });
+  const sample = {
+    id: 'sample-map',
+    title: 'Sample course map',
+    refs: ['diff_geometry', 'tangent_space', 'tangent_vector', 'parallel_transport', 'lg_pt_3'],
+    nodes: [{ id: 'sample_week_1_goal', type: 'learning_goal', label: 'Sample week 1 goal', importance: 6, generality: 3, attrs: { description: 'Sample.' } }],
+    edges: [{ id: 'sample_course_e1', source: 'sample_week_1_goal', target: 'tangent_vector', relationship: 'is a learning goal of' }],
+    pages: { sample_week_1_goal: ['Sample page.\n\n## Before the session\n\nSample: read the page on [[tangent_vector]].'] },
+  };
+  const sim = { saved: { map: sample, revision: 0, role: 'owner', members: [{ login: 'sample-owner', role: 'owner' }, { login: 'sample-editor', role: 'editor' }] }, saves: [] };
+  await pm.setRequestInterception(true);
+  pm.on('request', (req) => {
+    const u = new globalThis.URL(req.url());
+    if (!u.pathname.startsWith('/api/')) return req.continue();
+    const reply = (data, status = 200) => req.respond({ status, contentType: 'application/json', body: JSON.stringify(data) });
+    if (u.pathname === '/api/me') return reply({ configured: true, user: { login: 'sample-owner', id: 1, name: 'Sample owner' }, invited: false, maps: true, canMakeMaps: true });
+    if (u.pathname === '/api/maps') return reply({ maps: [{ id: 'sample-map', title: sample.title, role: 'owner', updatedAt: '2026-11-21T10:00:00Z' }] });
+    if (u.pathname === '/api/maps/sample-map') return reply(sim.saved);
+    if (u.pathname === '/api/maps/sample-map/save' && req.method() === 'POST') {
+      const body = JSON.parse(req.postData());
+      sim.saves.push(body);
+      const refs = [...sim.saved.map.refs, ...body.changes.filter((c) => c.kind === 'ref' && c.body).map((c) => c.id)];
+      sim.saved = { ...sim.saved, revision: sim.saved.revision + 1, map: { ...sim.saved.map, refs } };
+      return reply(sim.saved);
+    }
+    return reply({ error: 'Not found' }, 404);
+  });
+  await pm.goto(`${URL}/?mode=map&map=sample-map`, { waitUntil: 'networkidle0' });
+  await pm.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0);
+  await pm.evaluate(() => window.__cy.$id('tangent_vector').emit('tap'));
+  await pm.waitForSelector('.map-card .concept-from-atlas');
+  const onMap = await pm.evaluate(() => ({
     nodes: window.__cy.nodes().length,
     h1: document.querySelector('h1')?.textContent,
     pageLink: document.querySelector('.map-card-page')?.getAttribute('href'),
   }));
-  await page.click('.map-card-page');
-  await page.waitForSelector('.atlas-page .concept-from-atlas');
-  const onPage = await page.evaluate(() => ({
-    search: location.search,
+  await pm.click('.map-card-page');
+  await pm.waitForSelector('.atlas-page .concept-from-atlas');
+  const onPage = await pm.evaluate(() => ({
     links: [...document.querySelectorAll('.atlas-page a[href^="?"]')].map((a) => a.getAttribute('href')),
-    contents: document.querySelector('#atlas-sidebar-title, .atlas-sidebar h2')?.textContent,
   }));
-  await page.goto(`${URL}/?mode=map&map=sample-course&view=pages&concept=sample_week_1_goal`, { waitUntil: 'networkidle0' });
-  await page.waitForSelector('.atlas-page h1');
-  const ownPage = await page.evaluate(() => ({
-    h1: document.querySelector('.atlas-page h1')?.textContent,
+  await pm.goto(`${URL}/?mode=map&map=sample-map&view=pages&concept=sample_week_1_goal`, { waitUntil: 'networkidle0' });
+  await pm.waitForSelector('.atlas-page h1');
+  const ownPage = await pm.evaluate(() => ({
     written: [...document.querySelectorAll('.atlas-page h2')].some((h) => h.textContent === 'Before the session'),
-    editable: [...document.querySelectorAll('.atlas-page .draft-button')].some((b) => b.textContent.includes('Edit this page')),
   }));
-  console.log('personal map:', { onMap, onPage, ownPage });
-  if (onMap.nodes !== 7 || onMap.h1 !== 'Sample course map — personal map' || onMap.pageLink !== '?mode=map&map=sample-course&view=pages&concept=tangent_vector')
-    errors.push(`the sample course map: ${JSON.stringify(onMap)}`);
-  if (onPage.links.some((h) => !h.startsWith('?mode=map&map=sample-course') && !h.startsWith('?mode=page&concept=tangent_vector')))
+  // The panel: add an atlas concept by search; it's saved against the revision the map was opened at.
+  await pm.goto(`${URL}/?mode=map&map=sample-map`, { waitUntil: 'networkidle0' });
+  await pm.waitForFunction(() => window.__cy && window.__cy.nodes().length === 6);
+  await pm.click('.map-bar-panel');
+  await pm.waitForSelector('.map-panel [role="combobox"]');
+  const panel = await pm.evaluate(() => ({
+    expanded: document.querySelector('.map-bar-panel')?.getAttribute('aria-expanded'),
+    refs: document.querySelectorAll('.map-panel-part:nth-child(2) .map-panel-list li').length,
+    members: [...document.querySelectorAll('.map-panel-part:nth-child(3) .map-panel-list li')].map((li) => li.textContent),
+    removable: document.querySelectorAll('[aria-label^="Remove "]').length,
+  }));
+  await pm.type('.map-panel [role="combobox"]', 'Four-velocity');
+  await pm.keyboard.press('Enter');
+  await pm.waitForFunction(() => window.__cy.nodes().length === 7, { timeout: 10000 });
+  const added = await pm.evaluate(() => ({ status: document.querySelector('.map-panel [role="status"]')?.textContent, onMap: Boolean(window.__cy.$id('four_velocity').length) }));
+  await pm.goto(`${URL}/?mode=maps`, { waitUntil: 'networkidle0' });
+  await pm.waitForSelector('.maps-list a');
+  const myMaps = await pm.evaluate(() => ({
+    h1: document.querySelector('h1')?.textContent,
+    maps: [...document.querySelectorAll('.maps-list a')].map((a) => a.getAttribute('href')),
+    create: Boolean(document.querySelector('.maps-view form')),
+    header: [...document.querySelectorAll('.header-feedback')].some((a) => a.textContent === 'My maps'),
+  }));
+  console.log('personal map:', { onMap, onPage, ownPage, panel, saves: sim.saves, added, myMaps });
+  if (onMap.nodes !== 6 || onMap.h1 !== 'Sample course map — personal map' || onMap.pageLink !== '?mode=map&map=sample-map&view=pages&concept=tangent_vector')
+    errors.push(`the saved map: ${JSON.stringify(onMap)}`);
+  if (onPage.links.some((h) => !h.startsWith('?mode=map&map=sample-map') && !h.startsWith('?mode=page&concept=tangent_vector')))
     errors.push(`a map page links out of the map: ${onPage.links.filter((h) => !h.startsWith('?mode=map')).join(', ')}`);
-  if (!ownPage.written || ownPage.editable) errors.push(`the map's own page: ${JSON.stringify(ownPage)}`);
+  if (!ownPage.written) errors.push(`the map's own page: ${JSON.stringify(ownPage)}`);
+  if (panel.expanded !== 'true' || panel.refs !== 5 || panel.members.length !== 2 || panel.removable !== 6) errors.push(`the map's panel: ${JSON.stringify(panel)}`);
+  if (JSON.stringify(sim.saves) !== JSON.stringify([{ base: 0, changes: [{ kind: 'ref', id: 'four_velocity', body: {} }] }]) || !added.onMap || !added.status?.includes('Four-velocity'))
+    errors.push(`adding an atlas concept: ${JSON.stringify({ saves: sim.saves, added })}`);
+  if (myMaps.h1 !== 'My maps' || myMaps.maps[0] !== '?mode=map&map=sample-map' || !myMaps.create || !myMaps.header) errors.push(`My maps: ${JSON.stringify(myMaps)}`);
+  await pm.close();
 }
 console.log('third parties contacted:', [...thirdParties]);
 if (thirdParties.size) errors.push(`the site contacted third parties: ${[...thirdParties].join(', ')}`);
