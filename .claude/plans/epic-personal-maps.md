@@ -139,7 +139,7 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
   the account id); removes them; anyone may leave.
 - ✅ Limits for the pilot: 20 maps per owner, 1000 items per map, 50 members (`LIMITS` in `server/maps.ts`).
 - ✅ The first course map, seeded (`scripts/seed-map.mjs`, `scripts/maps-seed/newtonian-mechanics.json`):
-  owner sophelsa (for now — walterpfeiffer1 has no GitHub account yet); mhardtke, onedandelion, gdaudt editors; the atlas's subgraph from
+  owner gdaudt (for now — walterpfeiffer1 and sophelsa could not be looked up on GitHub); mhardtke, onedandelion editors; the atlas's subgraph from
   Newtonian (Classical) Mechanics — without its relation to Newtonian gravity — to Four-velocity,
   by its relation to Velocity only (22 concepts). **By hand:** run the seed (`docs/PERSONAL-MAPS-SETUP.md`).
 - ☐ **Part 2:** the editor (the proposal form's fields and checks) saves a map's own concepts and

@@ -16,7 +16,7 @@
 - `server/maps.ts`: `/api/maps` — list, create (those marked "maps"), read (members only), save (per-item revision check: someone else's newer save of the same item is a 409 with the map as it now is; saves of different items both stay; the whole save is checked with `mapProblems`; history in `map_revisions`), members by GitHub username (owner), leave; pilot limits; `/api/me` says `maps`
 - `src/maps/items.ts` (rows ↔ map, applying a save), `src/maps/api.ts`; the sample map and `fixtures.ts` removed
 - `?mode=maps` (**My maps**, header link when signed in); a saved map loads from the server; the map bar's **Edit map and members** panel: rename, add an atlas concept by search, remove one (with the map's own relations to it), members
-- `scripts/seed-map.mjs` + `scripts/maps-seed/newtonian-mechanics.json`: the course map's 22 atlas concepts, owner sophelsa for now (walterpfeiffer1 has no GitHub account yet), three editors — SQL to run by hand with Wrangler; running it again changes nothing
+- `scripts/seed-map.mjs` + `scripts/maps-seed/newtonian-mechanics.json`: the course map's 22 atlas concepts, owner gdaudt for now (walterpfeiffer1 and sophelsa could not be looked up on GitHub), two editors — SQL to run by hand with Wrangler; running it again changes nothing
 - Tests: the API against the real schema (Node's SQLite as D1), items, the seed; smoke: a saved map served by a stand-in backend, its panel, My maps
 
 ### Not yet (Phase 2, part 2)
