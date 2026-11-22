@@ -1,6 +1,6 @@
 # Epic: personal maps (course maps first)
 
-**Status:** Phases 0–3 done (Phase 2 part 2 and course goals — 2026-11-22). Next: Phase 4 (sharing with the course; students' completed goals).
+**Status:** Phases 0–4 done (2026-11-22). Next: the long term.
 
 ## Context
 
@@ -171,8 +171,14 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
 - **Exit:** a thread can be started, answered and resolved by keyboard; a screen reader hears
   new replies.
 
-### Phase 4 — Sharing with the course
-- The link: viewer access without sign-in; turn it off, make a new one.
+### Phase 4 — Sharing with the course — ✅ done 2026-11-22
+- ✅ The link: every map has one from its creation (`migrations/0003_share_links.sql` gave the maps made
+  before theirs; the seed makes one). The owner and editors see it in the map's panel (**Share with a
+  link**) and copy it; only the owner makes a new one — the old stops working — or turns it off. It opens the map, its pages and course goals without sign-in; not its
+  members, comments or history (`POST /api/shared`, `handleShared` in `server/maps.ts`; `map_links`).
+  The token sits after `#` in the address (`?mode=map#share=<token>`) and goes to the server in a
+  request body: it never appears in a request address, so never in request logs. The map bar says
+  **Shared map**; links inside stay on the shared address.
 - ✅ **Students mark the learning goals they have completed** (done early, 2026-11-22, for every member;
   link viewers get it with the link): a "Completed" tick on each learning goal in the course goals panel
   and on its card in the map; counts per course goal; ✓ on the map. Kept in the browser only, per map

@@ -45,6 +45,8 @@ export function seedSql(seed, accounts) {
     lines.push(`INSERT OR IGNORE INTO map_members (map_id, user_id, role) SELECT ${quote(seed.id)}, ${user(login)}, ${quote(role)} WHERE ${fresh};`);
   for (const id of seed.refs)
     lines.push(`INSERT OR IGNORE INTO map_items (map_id, kind, item_id, body, revision) SELECT ${quote(seed.id)}, 'ref', ${quote(id)}, '{}', 1 WHERE ${fresh};`);
+  // Its share link (Phase 4): random, made by the database. The owner can replace it or turn it off.
+  lines.push(`INSERT INTO map_links (token, map_id) SELECT lower(hex(randomblob(18))), ${quote(seed.id)} WHERE ${fresh};`);
   lines.push(
     `INSERT OR IGNORE INTO map_revisions (map_id, revision, user_id, changed) VALUES (${quote(seed.id)}, 1, ${user(seed.owner)}, ${quote(JSON.stringify(seed.refs.map((id) => `ref:${id}`)))});`,
   );

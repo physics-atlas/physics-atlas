@@ -412,7 +412,7 @@ describe('personal maps (Decision 50)', () => {
 
 /**
  * The maps database: D1 is SQLite, so Node's built-in SQLite stands in for it
- * with the real schema (migrations/0001, 0002). Needs Node 22.13 or later.
+ * with the real schema (migrations/0001–0003). Needs Node 22.13 or later.
  */
 interface SqliteDb {
   exec(sql: string): void;
@@ -424,7 +424,7 @@ const sqlite = (await nodeModule('node:sqlite')) as { DatabaseSync: new (path: s
 const { readFileSync } = (await nodeModule('node:fs')) as { readFileSync: (path: URL, encoding: 'utf8') => string };
 function mapsDb(): D1Database & { raw: SqliteDb } {
   const raw = new sqlite!.DatabaseSync(':memory:');
-  for (const f of ['0001_personal_maps.sql', '0002_course_goals.sql']) raw.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of ['0001_personal_maps.sql', '0002_course_goals.sql', '0003_share_links.sql']) raw.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const statement = (sql: string, values: unknown[] = []): D1Statement & { exec: () => unknown } => {
     const args = () => values.map((v) => (v === undefined ? null : v));
     return {
@@ -557,6 +557,38 @@ describe.skipIf(!sqlite)('saved personal maps (Decision 50, Phase 2)', () => {
     // A course goal without a name doesn't fit; a page of an atlas concept neither.
     expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 1, changes: [{ kind: 'goal', id: 'goal_x2', body: { ...course, id: 'goal_x2', name: '' } }] })).status).toBe(422);
     expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 1, changes: [{ kind: 'page', id: 'velocity_7r85', body: ['Sample.'] }] })).status).toBe(422);
+  });
+
+  it('open to anyone with the share link, content only, until the owner turns it off or replaces it (Phase 4)', async () => {
+    const { req, id } = await setUp();
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'bob', role: 'editor' });
+    await req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [ref('velocity_7r85')] });
+    await req('Bob', 'POST', `/api/maps/${id}/comments`, { anchor: 'map', body: 'Sample.' });
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'cleo', role: 'commenter' });
+    // A new map has its link at once; the owner and editors see it; only the owner replaces or turns it off.
+    const first = (await (await req('ada', 'GET', `/api/maps/${id}`)).json()).link as string;
+    expect(first).toMatch(/^[\w-]{24}$/);
+    expect((await (await req('Bob', 'GET', `/api/maps/${id}`)).json()).link).toBe(first);
+    expect((await (await req('cleo', 'GET', `/api/maps/${id}`)).json()).link).toBeUndefined();
+    expect((await req('Bob', 'POST', `/api/maps/${id}/link`, {})).status).toBe(403);
+    expect((await req('Bob', 'DELETE', `/api/maps/${id}/link`)).status).toBe(403);
+    const opened = await req(null, 'POST', '/api/shared', { token: first });
+    expect(opened.status).toBe(200);
+    const shared = await opened.json();
+    expect(shared).toMatchObject({ role: 'viewer', members: [], shared: true, map: { refs: ['velocity_7r85'] } });
+    expect(shared.link).toBeUndefined();
+    expect(JSON.stringify(shared)).not.toMatch(/ada|Bob|cleo|Sample\./);
+    // Nothing else opens with it: the token doesn't sign anyone in to comments or the members' view.
+    expect((await req(null, 'GET', `/api/maps/${id}/comments`)).status).toBe(401);
+    expect((await req(null, 'POST', '/api/shared', { token: first }, 'https://elsewhere.example')).status).toBe(403);
+    expect((await req(null, 'POST', '/api/shared', { token: 'not-a-real-token-at-all' })).status).toBe(404);
+
+    const second = (await (await req('ada', 'POST', `/api/maps/${id}/link`, {})).json()).link as string;
+    expect(second).not.toBe(first);
+    expect((await req(null, 'POST', '/api/shared', { token: first })).status).toBe(404);
+    expect((await req(null, 'POST', '/api/shared', { token: second })).status).toBe(200);
+    expect((await (await req('ada', 'DELETE', `/api/maps/${id}/link`)).json()).link).toBeNull();
+    expect((await req(null, 'POST', '/api/shared', { token: second })).status).toBe(404);
   });
 
   it('hold comment threads on what the map has, for everyone but viewers (Phase 3)', async () => {

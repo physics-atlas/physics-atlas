@@ -8,7 +8,7 @@ import type { Proposal } from '../src/community/types';
 import { readConfig } from './config';
 import type { Config, Env } from './config';
 import { randomToken } from './crypto';
-import { handleMaps } from './maps';
+import { handleMaps, handleShared } from './maps';
 import { GitHub, GitHubError, SignInError } from './github';
 import type { Fetch } from './github';
 import { VOCABULARY_PATH, branchFor, decodeProposal, filesFor, parseExperts, pullRequestBody } from './proposalPr';
@@ -141,6 +141,15 @@ export async function handle(request: Request, env: Env, fetchImpl: Fetch = fetc
   const user = await openSession(readCookie(request, SESSION_COOKIE), config.sessionSecret, now);
 
   try {
+    if (url.pathname === '/api/shared') {
+      if (!env.MAPS_DB) return json({ error: 'Personal maps are not set up yet.' }, 503);
+      try {
+        return await handleShared(request, url, { db: env.MAPS_DB });
+      } catch (e) {
+        console.error(e);
+        return json({ error: 'The map could not be read just now. Please try again in a minute.' }, 502);
+      }
+    }
     if (url.pathname === '/api/maps' || url.pathname.startsWith('/api/maps/')) {
       if (!env.MAPS_DB) return json({ error: 'Personal maps are not set up yet.' }, 503);
       try {

@@ -150,6 +150,8 @@ interface ConceptMapViewProps {
   fromAtlas?: Set<string>;
   /** In a personal map its editors may change: the editor saves into the map */
   mapEditing?: MapEditing;
+  /** In a personal map: its id — the learning goals completed there are its own (kept in this browser) */
+  completedIn?: string;
 }
 
 export default function ConceptMapView({
@@ -174,6 +176,7 @@ export default function ConceptMapView({
   onEditPage,
   fromAtlas,
   mapEditing,
+  completedIn,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -524,7 +527,7 @@ export default function ConceptMapView({
   const fitIds = edgeEnds ?? path?.highlight ?? neighbors;
   // Concept progress shares the topic store; the prefix keeps the id spaces apart. In a personal
   // map it's the learning goals completed there (marked ✓ on the map), kept per map.
-  const progressPrefix = mapScope ? completedPrefix(mapScope) : PROGRESS_PREFIX;
+  const progressPrefix = completedIn ? completedPrefix(completedIn) : PROGRESS_PREFIX;
   const doneIds = useMemo(
     () =>
       new Set(
@@ -852,7 +855,7 @@ export default function ConceptMapView({
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
               {fromAtlas?.has(selected.id) && <FromAtlas id={selected.id} />}
-              {mapScope && selected.type === 'learning_goal' && (
+              {completedIn && selected.type === 'learning_goal' && (
                 <label className="learned-toggle goal-completed-toggle">
                   <input type="checkbox" checked={doneIds.has(selected.id)} onChange={() => progress.toggle(progressPrefix + selected.id)} />
                   I’ve completed this learning goal

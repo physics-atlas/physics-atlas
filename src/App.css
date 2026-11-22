@@ -3896,6 +3896,19 @@ a.mode-tab {
   justify-content: flex-start;
 }
 
+.map-panel-share {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  margin-top: 8px;
+}
+
+.map-panel-share input {
+  width: 100%;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+}
+
 .maps-list {
   padding-left: 20px;
   display: grid;

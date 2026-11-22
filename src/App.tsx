@@ -11,14 +11,14 @@ import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
 import { PALETTES, usePalette, type Palette } from './lib/usePalette';
 import { useMotion } from './lib/motion';
-import { hrefOf, isPlainClick, refFromSearch } from './lib/pageLinks';
+import { hrefOf, isPlainClick, refFromSearch, relationHref, shareFromHash, shareKey, shareToken } from './lib/pageLinks';
 import type { PageRef } from './lib/pageLinks';
 import { useArrangement } from './lib/useArrangement';
 import { MapScope } from './lib/mapScope';
 import { mapPageSource, PageSourceContext } from './data/pageSources';
 import { fetchMe, loginHref } from './community/api';
 import type { Me } from './community/api';
-import { canEdit, deleteConceptChanges, proposalChanges, readMap, saveMap } from './maps/api';
+import { canEdit, deleteConceptChanges, proposalChanges, readMap, readShared, saveMap } from './maps/api';
 import type { MapChange } from './maps/items';
 import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
@@ -72,8 +72,9 @@ function initialMode(): Mode {
   if (m === 'privacy') return 'privacy';
   if (m === 'guide') return 'guide';
   if (m === 'maps') return 'maps';
-  // A personal map needs its id; a bare ?mode=map was the retired topic map's address.
-  if (m === 'map' && params.get('map')) return 'map';
+  // A personal map needs its id, or its share link's token (Phase 4); a bare ?mode=map was the
+  // retired topic map's address.
+  if (m === 'map' && (params.get('map') || shareFromHash(window.location.hash))) return 'map';
   // The concept map is the front page (the home page was retired, Decision 48); the
   // retired topic views (map, explore, goal, topic) land on it too.
   return 'concepts';
@@ -81,9 +82,11 @@ function initialMode(): Mode {
 
 /**
  * Where in a personal map (Decision 50, Phase 1): `?mode=map&map=<id>` its map,
- * `&view=pages` (with `&concept=…` or `&relation=…`) its pages.
+ * `&view=pages` (with `&concept=…` or `&relation=…`) its pages. Opened with its share
+ * link, `#share=<token>` stands in for the id (lib/pageLinks.ts).
  */
 interface MapPlace {
+  /** The map's id, or shareKey(token) */
   map: string;
   view: 'map' | 'pages';
   page: PageRef;
@@ -91,7 +94,8 @@ interface MapPlace {
 
 function initialMapPlace(): MapPlace | null {
   const params = new URLSearchParams(window.location.search);
-  const map = params.get('map');
+  const token = shareFromHash(window.location.hash);
+  const map = params.get('map') ?? (token ? shareKey(token) : null);
   if (params.get('mode') !== 'map' || !map) return null;
   return { map, view: params.get('view') === 'pages' ? 'pages' : 'map', page: refFromSearch(window.location.search) };
 }
@@ -149,7 +153,8 @@ export default function App() {
     if (!wantedMap) return;
     let live = true;
     setMapLoad((l) => (l?.id === wantedMap && l.state === 'ready' ? l : { id: wantedMap, state: 'loading' }));
-    void readMap(wantedMap).then((r) => {
+    const token = shareToken(wantedMap);
+    void (token ? readShared(token) : readMap(wantedMap)).then((r) => {
       if (!live) return;
       setMapLoad(r.ok ? { id: wantedMap, state: 'ready', saved: r.value } : { id: wantedMap, state: 'failed', status: r.status, error: r.error });
     });
@@ -299,13 +304,14 @@ export default function App() {
             : mode === 'map' && mapPlace
               ? mapPlace.view === 'pages'
                 ? mapPlace.page.relation
-                  ? `${mapHref(mapPlace.map)}&view=pages&relation=${encodeURIComponent(mapPlace.page.relation)}`
+                  ? relationHref(mapPlace.page.relation, mapPlace.map)
                   : pageHref(mapPlace.page.concept ?? null, mapPlace.map)
                 : mapHref(mapPlace.map)
             : mode === 'concepts'
             ? ''
             : `?mode=${mode}`;
-    if (window.location.search === target) {
+    // A shared map's address ends in its "#share=…"; other addresses are compared without the hash.
+    if ((target.includes('#') ? window.location.search + window.location.hash : window.location.search) === target) {
       firstUrlSync.current = false;
       return;
     }
@@ -458,7 +464,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <a className="skip-link" href="#main">
+      {/* Moves focus without touching the address: a shared map's "#share=…" stays (Phase 4). */}
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(e) => {
+          e.preventDefault();
+          mainRef.current?.focus();
+        }}
+      >
         Skip to main content
       </a>
       <div className="nebula nebula-a" aria-hidden />
@@ -573,13 +587,13 @@ export default function App() {
       {mode === 'map' && personal && mapPlace && (
         <nav className="map-bar" aria-label="Personal map">
           <p className="map-bar-title">
-            <span className="map-bar-kind">Personal map</span> {personal.map.title}
+            <span className="map-bar-kind">{savedMap?.shared ? 'Shared map' : 'Personal map'}</span> {personal.map.title}
           </p>
           <ul className="map-bar-views">
             {(['map', 'pages'] as const).map((view) => (
               <li key={view}>
                 <a
-                  href={view === 'map' ? mapHref(personal.map.id) : pageHref(null, personal.map.id)}
+                  href={view === 'map' ? mapHref(mapPlace.map) : pageHref(null, mapPlace.map)}
                   aria-current={mapPlace.view === view ? 'page' : undefined}
                   className={`mode-tab ${mapPlace.view === view ? 'mode-tab-active' : ''}`}
                   onClick={(e) => {
@@ -605,7 +619,7 @@ export default function App() {
               Course goals ({personal.map.courseGoals?.length ?? 0})
             </button>
           )}
-          {savedMap && me?.user && (
+          {savedMap && me?.user && !savedMap.shared && (
             <button
               type="button"
               className="draft-button map-bar-panel"
@@ -629,6 +643,11 @@ export default function App() {
           <a className="map-bar-back" href="/">
             Back to the atlas
           </a>
+          {savedMap?.shared && (
+            <p className="map-bar-note">
+              Shared with you by link. You can read the map and its pages; ticks on completed learning goals stay in this browser.
+            </p>
+          )}
           {personal.missingRefs.length > 0 && (
             <p className="map-bar-note">
               {personal.missingRefs.length === 1 ? 'One concept it uses is' : `${personal.missingRefs.length} concepts it uses are`} no
@@ -652,7 +671,7 @@ export default function App() {
           </Suspense>
         </div>
       )}
-      {mode === 'map' && savedMap && me?.user && mapPanelOpen && (
+      {mode === 'map' && savedMap && me?.user && !savedMap.shared && mapPanelOpen && (
         <div id="map-panel">
           <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
             <MapPanel saved={savedMap} login={me.user.login} onSaved={onMapSaved} onLeft={leaveMap} onShow={showOnPersonalMap} />
@@ -761,7 +780,7 @@ export default function App() {
           </div>
         )}
         {mode === 'map' && personal && mapPlace && personalPages && (
-          <MapScope.Provider value={personal.map.id}>
+          <MapScope.Provider value={mapPlace.map}>
             {mapPlace.view === 'map' ? (
               <ConceptMapView
                 key={personal.map.id}
@@ -780,6 +799,7 @@ export default function App() {
                 onOpenPage={(id) => openMapPage({ concept: id })}
                 onOpenRelationPage={(id) => openMapPage({ relation: id })}
                 fromAtlas={personal.refIds}
+                completedIn={personal.map.id}
                 mapEditing={mapEditing}
                 startEditing={Boolean(mapEditing) && mapDraftOnArrival}
                 onEditPage={mapEditing ? editMapPage : undefined}

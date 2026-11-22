@@ -5,7 +5,7 @@ import { seedProblems, seedSql } from './seed-map.mjs';
 // The seed maps (scripts/maps-seed/): each fits the atlas, and its SQL makes the
 // map in the real schema — once; running it again changes nothing.
 const sqlite = await import('node:sqlite').catch(() => null);
-const schema = ['0001_personal_maps.sql', '0002_course_goals.sql'].map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8')).join('\n');
+const schema = ['0001_personal_maps.sql', '0002_course_goals.sql', '0003_share_links.sql'].map((f) => readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8')).join('\n');
 const atlas = JSON.parse(readFileSync(new URL('../src/data/concepts.json', import.meta.url), 'utf8'));
 const dir = new URL('./maps-seed/', import.meta.url);
 const seeds = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => [f, JSON.parse(readFileSync(new URL(f, dir), 'utf8'))]);
@@ -38,5 +38,7 @@ describe.each(seeds)('the seed map %s', (_file, seed) => {
     );
     expect(db.prepare("SELECT COUNT(*) AS n FROM map_items WHERE kind = 'ref'").get().n).toBe(seed.refs.length - 1);
     expect(db.prepare('SELECT id, title, revision FROM maps').get()).toEqual({ id: seed.id, title: seed.title, revision: 1 });
+    // One share link, made the first time only.
+    expect(db.prepare('SELECT token FROM map_links WHERE revoked_at IS NULL').all()).toEqual([{ token: expect.stringMatching(/^[0-9a-f]{36}$/) }]);
   });
 });

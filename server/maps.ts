@@ -22,6 +22,9 @@ import type { SessionUser } from './session';
 //   POST   /api/maps/<id>/save               { base, changes, title?, description? } → the map as now saved
 //   POST   /api/maps/<id>/members            { login, role } — the owner adds or changes someone
 //   DELETE /api/maps/<id>/members/<login>    the owner removes someone; anyone may leave
+//   POST   /api/maps/<id>/link                      the owner makes a new share link (it replaces the old; a new map has one)
+//   DELETE /api/maps/<id>/link                      the owner turns it off
+//   POST   /api/shared                              { token } → the map, for anyone with its link (handleShared)
 //   GET    /api/maps/<id>/comments                  { comments } — not for viewers
 //   POST   /api/maps/<id>/comments                  { anchor, body } a new thread, { thread, body } a reply → { comments }
 //   POST   /api/maps/<id>/comments/<thread>/resolve { resolved } → { comments }
@@ -69,12 +72,38 @@ async function readMap(db: D1Database, mapId: string, role: MapRole): Promise<Sa
       .bind(mapId)
       .all<MapMember>()
   ).results.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.login.localeCompare(b.login));
+  // The share link is the owner's to make or turn off; editors see it too, to pass it on.
+  const link =
+    canEdit(role)
+      ? ((await db.prepare('SELECT token FROM map_links WHERE map_id = ? AND revoked_at IS NULL').bind(mapId).first<{ token: string }>())?.token ?? null)
+      : undefined;
   return {
     map: mapFromItems(meta, items.map((r) => ({ kind: r.kind, id: r.item_id, body: JSON.parse(r.body) }))),
     revision: meta.revision,
     role,
     members,
+    ...(link !== undefined ? { link } : {}),
   };
+}
+
+const LINK_TOKEN = /^[A-Za-z0-9_-]{16,64}$/;
+const NO_LINK = () => json({ error: 'This link doesn’t open a map: it was turned off or replaced by a new one. Ask whoever shared it for the current link.' }, 404);
+
+/**
+ * A map opened with its share link (Phase 4): anyone, signed in or not, sees its
+ * content — not its members, comments or history. The token comes in the body,
+ * never in an address, so it isn't written into request logs.
+ */
+export async function handleShared(request: Request, url: URL, { db }: { db: D1Database }): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Not found.' }, 404);
+  if (!sameOrigin(request, url)) return json({ error: 'Cross-site requests are not accepted.' }, 403);
+  const body = (await request.json().catch(() => null)) as { token?: unknown } | null;
+  const token = typeof body?.token === 'string' ? body.token : '';
+  if (!LINK_TOKEN.test(token)) return NO_LINK();
+  const row = await db.prepare('SELECT map_id FROM map_links WHERE token = ? AND revoked_at IS NULL').bind(token).first<{ map_id: string }>();
+  if (!row) return NO_LINK();
+  const saved = await readMap(db, row.map_id, 'viewer');
+  return saved ? json({ ...saved, members: [], shared: true }) : NO_LINK();
 }
 
 /** Every comment on a map, oldest first; an author who deleted their account reads as null. */
@@ -137,6 +166,8 @@ export async function handleMaps(request: Request, url: URL, { db, user, mayCrea
       await db.batch([
           db.prepare('INSERT INTO maps (id, title, description, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, title, description, me, stamp, stamp),
           db.prepare("INSERT INTO map_members (map_id, user_id, role, added_at) VALUES (?, ?, 'owner', ?)").bind(id, me, stamp),
+          // Every map starts with its share link (Phase 4), so its editors can pass it on from the first day.
+          db.prepare('INSERT INTO map_links (token, map_id, created_at) VALUES (?, ?, ?)').bind(randomToken(18), id, stamp),
       ]);
       console.log(`map created by @${user.login}`);
       return json({ id }, 201);
@@ -251,6 +282,18 @@ export async function handleMaps(request: Request, url: URL, { db, user, mayCrea
       await db.prepare('DELETE FROM map_members WHERE map_id = ? AND user_id = ?').bind(mapId, target.id).run();
       return target.id === me ? new Response(null, { status: 204 }) : json(await readMap(db, mapId, role));
     }
+  }
+
+  // /api/maps/<id>/link (Phase 4)
+  if (parts.length === 2 && sub === 'link' && (method === 'POST' || method === 'DELETE')) {
+    if (role !== 'owner') return json({ error: 'Only the owner shares the map with a link.' }, 403);
+    await db.batch([
+      db.prepare('UPDATE map_links SET revoked_at = ? WHERE map_id = ? AND revoked_at IS NULL').bind(stamp, mapId),
+      ...(method === 'POST'
+        ? [db.prepare('INSERT INTO map_links (token, map_id, created_at) VALUES (?, ?, ?)').bind(randomToken(18), mapId, stamp)]
+        : []),
+    ]);
+    return json(await readMap(db, mapId, role));
   }
 
   // /api/maps/<id>/comments (Phase 3)

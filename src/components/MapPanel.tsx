@@ -2,7 +2,8 @@ import { useId, useMemo, useState } from 'react';
 import { concepts } from '../data/loadConcepts';
 import { NODE_TYPE_LABELS } from '../data/types';
 import { TYPE_COLORS } from '../graph/typeColors';
-import { ROLE_LABELS, addMember, canEdit, removeMember, removeRefChanges, saveMap } from '../maps/api';
+import { ROLE_LABELS, addMember, canEdit, makeShareLink, removeMember, removeRefChanges, saveMap, turnOffShareLink } from '../maps/api';
+import { mapHref, shareKey } from '../lib/pageLinks';
 import type { MapResult, MapRole, SavedMap } from '../maps/api';
 import type { MapChange } from '../maps/items';
 import SearchBox from './SearchBox';
@@ -33,7 +34,8 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
   const [title, setTitle] = useState(map.title);
   const [newMember, setNewMember] = useState('');
   const [newRole, setNewRole] = useState<MapRole>('editor');
-  const ids = { title: useId(), member: useId(), role: useId(), refs: useId(), members: useId() };
+  const ids = { title: useId(), member: useId(), role: useId(), refs: useId(), members: useId(), link: useId(), linkHint: useId() };
+  const shareUrl = saved.link ? `${window.location.origin}/${mapHref(shareKey(saved.link))}` : null;
   const editable = canEdit(role);
 
   const inMap = useMemo(() => new Set([...map.refs, ...map.nodes.map((n) => n.id)]), [map]);
@@ -204,6 +206,77 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
                 Add
               </button>
             </form>
+          )}
+          {editable && (
+            <div className="map-panel-share">
+              <h2 className="map-panel-heading">Share with a link</h2>
+              <p className="map-panel-note" id={ids.linkHint}>
+                Anyone with the link can read the map, its pages and course goals — not its members or comments — without
+                signing in.{' '}
+                {role === 'owner'
+                  ? 'Editors see it too, to pass it on. Making a new link stops the old one working.'
+                  : 'Only the owner can make a new link or turn it off.'}
+              </p>
+              {shareUrl ? (
+                <>
+                  <label htmlFor={ids.link}>The map’s share link</label>
+                  <input id={ids.link} className="draft-input" readOnly value={shareUrl} aria-describedby={ids.linkHint} onFocus={(e) => e.target.select()} />
+                  <div className="map-panel-row">
+                    <button
+                      type="button"
+                      className="draft-button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setStatus('Copied the share link.');
+                        } catch {
+                          setStatus('Couldn’t copy here: select the link and copy it.');
+                        }
+                      }}
+                    >
+                      Copy the link
+                    </button>
+                    {role === 'owner' && (
+                    <>
+                    <button
+                      type="button"
+                      className="draft-button"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm('Make a new link? The current one stops working: whoever has it can’t open the map any more.'))
+                          void run(() => makeShareLink(map.id), 'Made a new share link. The old one no longer works.');
+                      }}
+                    >
+                      Make a new link
+                    </button>
+                    <button
+                      type="button"
+                      className="draft-button"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm('Turn the link off? Whoever has it can’t open the map any more.'))
+                          void run(() => turnOffShareLink(map.id), 'Turned the share link off.');
+                      }}
+                    >
+                      Turn the link off
+                    </button>
+                    </>
+                    )}
+                  </div>
+                </>
+              ) : role === 'owner' ? (
+                <button
+                  type="button"
+                  className="draft-button"
+                  disabled={busy}
+                  onClick={() => void run(() => makeShareLink(map.id), 'Made a share link. Copy it below and send it to the course.')}
+                >
+                  Make a share link
+                </button>
+              ) : (
+                <p className="map-panel-note">The owner has turned the link off for now.</p>
+              )}
+            </div>
           )}
           <p className="map-panel-note">
             Editors change the map and comment; commenters read it and comment; viewers only read it and don’t see the

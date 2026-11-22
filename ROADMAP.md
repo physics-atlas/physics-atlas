@@ -6,6 +6,24 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-83: personal maps Phase 4 — sharing with the course by link
+
+**Status:** ✅ Implemented <!-- status-line: feature-83 -->
+**Planned:** 2026-11-22 — requested: start Phase 4
+**Implemented:** 2026-11-22
+
+### Implemented
+- `server/maps.ts`: the owner makes (`POST /api/maps/<id>/link` — a new one revokes the old) or turns off (`DELETE`) the share link; the owner's view carries it; `POST /api/shared { token }` opens the map for anyone — content, pages and course goals, no members, comments or history
+- The token after `#` (`?mode=map#share=<token>`, `lib/pageLinks.ts` `shareKey`): never in a request address, so never in request logs; every link inside the map keeps it; the skip link no longer changes the address
+- The map panel's **Share with a link** (owner): make, copy, make a new one, turn off — with confirmations; the map bar says **Shared map** and what a link viewer can do
+- Students tick completed learning goals there too (in their browser, per map)
+- Then (asked the same day): every map has a link from its creation — `migrations/0003_share_links.sql` gives existing maps one, the seed makes one; editors see and copy it; only the owner replaces it or turns it off
+- Tests: the link's whole life against the real schema (made, opened signed out, content only, replaced, turned off, cross-site refused); smoke: the owner makes it; a signed-out phone opens it, moves to the pages, ticks a goal; the token never reaches a request address
+
+### Review
+Not run — direct session.
+
+
 ## feature-82: personal maps Phase 2, part 2 — editing a map's own content; course goals
 
 **Status:** ✅ Implemented <!-- status-line: feature-82 -->
@@ -20,7 +38,7 @@
 - Tests: items, mapProblems, proposalChanges, deletion; the API saving own concepts, pages, relations and course goals; migration 0002 keeps rows; smoke: course goals on the map and its pages, a concept added by the editor, a page written and saved
 
 ### By hand
-- `npx wrangler d1 migrations apply physics-atlas-maps --remote` (applies 0002) after deploying
+- `npx wrangler d1 migrations apply physics-atlas-maps --remote` (applies 0002, and 0003 from feature-83) after deploying
 
 ### Also done (2026-11-22)
 - Students mark the learning goals they've completed: a "Completed" tick in the course goals panel and on a learning goal's card, counts per course goal, ✓ on the map; per map, in the browser only (`completedKey`, the `useProgress` store); privacy notice (EN/DE) reworded. Link viewers get it with Phase 4's share link

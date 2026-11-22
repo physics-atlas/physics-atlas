@@ -7,8 +7,10 @@ import { describe, expect, it } from 'vitest';
 const sqlite = await import('node:sqlite').catch(() => null);
 const first = readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8');
 const second = readFileSync(new URL('../migrations/0002_course_goals.sql', import.meta.url), 'utf8');
+const third = readFileSync(new URL('../migrations/0003_share_links.sql', import.meta.url), 'utf8');
 const schema = `${first}
-${second}`;
+${second}
+${third}`;
 
 function database() {
   const db = new sqlite.DatabaseSync(':memory:');
@@ -21,7 +23,23 @@ function database() {
   return db;
 }
 
-describe.skipIf(!sqlite)('the personal maps database (migrations/0001, 0002)', () => {
+describe.skipIf(!sqlite)('the personal maps database (migrations/0001–0003)', () => {
+  it('gives each map that has no link one, leaving a live link as it is (0003)', () => {
+    const db = new sqlite.DatabaseSync(':memory:');
+    db.exec(`${first}
+${second}`);
+    db.prepare('INSERT INTO users (id, github_id, github_login) VALUES (1, 1001, ?)').run('sample-owner');
+    db.prepare("INSERT INTO maps (id, title, owner_id) VALUES ('m1', 'Sample', 1), ('m2', 'Sample', 1), ('m3', 'Sample', 1)").run();
+    db.prepare("INSERT INTO map_links (token, map_id) VALUES ('kept-sample-token-1', 'm2')").run();
+    db.prepare("INSERT INTO map_links (token, map_id, revoked_at) VALUES ('old-sample-token-1', 'm3', '2026-01-01')").run();
+    db.exec(third);
+    const live = db.prepare('SELECT map_id, token FROM map_links WHERE revoked_at IS NULL ORDER BY map_id').all();
+    expect(live.map((l) => l.map_id)).toEqual(['m1', 'm2', 'm3']);
+    expect(live[1].token).toBe('kept-sample-token-1');
+    for (const l of [live[0], live[2]]) expect(l.token).toMatch(/^[0-9a-f]{36}$/);
+    expect(live[0].token).not.toBe(live[2].token);
+  });
+
   it('takes course goals, keeping the items already there (0002)', () => {
     const db = new sqlite.DatabaseSync(':memory:');
     db.exec(first);

@@ -4,14 +4,31 @@ export interface PageRef {
   relation?: string;
 }
 
+/**
+ * A personal map is addressed by its id (members) or, opened with its share link
+ * (Phase 4), by "share:<token>". The token goes after "#": browsers never send that
+ * part to the server, so it stays out of request logs.
+ */
+const SHARE = 'share:';
+export const shareKey = (token: string): string => SHARE + token;
+export const shareToken = (map: string): string | null => (map.startsWith(SHARE) ? map.slice(SHARE.length) : null);
+/** The share token in an address's "#share=…", if any. */
+export const shareFromHash = (hash: string): string | null => new URLSearchParams(hash.replace(/^#/, '')).get('share');
+
+const mapQuery = (map: string) => (shareToken(map) ? '?mode=map' : `?mode=map&map=${encodeURIComponent(map)}`);
+const mapHash = (map: string) => {
+  const token = shareToken(map);
+  return token ? `#share=${encodeURIComponent(token)}` : '';
+};
+
 /** A personal map (Decision 50): its map view. */
-export const mapHref = (map: string): string => `?mode=map&map=${encodeURIComponent(map)}`;
+export const mapHref = (map: string): string => mapQuery(map) + mapHash(map);
 
 /** A personal map's pages: one of its concepts' or relations', or its front page. */
 const mapPagesHref = (map: string, ref: PageRef): string =>
-  `${mapHref(map)}&view=pages${
+  `${mapQuery(map)}&view=pages${
     ref.relation ? `&relation=${encodeURIComponent(ref.relation)}` : ref.concept ? `&concept=${encodeURIComponent(ref.concept)}` : ''
-  }`;
+  }${mapHash(map)}`;
 
 /**
  * A concept's page (null: the front page with the chapters) — in the atlas

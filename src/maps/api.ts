@@ -19,7 +19,12 @@ export interface SavedMap {
   map: PersonalMap;
   revision: number;
   role: MapRole;
+  /** Empty for someone who opened it with its share link: they don't see who's on it */
   members: MapMember[];
+  /** The owner's and editors' view only: the share link's token, while there is one (Phase 4) */
+  link?: string | null;
+  /** Opened with its share link, not as a member */
+  shared?: boolean;
 }
 
 export interface MapSummary {
@@ -71,6 +76,12 @@ export const addMember = (id: string, login: string, role: MapRole) =>
   call<SavedMap>(`/api/maps/${encodeURIComponent(id)}/members`, post({ login, role }));
 export const removeMember = (id: string, login: string) =>
   call<SavedMap | undefined>(`/api/maps/${encodeURIComponent(id)}/members/${encodeURIComponent(login)}`, { method: 'DELETE' });
+
+/** A map opened with its share link (Phase 4): the token goes in the body, so it stays out of request logs. */
+export const readShared = (token: string) => call<SavedMap>('/api/shared', post({ token }));
+/** The owner makes the map's share link — a new one replaces the old — or turns it off. */
+export const makeShareLink = (id: string) => call<SavedMap>(`/api/maps/${encodeURIComponent(id)}/link`, post({}));
+export const turnOffShareLink = (id: string) => call<SavedMap>(`/api/maps/${encodeURIComponent(id)}/link`, { method: 'DELETE' });
 
 const commentsPath = (id: string) => `/api/maps/${encodeURIComponent(id)}/comments`;
 export const listComments = (id: string) => call<{ comments: MapComment[] }>(commentsPath(id));

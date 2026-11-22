@@ -703,7 +703,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   };
   const comment = (id, anchor, body) => ({ id, threadId: null, anchor, author: 'sample-editor', body, createdAt: new Date().toISOString(), editedAt: null, resolvedAt: null, resolvedBy: null });
   const sim = {
-    saved: { map: sample, revision: 0, role: 'owner', members: [{ login: 'sample-owner', role: 'owner' }, { login: 'sample-editor', role: 'editor' }] },
+    saved: { map: sample, revision: 0, role: 'owner', link: 'sample-share-token-0001', members: [{ login: 'sample-owner', role: 'owner' }, { login: 'sample-editor', role: 'editor' }] },
     saves: [],
     comments: [comment('c1', 'node:tangent_vector', 'Sample question about $v^\\mu$?')],
     posts: [],
@@ -746,6 +746,10 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
         sim.comments.push({ ...comment(`c${sim.comments.length + 1}`, thread ? thread.anchor : body.anchor, body.body), threadId: body.thread ?? null, author: 'sample-owner' });
       }
       return reply({ comments: sim.comments });
+    }
+    if (u.pathname === '/api/maps/sample-map/link') {
+      sim.saved = { ...sim.saved, link: req.method() === 'POST' ? 'sample-share-token-0001' : null };
+      return reply(sim.saved);
     }
     const resolving = /^\/api\/maps\/sample-map\/comments\/(\w+)\/resolve$/.exec(u.pathname);
     if (resolving) {
@@ -896,6 +900,28 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   const pageSave = sim.saves.at(-1)?.changes.map((c) => `${c.kind}:${Array.isArray(c.body) ? c.body.join('|') : (c.body?.id ?? '')}`);
   if (atlasEditable || !saveChanges || !pageSave?.some((c) => c.startsWith('page:') && c.includes('Sample addition.')))
     errors.push(`a map page: ${JSON.stringify({ atlasEditable, saveChanges: Boolean(saveChanges), pageSave })}`);
+  // The share link (Phase 4): a map has one from the start; the owner and editors see it, only the owner replaces it.
+  const shareView = async () => {
+    await pm.goto(`${URL}/?mode=map&map=sample-map`, { waitUntil: 'networkidle0' });
+    await pm.click('.map-bar-panel');
+    await pm.waitForSelector('.map-panel-share input');
+    return pm.evaluate(() => ({
+      url: document.querySelector('.map-panel-share input').value,
+      buttons: [...document.querySelectorAll('.map-panel-share button')].map((b) => b.textContent),
+    }));
+  };
+  const ownerShare = await shareView();
+  sim.saved = { ...sim.saved, role: 'editor' };
+  const editorShare = await shareView();
+  sim.saved = { ...sim.saved, role: 'owner' };
+  if (
+    !ownerShare.url.endsWith('/?mode=map#share=sample-share-token-0001') ||
+    JSON.stringify(ownerShare.buttons) !== JSON.stringify(['Copy the link', 'Make a new link', 'Turn the link off']) ||
+    editorShare.url !== ownerShare.url ||
+    JSON.stringify(editorShare.buttons) !== JSON.stringify(['Copy the link'])
+  )
+    errors.push(`the share link: ${JSON.stringify({ ownerShare, editorShare })}`);
+  sim.sharedMap = sim.saved.map;
   await pm.goto(`${URL}/?mode=maps`, { waitUntil: 'networkidle0' });
   await pm.waitForSelector('.maps-list a');
   const myMaps = await pm.evaluate(() => ({
@@ -915,6 +941,57 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
     errors.push(`adding an atlas concept: ${JSON.stringify({ saves: sim.saves, added })}`);
   if (myMaps.h1 !== 'My maps' || myMaps.maps[0] !== '?mode=map&map=sample-map' || !myMaps.create || !myMaps.header) errors.push(`My maps: ${JSON.stringify(myMaps)}`);
   await pm.close();
+
+  // A student opens the share link on a phone, signed out: the map, its pages and course goals; ticks stay in the browser.
+  const ps = await browser.newPage();
+  await ps.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  // A fresh student: no ticks from the pages above (they share this browser's storage).
+  await ps.evaluateOnNewDocument(() => localStorage.removeItem('physics-atlas-progress-v1'));
+  await ps.setRequestInterception(true);
+  const seen = [];
+  ps.on('request', (req) => {
+    // What goes over the wire: an address without its "#…", which browsers never send.
+    seen.push(req.url().split('#')[0]);
+    const u = new globalThis.URL(req.url());
+    if (!u.pathname.startsWith('/api/')) return req.continue();
+    const reply = (data, status = 200) => req.respond({ status, contentType: 'application/json', body: JSON.stringify(data) });
+    if (u.pathname === '/api/me') return reply({ configured: true, user: null, invited: false, maps: true });
+    if (u.pathname === '/api/shared' && req.method() === 'POST' && JSON.parse(req.postData()).token === 'sample-share-token-0001')
+      return reply({ map: sim.sharedMap, revision: 9, role: 'viewer', members: [], shared: true });
+    return reply({ error: 'Not found' }, 404);
+  });
+  await ps.goto(`${URL}/?mode=map#share=sample-share-token-0001`, { waitUntil: 'networkidle0' });
+  await ps.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0, { timeout: 15000 });
+  const student = await ps.evaluate(() => ({
+    kind: document.querySelector('.map-bar-kind')?.textContent,
+    edit: Boolean(document.querySelector('.map-bar-panel, .map-bar-comments, .concept-propose')),
+    goals: document.querySelector('.map-bar-goals')?.textContent,
+    wide: document.documentElement.scrollWidth,
+  }));
+  await ps.click('.map-bar-goals');
+  await ps.waitForSelector('.goals-topics input[type="checkbox"]');
+  await ps.click('.goals-topics input[type="checkbox"]');
+  await ps.click('.map-bar-views li:nth-child(2) a');
+  await ps.waitForSelector('.atlas-page h1');
+  await ps.click('.goals-topics button.draft-link');
+  await ps.waitForFunction(() => document.querySelector('.atlas-page h1')?.textContent?.includes('Sample week 1 goal'), { timeout: 10000 });
+  const studentPages = await ps.evaluate(() => ({
+    address: location.search + location.hash,
+    links: [...document.querySelectorAll('.atlas-page a[href^="?"]')].map((a) => a.getAttribute('href')),
+    ticked: localStorage.getItem('physics-atlas-progress-v1'),
+  }));
+  await ps.screenshot({ path: `${OUT}/shared-map-phone.png` });
+  console.log('shared map:', { student, studentPages });
+  if (student.kind !== 'Shared map' || student.edit || !student.goals?.startsWith('Course goals (1)') || student.wide > 390)
+    errors.push(`the shared map: ${JSON.stringify(student)}`);
+  if (
+    studentPages.address !== '?mode=map&view=pages&concept=sample_week_1_goal#share=sample-share-token-0001' ||
+    studentPages.links.some((h) => h.startsWith('?mode=map') && !h.endsWith('#share=sample-share-token-0001')) ||
+    !studentPages.ticked?.includes('map:sample-map:sample_week_1_goal')
+  )
+    errors.push(`the shared map's pages: ${JSON.stringify(studentPages)}`);
+  if (seen.some((x) => x.includes('sample-share-token'))) errors.push(`the share token reached a request address: ${seen.filter((x) => x.includes('sample-share-token')).join(', ')}`);
+  await ps.close();
 }
 console.log('third parties contacted:', [...thirdParties]);
 if (thirdParties.size) errors.push(`the site contacted third parties: ${[...thirdParties].join(', ')}`);
