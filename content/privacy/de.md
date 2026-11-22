@@ -17,7 +17,7 @@ Wenn Sie die Website aufrufen, speichern wir nichts über Sie. Um die Seiten aus
 
 **Schriftarten.** Die Schriftarten der Website werden von unserer eigenen Website ausgeliefert; beim Lesen wird kein Drittanbieter kontaktiert.
 
-**In Ihrem Browser.** Die Website merkt sich einige Einstellungen auf Ihrem eigenen Gerät (Browserspeicher): Farbschema, Palette, reduzierte Bewegung, die Anordnung der Karte, die Legende, die Tiefe, in der Sie Seiten lesen, die Ansicht der Seitenleiste, die Begriffe, die Sie als gelernt markiert haben, und Entwürfe von Vorschlägen, an denen Sie schreiben (mit ihren Bildern). Diese verlassen Ihr Gerät nicht, es sei denn, Sie reichen einen Vorschlag ein. Sie können sie jederzeit über die Einstellungen Ihres Browsers löschen.
+**In Ihrem Browser.** Die Website merkt sich einige Einstellungen auf Ihrem eigenen Gerät (Browserspeicher): Farbschema, Palette, reduzierte Bewegung, die Anordnung der Karte, die Legende, die Tiefe, in der Sie Seiten lesen, die Ansicht der Seitenleiste, die Begriffe, die Sie als gelernt markiert haben, wann Sie die Kommentare einer persönlichen Karte zuletzt gelesen haben (um Neues zu markieren), und Entwürfe von Vorschlägen, an denen Sie schreiben (mit ihren Bildern). Diese verlassen Ihr Gerät nicht, es sei denn, Sie reichen einen Vorschlag ein. Sie können sie jederzeit über die Einstellungen Ihres Browsers löschen.
 
 Wir verwenden **keine Analyse-, Werbe- oder Tracking-Dienste**.
 
@@ -53,7 +53,7 @@ Persönliche Karten sind Karten, die eine Person selbst erstellt und mit ausgew�
 
 **Wer was sieht:**
 
-- Die **Mitglieder** einer Karte sehen ihren Inhalt, die Benutzernamen der anderen, ihre Kommentare und ihren Verlauf.
+- Die **Mitglieder** einer Karte sehen ihren Inhalt, die Benutzernamen der anderen und ihren Verlauf; alle außer Betrachter·innen sehen auch ihre Kommentare.
 - **Alle mit dem Freigabelink** einer Karte sehen nur ihren Inhalt – nicht ihre Mitglieder, Kommentare oder ihren Verlauf – und brauchen kein Konto. Die Eigentümerin oder der Eigentümer kann einen Link jederzeit deaktivieren.
 - Persönliche Karten werden nirgendwo sonst aufgeführt oder veröffentlicht.
 

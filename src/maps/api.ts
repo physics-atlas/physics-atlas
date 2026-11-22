@@ -1,3 +1,4 @@
+import type { MapComment } from './comments';
 import type { MapChange } from './items';
 import type { PersonalMap } from './map';
 
@@ -68,6 +69,16 @@ export const addMember = (id: string, login: string, role: MapRole) =>
   call<SavedMap>(`/api/maps/${encodeURIComponent(id)}/members`, post({ login, role }));
 export const removeMember = (id: string, login: string) =>
   call<SavedMap | undefined>(`/api/maps/${encodeURIComponent(id)}/members/${encodeURIComponent(login)}`, { method: 'DELETE' });
+
+const commentsPath = (id: string) => `/api/maps/${encodeURIComponent(id)}/comments`;
+export const listComments = (id: string) => call<{ comments: MapComment[] }>(commentsPath(id));
+/** A new thread (no `thread`) or a reply to one */
+export const addComment = (id: string, anchor: string, body: string, thread?: string) =>
+  call<{ comments: MapComment[] }>(commentsPath(id), post({ anchor, body, ...(thread ? { thread } : {}) }));
+export const resolveThread = (id: string, thread: string, resolved: boolean) =>
+  call<{ comments: MapComment[] }>(`${commentsPath(id)}/${encodeURIComponent(thread)}/resolve`, post({ resolved }));
+export const deleteComment = (id: string, comment: string) =>
+  call<{ comments: MapComment[] }>(`${commentsPath(id)}/${encodeURIComponent(comment)}`, { method: 'DELETE' });
 
 /**
  * The changes that take an atlas concept out of a map: the reference, and the

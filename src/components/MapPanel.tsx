@@ -153,15 +153,21 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
                     type="button"
                     className="draft-button map-panel-remove"
                     disabled={busy}
-                    aria-label={m.login.toLowerCase() === login.toLowerCase() ? 'Leave this map' : `Remove @${m.login} from the map`}
+                    aria-label={m.login.toLowerCase() === login.toLowerCase() ? undefined : `Remove @${m.login} from the map`}
                     onClick={async () => {
                       const self = m.login.toLowerCase() === login.toLowerCase();
-                      if (self && !window.confirm('Leave this map? The owner can add you again.')) return;
+                      if (
+                        self &&
+                        !window.confirm(
+                          `Leave “${map.title}”? You will no longer be a member of this shared map: it disappears from My maps and you can't open it. To rejoin, the owner has to invite you again.`,
+                        )
+                      )
+                        return;
                       const ok = await run(() => removeMember(map.id, m.login), `Removed @${m.login}.`);
                       if (ok && self) onLeft();
                     }}
                   >
-                    {m.login.toLowerCase() === login.toLowerCase() ? 'Leave' : 'Remove'}
+                    {m.login.toLowerCase() === login.toLowerCase() ? 'Leave shared map' : 'Remove'}
                   </button>
                 )}
               </li>
@@ -200,8 +206,8 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
             </form>
           )}
           <p className="map-panel-note">
-            Editors change the map; commenters (comments come next) and viewers only read it. Everyone listed sees the usernames
-            here.
+            Editors change the map and comment; commenters read it and comment; viewers only read it and don’t see the
+            comments. Everyone listed sees the usernames here.
           </p>
         </div>
       </div>

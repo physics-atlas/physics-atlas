@@ -701,7 +701,13 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
     edges: [{ id: 'sample_course_e1', source: 'sample_week_1_goal', target: 'tangent_vector', relationship: 'is a learning goal of' }],
     pages: { sample_week_1_goal: ['Sample page.\n\n## Before the session\n\nSample: read the page on [[tangent_vector]].'] },
   };
-  const sim = { saved: { map: sample, revision: 0, role: 'owner', members: [{ login: 'sample-owner', role: 'owner' }, { login: 'sample-editor', role: 'editor' }] }, saves: [] };
+  const comment = (id, anchor, body) => ({ id, threadId: null, anchor, author: 'sample-editor', body, createdAt: new Date().toISOString(), editedAt: null, resolvedAt: null, resolvedBy: null });
+  const sim = {
+    saved: { map: sample, revision: 0, role: 'owner', members: [{ login: 'sample-owner', role: 'owner' }, { login: 'sample-editor', role: 'editor' }] },
+    saves: [],
+    comments: [comment('c1', 'node:tangent_vector', 'Sample question about $v^\\mu$?')],
+    posts: [],
+  };
   await pm.setRequestInterception(true);
   pm.on('request', (req) => {
     const u = new globalThis.URL(req.url());
@@ -716,6 +722,23 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
       const refs = [...sim.saved.map.refs, ...body.changes.filter((c) => c.kind === 'ref' && c.body).map((c) => c.id)];
       sim.saved = { ...sim.saved, revision: sim.saved.revision + 1, map: { ...sim.saved.map, refs } };
       return reply(sim.saved);
+    }
+    // Comments (Phase 3): a thread to start with; new ones and replies kept here.
+    if (u.pathname === '/api/maps/sample-map/comments') {
+      if (req.method() === 'POST') {
+        const body = JSON.parse(req.postData());
+        sim.posts.push(body);
+        const thread = body.thread ? sim.comments.find((c) => c.id === body.thread) : null;
+        if (thread) thread.resolvedAt = null;
+        sim.comments.push({ ...comment(`c${sim.comments.length + 1}`, thread ? thread.anchor : body.anchor, body.body), threadId: body.thread ?? null, author: 'sample-owner' });
+      }
+      return reply({ comments: sim.comments });
+    }
+    const resolving = /^\/api\/maps\/sample-map\/comments\/(\w+)\/resolve$/.exec(u.pathname);
+    if (resolving) {
+      const resolved = JSON.parse(req.postData()).resolved;
+      Object.assign(sim.comments.find((c) => c.id === resolving[1]), { resolvedAt: resolved ? new Date().toISOString() : null, resolvedBy: resolved ? 'sample-owner' : null });
+      return reply({ comments: sim.comments });
     }
     return reply({ error: 'Not found' }, 404);
   });
@@ -753,6 +776,46 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   await pm.keyboard.press('Enter');
   await pm.waitForFunction(() => window.__cy.nodes().length === 7, { timeout: 10000 });
   const added = await pm.evaluate(() => ({ status: document.querySelector('.map-panel [role="status"]')?.textContent, onMap: Boolean(window.__cy.$id('four_velocity').length) }));
+  // Comments, by keyboard: the thread there, a new one about the whole map, a reply, resolve.
+  await pm.focus('.map-bar-comments');
+  await pm.keyboard.press('Enter');
+  await pm.waitForSelector('.comments-thread');
+  const comments0 = await pm.evaluate(() => ({
+    button: document.querySelector('.map-bar-comments')?.textContent,
+    otherPanel: Boolean(document.querySelector('#map-panel')),
+    about: document.querySelector('.comments-about')?.textContent,
+    maths: Boolean(document.querySelector('.comments-entry .katex')),
+    live: Boolean(document.querySelector('.map-bar [role="status"]')),
+  }));
+  await pm.select('.comments-form select', 'map');
+  await pm.type('.comments-form textarea', 'Sample: a thread about the whole map.');
+  await pm.focus('.comments-form button[type="submit"]');
+  await pm.keyboard.press('Enter');
+  await pm.waitForFunction(() => document.querySelectorAll('.comments-thread').length === 2);
+  await pm.type('.comments-thread .comments-reply textarea', 'Sample reply.');
+  await pm.focus('.comments-thread .comments-reply button[type="submit"]');
+  await pm.keyboard.press('Enter');
+  await pm.waitForFunction(() => document.querySelectorAll('.comments-entry').length === 3);
+  const resolveButton = await pm.waitForSelector('.comments-thread .comments-reply button[type="button"]');
+  await resolveButton.focus();
+  await pm.keyboard.press('Enter');
+  await pm.waitForFunction(() => document.querySelectorAll('.comments-thread').length === 1);
+  const comments1 = await pm.evaluate(() => ({
+    status: document.querySelector('.comments-panel [role="status"]')?.textContent,
+    heading: document.querySelector('.comments-threads h2')?.textContent,
+  }));
+  await pm.screenshot({ path: `${OUT}/map-comments.png` });
+  if (
+    !comments0.button?.startsWith('Comments (1 open') ||
+    comments0.otherPanel ||
+    comments0.about !== 'Tangent vector — open' ||
+    !comments0.maths ||
+    !comments0.live ||
+    JSON.stringify(sim.posts.map((p) => (p.thread ? `reply:${p.thread}` : p.anchor))) !== JSON.stringify(['map', 'reply:c2']) ||
+    comments1.status !== 'Resolved the thread.' ||
+    !comments1.heading?.startsWith('Threads (1 open')
+  )
+    errors.push(`comments: ${JSON.stringify({ comments0, comments1, posts: sim.posts })}`);
   await pm.goto(`${URL}/?mode=maps`, { waitUntil: 'networkidle0' });
   await pm.waitForSelector('.maps-list a');
   const myMaps = await pm.evaluate(() => ({

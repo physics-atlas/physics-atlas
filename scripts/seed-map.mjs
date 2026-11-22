@@ -2,13 +2,15 @@
 // Makes a personal map in the maps database (Decision 50) from a seed file in
 // scripts/maps-seed/ — for a map that has to exist before its owner first signs in.
 //
-//   node scripts/seed-map.mjs scripts/maps-seed/<name>.json > seed.sql
+//   node scripts/seed-map.mjs scripts/maps-seed/<name>.json seed.sql
 //   npx wrangler d1 execute physics-atlas-maps --remote --file seed.sql
 //
 // GitHub's public API gives each username's account id (the database keys people
 // by it, not by the username, which can change). Running the SQL again changes
 // nothing once the map exists: its members' later edits are never overwritten.
-import { readFileSync } from 'node:fs';
+// Without a token GitHub allows 60 lookups an hour; set GITHUB_TOKEN (any token,
+// no scopes needed) for more.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const quote = (v) => `'${String(v).replace(/'/g, "''")}'`;
@@ -51,11 +53,15 @@ export function seedSql(seed, accounts) {
 
 async function account(login) {
   const res = await fetch(`https://api.github.com/users/${encodeURIComponent(login)}`, {
-    headers: { accept: 'application/vnd.github+json', 'user-agent': 'physics-atlas' },
+    headers: {
+      accept: 'application/vnd.github+json',
+      'user-agent': 'physics-atlas',
+      ...(process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
+    },
   });
   if (res.status === 404) throw new Error(`GitHub has no user @${login}`);
   if (res.status === 403 || res.status === 429)
-    throw new Error(`GitHub refused to look up @${login} (${res.status}) — most likely its limit of 60 lookups an hour without a token; try again later`);
+    throw new Error(`GitHub refused to look up @${login} (${res.status}) — most likely its limit of 60 lookups an hour without a token; try again later, or set GITHUB_TOKEN`);
   if (!res.ok) throw new Error(`GitHub could not look up @${login} (${res.status})`);
   const u = await res.json();
   return { id: u.id, login: u.login };
@@ -64,7 +70,7 @@ async function account(login) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const file = process.argv[2];
   if (!file) {
-    console.error('usage: node scripts/seed-map.mjs scripts/maps-seed/<name>.json > seed.sql');
+    console.error('usage: node scripts/seed-map.mjs scripts/maps-seed/<name>.json [seed.sql]');
     process.exit(2);
   }
   const seed = JSON.parse(readFileSync(file, 'utf8'));
@@ -81,6 +87,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   }
   const accounts = {};
   for (const login of [seed.owner, ...Object.keys(seed.members ?? {})]) accounts[login] = await account(login);
-  process.stdout.write(seedSql(seed, accounts));
+  // Written only once every account is found, so a failed run never leaves an empty file to execute.
+  if (process.argv[3]) writeFileSync(process.argv[3], seedSql(seed, accounts), "utf8");
+  else process.stdout.write(seedSql(seed, accounts));
   console.error(`"${seed.title}": ${seed.refs.length} atlas concepts, owner @${accounts[seed.owner].login}, ${Object.keys(seed.members ?? {}).length} members. Open it at ?mode=map&map=${seed.id}`);
 }

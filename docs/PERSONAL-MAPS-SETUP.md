@@ -77,12 +77,15 @@ A map can be made before its owner first signs in, from a seed file in `scripts/
 (the owner, the members and their roles, the atlas concepts it uses):
 
 ```bash
-node scripts/seed-map.mjs scripts/maps-seed/newtonian-mechanics.json > seed.sql
+node scripts/seed-map.mjs scripts/maps-seed/newtonian-mechanics.json seed.sql
 npx wrangler d1 execute physics-atlas-maps --remote --file seed.sql
 ```
 
 The script asks GitHub's public API for each username's account id (the database keys people by
-it). Running the SQL again changes nothing once the map exists. The map is then at
+it). Without a token GitHub allows 60 lookups an hour per connection; if the script says GitHub
+refused a lookup, wait an hour or set `GITHUB_TOKEN` to any personal access token (no scopes
+needed). It writes `seed.sql` only when every account was found — check it said so before running
+the second command. Running the SQL again changes nothing once the map exists. The map is then at
 `?mode=map&map=<its id>`, and under **My maps** for each member once they sign in. Delete
 `seed.sql` afterwards; it isn't needed again.
 

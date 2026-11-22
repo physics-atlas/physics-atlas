@@ -20,6 +20,8 @@ import type { Me } from './community/api';
 import { readMap } from './maps/api';
 import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
+import { anchorLabel, canComment, newSince, parseAnchor } from './maps/comments';
+import { useComments } from './maps/useComments';
 import type { ResolvedMap } from './maps/map';
 import { mapHref, pageHref } from './lib/pageLinks';
 import './App.css';
@@ -31,6 +33,7 @@ const PrivacyView = lazy(() => import('./components/PrivacyView'));
 const GuideView = lazy(() => import('./components/GuideView'));
 const MapsView = lazy(() => import('./components/MapsView'));
 const MapPanel = lazy(() => import('./components/MapPanel'));
+const CommentsPanel = lazy(() => import('./components/CommentsPanel'));
 
 type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'guide' | 'map' | 'maps';
 type PrivacyLang = 'en' | 'de';
@@ -155,6 +158,33 @@ export default function App() {
   const onMapSaved = useCallback((saved: SavedMap) => setMapLoad({ id: saved.map.id, state: 'ready', saved }), []);
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const personal: ResolvedMap | null = useMemo(() => (savedMap ? resolveMap(savedMap.map, concepts) : null), [savedMap]);
+  // Its comments (Phase 3): for members who aren't only viewers. One panel under the bar at a time.
+  const commenting = Boolean(savedMap && me?.user && canComment(savedMap.role));
+  const mapComments = useComments(commenting && savedMap ? savedMap.map.id : null, me?.user?.login ?? null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const toggleComments = () => {
+    if (commentsOpen) mapComments.markRead();
+    else setMapPanelOpen(false);
+    setCommentsOpen(!commentsOpen);
+  };
+  const [commentNews, setCommentNews] = useState('');
+  const { arrived } = mapComments;
+  useEffect(() => {
+    if (!arrived.tick || !personal) return;
+    const [c] = arrived.comments;
+    setCommentNews(
+      arrived.comments.length === 1
+        ? `New ${c.threadId ? 'reply' : 'comment'} from ${c.author ? `@${c.author}` : 'a former member'} about ${anchorLabel(parseAnchor(c.anchor), personal)}.`
+        : `${arrived.comments.length} new comments on this map.`,
+    );
+  }, [arrived, personal]);
+  const commentCounts = useMemo(() => {
+    const list = mapComments.comments ?? [];
+    return {
+      open: list.filter((c) => !c.threadId && !c.resolvedAt).length,
+      fresh: me?.user ? newSince(list, mapComments.seen, me.user.login).length : 0,
+    };
+  }, [mapComments.comments, mapComments.seen, me]);
   const personalPages = useMemo(() => (personal ? mapPageSource(personal.map.pages ?? {}) : null), [personal]);
   // A personal map's search finds its own concepts and the atlas concepts it uses.
   const personalEntries = useMemo(
@@ -364,6 +394,7 @@ export default function App() {
   }, []);
   const leaveMap = useCallback(() => {
     setMapPanelOpen(false);
+    setCommentsOpen(false);
     setMode('maps');
   }, []);
 
@@ -520,10 +551,23 @@ export default function App() {
               className="draft-button map-bar-panel"
               aria-expanded={mapPanelOpen}
               aria-controls="map-panel"
-              onClick={() => setMapPanelOpen((o) => !o)}
+              onClick={() => {
+                if (!mapPanelOpen && commentsOpen) toggleComments();
+                setMapPanelOpen(!mapPanelOpen);
+              }}
             >
               {savedMap.role === 'owner' || savedMap.role === 'editor' ? 'Edit map and members' : 'Contents and members'}
             </button>
+          )}
+          {commenting && (
+            <button type="button" className="draft-button map-bar-comments" aria-expanded={commentsOpen} aria-controls="comments-panel" onClick={toggleComments}>
+              Comments ({commentCounts.open} open{commentCounts.fresh ? `, ${commentCounts.fresh} new` : ''})
+            </button>
+          )}
+          {commenting && (
+            <p className="visually-hidden" role="status">
+              {commentNews}
+            </p>
           )}
           <a className="map-bar-back" href="/">
             Back to the atlas
@@ -540,6 +584,24 @@ export default function App() {
         <div id="map-panel">
           <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
             <MapPanel saved={savedMap} login={me.user.login} onSaved={onMapSaved} onLeft={leaveMap} onShow={showOnPersonalMap} />
+          </Suspense>
+        </div>
+      )}
+      {mode === 'map' && savedMap && personal && personalPages && mapPlace && me?.user && commenting && commentsOpen && (
+        <div id="comments-panel">
+          <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
+            <CommentsPanel
+              resolved={personal}
+              comments={mapComments.comments}
+              error={mapComments.error}
+              seen={mapComments.seen}
+              login={me.user.login}
+              role={savedMap.role}
+              onChange={mapComments.replace}
+              current={(mapPlace.view === 'pages' ? mapPlace.page.concept : selectedId) ?? null}
+              pages={personalPages}
+              onShow={showOnPersonalMap}
+            />
           </Suspense>
         </div>
       )}

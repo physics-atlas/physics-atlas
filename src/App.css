@@ -3666,7 +3666,8 @@ a.mode-tab {
   margin-left: auto;
 }
 
-.map-bar-panel + .map-bar-back {
+.map-bar-panel + .map-bar-back,
+.map-bar-comments + .visually-hidden + .map-bar-back {
   margin-left: 0;
 }
 
@@ -3751,6 +3752,86 @@ a.mode-tab {
 .map-panel-problems {
   margin: 0 0 8px;
   padding-left: 20px;
+}
+
+/* A saved map's comment threads (Phase 3): the form, then the threads. */
+.comments-threads {
+  flex: 2 1 360px;
+}
+
+.comments-form,
+.comments-reply {
+  display: grid;
+  gap: 6px;
+}
+
+.comments-form .draft-button-primary {
+  justify-self: start;
+}
+
+.comments-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.comments-list,
+.comments-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.comments-thread {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Resolved reads as words in the heading; the dashed edge only repeats it. */
+.comments-thread-resolved {
+  border-left-style: dashed;
+}
+
+.comments-about {
+  margin: 0;
+  font-size: 15px;
+}
+
+.comments-state,
+.comments-meta {
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.comments-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.comments-new {
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+
+.comments-entry .rich-text p {
+  margin: 2px 0;
+}
+
+.map-bar-panel + .map-bar-comments {
+  margin-left: 0;
 }
 
 .maps-list {

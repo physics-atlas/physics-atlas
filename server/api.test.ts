@@ -431,7 +431,7 @@ function mapsDb(): D1Database & { raw: SqliteDb } {
       bind: (...v: unknown[]) => statement(sql, v),
       first: async <T,>() => (raw.prepare(sql).get(...args()) ?? null) as T | null,
       all: async <T,>() => ({ results: raw.prepare(sql).all(...args()) as T[] }),
-      run: async () => raw.prepare(sql).run(...args()),
+      run: async () => ({ meta: { changes: Number((raw.prepare(sql).run(...args()) as { changes: number | bigint }).changes) } }),
       exec: () => raw.prepare(sql).run(...args()),
     };
   };
@@ -540,6 +540,43 @@ describe.skipIf(!sqlite)('saved personal maps (Decision 50, Phase 2)', () => {
     expect((await req('Bob', 'DELETE', `/api/maps/${id}/members/bob`)).status).toBe(204);
     expect((await req('Bob', 'GET', `/api/maps/${id}`)).status).toBe(404);
     expect((await (await req('ada', 'DELETE', `/api/maps/${id}/members/cleo`)).json()).members).toEqual([{ login: 'ada', role: 'owner' }]);
+  });
+
+  it('hold comment threads on what the map has, for everyone but viewers (Phase 3)', async () => {
+    const { req, id } = await setUp();
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'bob', role: 'commenter' });
+    await req('ada', 'POST', `/api/maps/${id}/members`, { login: 'cleo', role: 'viewer' });
+    await req('ada', 'POST', `/api/maps/${id}/save`, { base: 0, changes: [ref('velocity_7r85'), ref('four_velocity')] });
+    const comments = `/api/maps/${id}/comments`;
+    const started = await (await req('Bob', 'POST', comments, { anchor: 'node:velocity_7r85', body: 'Sample question?' })).json();
+    expect(started.comments).toMatchObject([{ threadId: null, anchor: 'node:velocity_7r85', author: 'Bob', body: 'Sample question?', resolvedAt: null }]);
+    const thread = started.comments[0].id as string;
+    // Not on the map, not an anchor, no words, a viewer: refused.
+    expect((await req('Bob', 'POST', comments, { anchor: 'node:force_q27c', body: 'Sample.' })).status).toBe(422);
+    expect((await req('Bob', 'POST', comments, { anchor: 'somewhere', body: 'Sample.' })).status).toBe(422);
+    expect((await req('Bob', 'POST', comments, { anchor: 'map', body: '  ' })).status).toBe(422);
+    expect((await req('cleo', 'GET', comments)).status).toBe(403);
+    expect((await req('cleo', 'POST', comments, { anchor: 'map', body: 'Sample.' })).status).toBe(403);
+    expect((await req(null, 'GET', comments)).status).toBe(401);
+
+    await req('ada', 'POST', `${comments}/${thread}/resolve`, { resolved: true });
+    let list = (await (await req('Bob', 'GET', comments)).json()).comments;
+    expect(list[0]).toMatchObject({ resolvedBy: 'ada' });
+    // A reply takes the thread's anchor and reopens it.
+    list = (await (await req('Bob', 'POST', comments, { thread, anchor: 'map', body: 'Sample reply.' })).json()).comments;
+    expect(list).toMatchObject([{ id: thread, resolvedAt: null }, { threadId: thread, anchor: 'node:velocity_7r85', body: 'Sample reply.' }]);
+
+    // Bob may delete his reply, not his thread once ada replied; ada (owner) may delete the thread, replies with it.
+    await req('ada', 'POST', comments, { thread, body: 'Sample answer.' });
+    list = (await (await req('Bob', 'GET', comments)).json()).comments;
+    expect((await req('Bob', 'DELETE', `${comments}/${list[2].id}`)).status).toBe(403);
+    expect((await req('Bob', 'DELETE', `${comments}/${list[1].id}`)).status).toBe(200);
+    expect((await req('Bob', 'DELETE', `${comments}/${thread}`)).status).toBe(409);
+    expect((await (await req('ada', 'DELETE', `${comments}/${thread}`)).json()).comments).toEqual([]);
+    expect((await req('ada', 'POST', `${comments}/${thread}/resolve`, { resolved: false })).status).toBe(404);
+
+    const relation = await req('ada', 'POST', comments, { anchor: 'page:four_velocity:2', body: 'Sample.' });
+    expect((await relation.json()).comments[0].anchor).toBe('page:four_velocity:2');
   });
 });
 

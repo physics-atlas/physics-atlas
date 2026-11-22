@@ -6,6 +6,25 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-81: personal maps Phase 3 — comment threads; "Leave shared map"
+
+**Status:** ✅ Implemented <!-- status-line: feature-81 -->
+**Planned:** 2026-11-22 — requested: the member panel's "Leave" button reads as "Leave shared map", and its confirmation says you leave the group and need a new invitation to rejoin; then start Phase 3
+**Implemented:** 2026-11-22
+
+### Implemented
+- `server/maps.ts`: `/api/maps/<id>/comments` — list, start a thread about the map, a concept, a relation or a page depth (only what the map has), reply (reopens a resolved thread), resolve / reopen, delete (author, or the owner; a thread others replied to stays for its author); not for viewers
+- `src/maps/comments.ts` (anchors, threads, "new since"), `src/maps/useComments.ts` (loads, checks every 30 s while visible, last visit in browser storage)
+- `CommentsPanel`: the map bar's **Comments (n open, m new)**; start a thread, reply, resolve, reopen, delete, filter (open / resolved / all, only about the chosen concept), "Show on the map"; new comments marked **New** and announced in a live region
+- `MapPanel`: **Leave shared map**, with a confirmation that says rejoining takes a new invitation; the roles note
+- Privacy notice (EN/DE): the last-read time in browser storage; viewers don't see comments
+- `scripts/seed-map.mjs`: says when GitHub's hourly limit, not a missing account, stops it; `GITHUB_TOKEN`; writes the SQL file itself, only on success
+- Tests: the comments API against the real schema; anchors and threads; smoke: a thread, a new one, a reply and resolve, all by keyboard
+
+### Review
+Not run — direct session.
+
+
 ## feature-80: personal maps Phase 2, part 1 — saved maps, members, atlas concepts; the first course map
 
 **Status:** ✅ Implemented <!-- status-line: feature-80 -->

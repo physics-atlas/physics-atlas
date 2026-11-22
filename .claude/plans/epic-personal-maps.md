@@ -1,6 +1,6 @@
 # Epic: personal maps (course maps first)
 
-**Status:** Phases 0 and 1 done; Phase 2 part 1 done — 2026-11-21. Next: Phase 2 part 2 (the editor saving into a map).
+**Status:** Phases 0 and 1 done; Phase 2 part 1 done — 2026-11-21; Phase 3 (comments) done — 2026-11-22. Next: Phase 2 part 2 (the editor saving into a map), Phase 4 (sharing).
 
 ## Context
 
@@ -146,10 +146,17 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
   relations into the map instead of a pull request; a page edited on its page, as on the atlas (Decision 49).
 - **Exit:** the educator, Sophie and mhardtke can build one map together; history recorded.
 
-### Phase 3 — Comments *(the pilot's asynchronous work)*
-- Threads on a concept, a relation, a page depth, or the whole map; reply; resolve; reopen.
-- "New since your last visit" markers, and a list of open threads per map.
-- Editors and commenters see them; link viewers don't.
+### Phase 3 — Comments *(the pilot's asynchronous work)* — ✅ done 2026-11-22
+- ✅ Threads on a concept, a relation, a page depth, or the whole map; reply (a reply reopens a resolved
+  thread); resolve; reopen; delete your own comment (a thread others replied to stays — resolve it; the
+  owner may delete any). API in `server/maps.ts` (`/comments`), the anchors in `src/maps/comments.ts`;
+  the existing `comments` table, no migration. Limits: 4000 characters, 2000 comments per map.
+- ✅ "New since your last visit" markers (in words: **New**), kept in the browser only — when the person
+  last closed the comments or left the map; the map bar's **Comments (n open, m new)**; the panel lists
+  threads, open / resolved / all, or only those about the chosen concept.
+- ✅ Owners, editors and commenters see them; viewers (members) and link viewers don't.
+- ✅ New comments are checked for every 30 s while the map is open and the tab visible; someone else's
+  are announced in a polite live region ("New reply from @… about …").
 - **Exit:** a thread can be started, answered and resolved by keyboard; a screen reader hears
   new replies.
 

@@ -17,7 +17,7 @@ When you open the site, nothing about you is stored by us. To deliver the pages,
 
 **Fonts.** The site's fonts are served from our own site; no third party is contacted when you read it.
 
-**In your browser.** The site remembers some choices on your own device (browser storage): colour theme, palette, reduce motion, the map's arrangement, the legend, the depth you read pages at, the pages' sidebar view, the concepts you've ticked as learned, and drafts of proposals you're writing (with their pictures). These never leave your device unless you submit a proposal. You can delete them at any time through your browser's settings.
+**In your browser.** The site remembers some choices on your own device (browser storage): colour theme, palette, reduce motion, the map's arrangement, the legend, the depth you read pages at, the pages' sidebar view, the concepts you've ticked as learned, when you last read each personal map's comments (to mark what's new), and drafts of proposals you're writing (with their pictures). These never leave your device unless you submit a proposal. You can delete them at any time through your browser's settings.
 
 We use **no analytics, no advertising and no tracking**.
 
@@ -53,7 +53,7 @@ Personal maps are maps a person builds themselves and shares with others they ch
 
 **Who sees what:**
 
-- The **members** of a map see its content, each other's usernames, its comments and its history.
+- The **members** of a map see its content, each other's usernames and its history; all of them except viewers also see its comments.
 - **Anyone with a map's share link** sees its content only — not its members, comments or history — and needs no account. The owner can turn a link off at any time.
 - Personal maps are not listed or published anywhere else.
 

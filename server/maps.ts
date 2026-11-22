@@ -1,8 +1,10 @@
 import { concepts } from '../src/data/loadConcepts';
 import { applyChanges, changeProblem, itemKey, mapFromItems } from '../src/maps/items';
 import type { MapChange, MapItemKind } from '../src/maps/items';
-import { mapProblems } from '../src/maps/map';
+import { mapProblems, resolveMap } from '../src/maps/map';
 import { canEdit } from '../src/maps/api';
+import { COMMENT_LIMITS, anchorInMap, anchorKey, canComment, parseAnchor } from '../src/maps/comments';
+import type { MapComment } from '../src/maps/comments';
 import type { MapMember, MapRole, MapSummary, SavedMap } from '../src/maps/api';
 import { randomToken } from './crypto';
 import type { D1Database } from './d1';
@@ -20,6 +22,10 @@ import type { SessionUser } from './session';
 //   POST   /api/maps/<id>/save               { base, changes, title?, description? } → the map as now saved
 //   POST   /api/maps/<id>/members            { login, role } — the owner adds or changes someone
 //   DELETE /api/maps/<id>/members/<login>    the owner removes someone; anyone may leave
+//   GET    /api/maps/<id>/comments                  { comments } — not for viewers
+//   POST   /api/maps/<id>/comments                  { anchor, body } a new thread, { thread, body } a reply → { comments }
+//   POST   /api/maps/<id>/comments/<thread>/resolve { resolved } → { comments }
+//   DELETE /api/maps/<id>/comments/<comment>        its author, or the owner → { comments }
 
 const ROLE_ORDER: MapRole[] = ['owner', 'editor', 'commenter', 'viewer'];
 const GRANTABLE = new Set<MapRole>(['editor', 'commenter', 'viewer']);
@@ -71,7 +77,19 @@ async function readMap(db: D1Database, mapId: string, role: MapRole): Promise<Sa
   };
 }
 
-const sameOrigin = (request: Request, url: URL) => {
+/** Every comment on a map, oldest first; an author who deleted their account reads as null. */
+async function commentsOf(db: D1Database, mapId: string): Promise<MapComment[]> {
+  return (
+    await db
+      .prepare(
+        'SELECT c.id AS id, c.thread_id AS threadId, c.anchor AS anchor, a.github_login AS author, c.body AS body, c.created_at AS createdAt, c.edited_at AS editedAt, c.resolved_at AS resolvedAt, r.github_login AS resolvedBy FROM comments c LEFT JOIN users a ON a.id = c.author_id LEFT JOIN users r ON r.id = c.resolved_by WHERE c.map_id = ? ORDER BY c.created_at, c.rowid',
+      )
+      .bind(mapId)
+      .all<MapComment>()
+  ).results;
+}
+
+const sameOrigin =(request: Request, url: URL) => {
   const origin = request.headers.get('origin');
   return !origin || origin === url.origin;
 };
@@ -232,6 +250,72 @@ export async function handleMaps(request: Request, url: URL, { db, user, mayCrea
       if (role !== 'owner' && target.id !== me) return json({ error: 'Only the owner removes members.' }, 403);
       await db.prepare('DELETE FROM map_members WHERE map_id = ? AND user_id = ?').bind(mapId, target.id).run();
       return target.id === me ? new Response(null, { status: 204 }) : json(await readMap(db, mapId, role));
+    }
+  }
+
+  // /api/maps/<id>/comments (Phase 3)
+  if (sub === 'comments') {
+    if (!canComment(role)) return json({ error: 'Viewers don’t see this map’s comments.' }, 403);
+    const list = async () => json({ comments: await commentsOf(db, mapId) });
+    if (parts.length === 2 && method === 'GET') return list();
+
+    if (parts.length === 2 && method === 'POST') {
+      const body = (await request.json().catch(() => null)) as { anchor?: unknown; body?: unknown; thread?: unknown } | null;
+      const words = text(body?.body, COMMENT_LIMITS.body);
+      if (!words) return json({ error: `A comment needs some words, at most ${COMMENT_LIMITS.body} characters.` }, 422);
+      const count = await db.prepare('SELECT COUNT(*) AS n FROM comments WHERE map_id = ?').bind(mapId).first<{ n: number }>();
+      if ((count?.n ?? 0) >= COMMENT_LIMITS.perMap) return json({ error: `A map holds at most ${COMMENT_LIMITS.perMap} comments for now.` }, 413);
+      let anchor: string;
+      let thread: string | null = null;
+      if (body?.thread !== undefined) {
+        const first = await db
+          .prepare('SELECT id, anchor FROM comments WHERE id = ? AND map_id = ? AND thread_id IS NULL')
+          .bind(String(body.thread), mapId)
+          .first<{ id: string; anchor: string }>();
+        if (!first) return json({ error: 'That thread is no longer there.' }, 404);
+        anchor = first.anchor;
+        thread = first.id;
+      } else {
+        const parsed = typeof body?.anchor === 'string' ? parseAnchor(body.anchor) : null;
+        if (!parsed) return json({ error: 'A comment is about the map, one of its concepts or relations, or a page depth.' }, 422);
+        const saved = await readMap(db, mapId, role);
+        if (!saved) return NOT_FOUND();
+        if (!anchorInMap(parsed, resolveMap(saved.map, concepts))) return json({ error: 'That isn’t on the map (any more).' }, 422);
+        anchor = anchorKey(parsed);
+      }
+      await db.batch([
+        db
+          .prepare('INSERT INTO comments (id, map_id, thread_id, anchor, author_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+          .bind(randomToken(12), mapId, thread, anchor, me, words, stamp),
+        // A reply reopens a resolved thread: the conversation goes on.
+        ...(thread ? [db.prepare('UPDATE comments SET resolved_at = NULL, resolved_by = NULL WHERE id = ?').bind(thread)] : []),
+      ]);
+      return list();
+    }
+
+    if (parts.length === 4 && parts[3] === 'resolve' && method === 'POST') {
+      const body = (await request.json().catch(() => null)) as { resolved?: unknown } | null;
+      if (typeof body?.resolved !== 'boolean') return json({ error: 'Resolve or reopen?' }, 400);
+      const r = await db
+        .prepare('UPDATE comments SET resolved_at = ?, resolved_by = ? WHERE id = ? AND map_id = ? AND thread_id IS NULL')
+        .bind(body.resolved ? stamp : null, body.resolved ? me : null, subId, mapId)
+        .run();
+      if (!r.meta.changes) return json({ error: 'That thread is no longer there.' }, 404);
+      return list();
+    }
+
+    if (parts.length === 3 && method === 'DELETE') {
+      const target = await db
+        .prepare('SELECT c.author_id AS author, c.thread_id AS thread, (SELECT COUNT(*) FROM comments r WHERE r.thread_id = c.id) AS replies FROM comments c WHERE c.id = ? AND c.map_id = ?')
+        .bind(subId, mapId)
+        .first<{ author: number | null; thread: string | null; replies: number }>();
+      if (!target) return json({ error: 'That comment is no longer there.' }, 404);
+      if (role !== 'owner' && target.author !== me) return json({ error: 'Only its author, or the map’s owner, deletes a comment.' }, 403);
+      // Others' replies go with a thread: only the owner may take them.
+      if (role !== 'owner' && !target.thread && target.replies > 0)
+        return json({ error: 'Others have replied to this thread, so it stays. Resolve it instead.' }, 409);
+      await db.prepare('DELETE FROM comments WHERE id = ? AND map_id = ?').bind(subId, mapId).run();
+      return list();
     }
   }
   return json({ error: 'Not found.' }, 404);
