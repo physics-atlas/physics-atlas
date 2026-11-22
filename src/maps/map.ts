@@ -22,6 +22,46 @@ export interface PersonalMap {
   refs: string[];
   /** Its own concepts' pages, depth 1 first (Markdown + LaTeX) */
   pages?: Record<string, string[]>;
+  /** What the course sets out to reach: named sets of the map's learning goals, in order */
+  courseGoals?: CourseGoal[];
+}
+
+/**
+ * A course-level goal: only a name, and the map's learning goals (topic-level
+ * goals, its own or the atlas's) that make it up. Not a concept: it isn't on the
+ * map itself, and the atlas never has one.
+ */
+export interface CourseGoal {
+  /** Random, fixed */
+  id: string;
+  name: string;
+  /** Learning goals' concept ids, in the order the course takes them */
+  goals: string[];
+  /** Its place among the map's course goals (smallest first) */
+  position: number;
+}
+
+export const COURSE_GOAL_LIMITS = { name: 120, goals: 200, perMap: 100 };
+
+/**
+ * A learning goal someone has completed in a map, as kept in their own browser
+ * (lib/useProgress.ts) — never sent anywhere. Per map: the same atlas goal in two
+ * courses is two goals to complete.
+ */
+export const completedPrefix = (mapId: string) => `map:${mapId}:`;
+export const completedKey = (mapId: string, conceptId: string) => completedPrefix(mapId) + conceptId;
+
+/** A course goal as shown: its learning goals the map has now (in order), and the ones it lost. */
+export function courseGoalTopics(goal: CourseGoal, graph: ConceptGraph): { topics: GraphNode[]; lost: string[] } {
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const topics: GraphNode[] = [];
+  const lost: string[] = [];
+  for (const id of goal.goals) {
+    const n = byId.get(id);
+    if (n?.type === 'learning_goal') topics.push(n);
+    else lost.push(id);
+  }
+  return { topics, lost };
 }
 
 /** A map ready to show: one graph, and which of its concepts come from the atlas. */
@@ -90,6 +130,13 @@ export function mapProblems(map: PersonalMap, atlas: ConceptGraph): string[] {
       if (!own.has(end) && !refs.has(end)) out.push(`${where}: relation "${e.id}" points at "${end}", which isn't in the map`);
     if (!normalizeRelationship(e.relationship) && !(e.relationship in EDGE_SENTENCE_TEMPLATES))
       out.push(`${where}: relation "${e.id}" has an unknown relationship "${e.relationship}"`);
+  }
+  const goals = map.courseGoals ?? [];
+  if (goals.length > COURSE_GOAL_LIMITS.perMap) out.push(`${where}: more than ${COURSE_GOAL_LIMITS.perMap} course goals`);
+  for (const g of goals) {
+    if (!g.name?.trim() || g.name.length > COURSE_GOAL_LIMITS.name) out.push(`${where}: course goal "${g.id}" needs a name of at most ${COURSE_GOAL_LIMITS.name} characters`);
+    if (g.goals.length > COURSE_GOAL_LIMITS.goals) out.push(`${where}: course goal "${g.name}" has more than ${COURSE_GOAL_LIMITS.goals} learning goals`);
+    if (new Set(g.goals).size !== g.goals.length) out.push(`${where}: course goal "${g.name}" lists a learning goal twice`);
   }
   for (const id of Object.keys(map.pages ?? {})) {
     if (!own.has(id)) out.push(`${where}: a page for "${id}", which isn't one of its own concepts`);

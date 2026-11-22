@@ -1,6 +1,6 @@
 # Epic: personal maps (course maps first)
 
-**Status:** Phases 0 and 1 done; Phase 2 part 1 done — 2026-11-21; Phase 3 (comments) done — 2026-11-22. Next: Phase 2 part 2 (the editor saving into a map), Phase 4 (sharing).
+**Status:** Phases 0–3 done (Phase 2 part 2 and course goals — 2026-11-22). Next: Phase 4 (sharing with the course; students' completed goals).
 
 ## Context
 
@@ -53,8 +53,8 @@ With A, the GitHub-account question resolves as:
   concept list, cards, legend, keyboard routes, both arrangements, reduce motion, and an
   atlas page per concept with depths. Comments too: threads are lists, reachable by
   keyboard, announced, never colour alone.
-- **Students aren't tracked.** Opening a link needs no account; progress (learned) stays in
-  the browser, as on the main map.
+- **Students aren't tracked.** Opening a link needs no account; progress (completed goals) stays in
+  the browser, never on the server.
 - **The link is a secret, revocable.** "Anyone with the link" is an unguessable token in the
   address; the owner can turn it off or make a new one. Maps aren't listed or indexed.
 
@@ -142,8 +142,19 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
   owner walterpfeiffer1; sophelsa, mhardtke, onedandelion, gdaudt editors; the atlas's subgraph from
   Newtonian (Classical) Mechanics — without its relation to Newtonian gravity — to Four-velocity,
   by its relation to Velocity only (22 concepts). **By hand:** run the seed (`docs/PERSONAL-MAPS-SETUP.md`).
-- ☐ **Part 2:** the editor (the proposal form's fields and checks) saves a map's own concepts and
-  relations into the map instead of a pull request; a page edited on its page, as on the atlas (Decision 49).
+- ✅ **Part 2** (2026-11-22): the proposal editor in a map mode — **Add a concept to this map**, and **Edit** /
+  **Delete from the map** on the map's own concepts; a draft saves into the map (`proposalChanges` in
+  `src/maps/api.ts`: its concept, relations, removals of the map's own relations, page) instead of a pull
+  request; no evidence, author or pictures; drafts kept per map in the browser. The atlas's concepts and
+  relations stay as the atlas has them. A page is edited on its page (own concepts only), and **Review and
+  save** brings it to the editor. A page-only edit now counts as a change (also on the atlas).
+- ✅ **Course goals** (2026-11-22; asked for with part 2): a map's course-level goals, each only a name
+  and an ordered set of the map's learning goals (its topic-level goals, own or the atlas's) — not concepts,
+  never on the atlas. Kept as map items of kind `goal` (`migrations/0002_course_goals.sql`, **applied by
+  hand**). The map bar's **Course goals (n)** opens them in both the map and the pages: every course goal
+  with its learning goals, and every learning goal on the map with the course goals it's in; picking one
+  centres it on the map or opens its page, by the view that's open. Editors make, rename, order (move
+  up/down), fill and delete them; a concept that leaves the map leaves its course goals too.
 - **Exit:** the educator, Sophie and mhardtke can build one map together; history recorded.
 
 ### Phase 3 — Comments *(the pilot's asynchronous work)* — ✅ done 2026-11-22
@@ -162,10 +173,16 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
 
 ### Phase 4 — Sharing with the course
 - The link: viewer access without sign-in; turn it off, make a new one.
-- What students need: the course map's learning goals, a goal's path (the path panel exists;
-  here "Show path to this" comes back, Decision 48 retired it on the atlas only), learned
-  ticks in the browser.
-- **Exit:** a student opens the link on a phone and follows a goal's path.
+- ✅ **Students mark the learning goals they have completed** (done early, 2026-11-22, for every member;
+  link viewers get it with the link): a "Completed" tick on each learning goal in the course goals panel
+  and on its card in the map; counts per course goal; ✓ on the map. Kept in the browser only, per map
+  (`completedKey` in `src/maps/map.ts`, the `useProgress` store); the privacy notice says so. New UI: the atlas has no "learned" ticks in use —
+  they exist only inside the path panel, which opens only from a `?goal=<id>` link since Decision 48
+  removed "Show path to this". The browser storage under them (`useProgress`) can be reused.
+- The course goals panel (Phase 2) is what students use to find their way; nothing in the map
+  opens a path. Whether a learning goal's path should be offered in a map is a separate decision,
+  not part of this phase unless asked for.
+- **Exit:** a student opens the link on a phone, sees the course goals, and ticks the ones they've completed.
 
 ### Long term — personal maps as a premium feature
 - Sign-in beyond GitHub; organisations (a department, a research group); roles per organisation.

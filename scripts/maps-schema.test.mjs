@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 // in-memory SQLite database — D1 is SQLite. Node's built-in node:sqlite needs
 // Node 22.13 or later; on an older Node these tests are skipped.
 const sqlite = await import('node:sqlite').catch(() => null);
-const schema = readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8');
+const first = readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8');
+const second = readFileSync(new URL('../migrations/0002_course_goals.sql', import.meta.url), 'utf8');
+const schema = `${first}
+${second}`;
 
 function database() {
   const db = new sqlite.DatabaseSync(':memory:');
@@ -18,7 +21,26 @@ function database() {
   return db;
 }
 
-describe.skipIf(!sqlite)('the personal maps database (migrations/0001)', () => {
+describe.skipIf(!sqlite)('the personal maps database (migrations/0001, 0002)', () => {
+  it('takes course goals, keeping the items already there (0002)', () => {
+    const db = new sqlite.DatabaseSync(':memory:');
+    db.exec(first);
+    db.prepare('INSERT INTO users (id, github_id, github_login) VALUES (1, 1001, ?)').run('sample-owner');
+    db.prepare("INSERT INTO maps (id, title, owner_id) VALUES ('m1', 'Sample', 1)").run();
+    db.prepare("INSERT INTO map_items (map_id, kind, item_id, body, revision) VALUES ('m1', 'ref', 'velocity_7r85', '{}', 3)").run();
+    expect(() => db.prepare("INSERT INTO map_items (map_id, kind, item_id, body, revision) VALUES ('m1', 'goal', 'g1', '{}', 4)").run()).toThrow();
+    db.exec(second);
+    db.exec('PRAGMA foreign_keys = ON;');
+    db.prepare("INSERT INTO map_items (map_id, kind, item_id, body, revision) VALUES ('m1', 'goal', 'g1', '{}', 4)").run();
+    expect(db.prepare('SELECT kind, item_id, revision FROM map_items ORDER BY kind').all()).toEqual([
+      { kind: 'goal', item_id: 'g1', revision: 4 },
+      { kind: 'ref', item_id: 'velocity_7r85', revision: 3 },
+    ]);
+    expect(() => db.prepare("INSERT INTO map_items (map_id, kind, item_id, body, revision) VALUES ('m1', 'other', 'x', '{}', 4)").run()).toThrow();
+    db.prepare("DELETE FROM maps WHERE id = 'm1'").run();
+    expect(db.prepare('SELECT COUNT(*) AS n FROM map_items').get()).toEqual({ n: 0 });
+  });
+
   it('keeps only a GitHub id and username about a person', () => {
     const columns = (database().prepare('PRAGMA table_info(users)').all()).map((c) => c.name);
     expect(columns).toEqual(['id', 'github_id', 'github_login', 'created_at']);

@@ -1,18 +1,18 @@
 import type { GraphEdge, GraphNode } from '../data/types';
-import type { PersonalMap } from './map';
+import type { CourseGoal, PersonalMap } from './map';
 
-// A saved map is rows of the database's map_items (migrations/0001): one per
-// concept, relation, page or atlas reference. The server and the browser both
+// A saved map is rows of the database's map_items (migrations/0001, 0002): one per
+// concept, relation, page, atlas reference or course goal. The server and the browser both
 // turn rows into a PersonalMap and apply a save's changes the same way, here.
 
-export type MapItemKind = 'node' | 'edge' | 'page' | 'ref';
-export const MAP_ITEM_KINDS: readonly MapItemKind[] = ['node', 'edge', 'page', 'ref'];
+export type MapItemKind = 'node' | 'edge' | 'page' | 'ref' | 'goal';
+export const MAP_ITEM_KINDS: readonly MapItemKind[] = ['node', 'edge', 'page', 'ref', 'goal'];
 
 /** One change in a save: an item written whole, or removed (body null). A ref's body is {}. */
 export interface MapChange {
   kind: MapItemKind;
   id: string;
-  body: GraphNode | GraphEdge | string[] | Record<string, never> | null;
+  body: GraphNode | GraphEdge | string[] | CourseGoal | Record<string, never> | null;
 }
 
 export interface MapItem {
@@ -43,6 +43,19 @@ export function changeProblem(c: unknown): string | null {
       return Array.isArray(body) && body.every((d) => typeof d === 'string') ? null : `the page of "${id}" isn't a list of depths`;
     case 'ref':
       return typeof body === 'object' && !Array.isArray(body) ? null : `the reference "${id}" has a body`;
+    case 'goal': {
+      const g = body as Partial<CourseGoal>;
+      const ok =
+        typeof body === 'object' &&
+        !Array.isArray(body) &&
+        g.id === id &&
+        typeof g.name === 'string' &&
+        typeof g.position === 'number' &&
+        Number.isFinite(g.position) &&
+        Array.isArray(g.goals) &&
+        g.goals.every((x) => typeof x === 'string');
+      return ok ? null : `the course goal "${id}" isn't one`;
+    }
   }
   return null;
 }
@@ -56,8 +69,10 @@ export function mapFromItems(meta: { id: string; title: string; description?: st
     if (it.kind === 'node') map.nodes.push(it.body as GraphNode);
     else if (it.kind === 'edge') map.edges.push(it.body as GraphEdge);
     else if (it.kind === 'ref') map.refs.push(it.id);
+    else if (it.kind === 'goal') (map.courseGoals ??= []).push(it.body as CourseGoal);
     else map.pages![it.id] = it.body as string[];
   }
+  map.courseGoals?.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
   return map;
 }
 
@@ -68,6 +83,7 @@ export function itemsOf(map: PersonalMap): MapItem[] {
     ...map.edges.map((e) => ({ kind: 'edge' as const, id: e.id, body: e })),
     ...map.refs.map((id) => ({ kind: 'ref' as const, id, body: {} })),
     ...Object.entries(map.pages ?? {}).map(([id, depths]) => ({ kind: 'page' as const, id, body: depths })),
+    ...(map.courseGoals ?? []).map((g) => ({ kind: 'goal' as const, id: g.id, body: g })),
   ];
 }
 

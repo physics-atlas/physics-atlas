@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { MapScope } from '../lib/mapScope';
 import { afterSubmission, parseDraft, withoutDraft } from './draft';
 import type { Draft } from './draft';
 import { loadPictures, savePictures } from './pictureStore';
@@ -6,21 +7,24 @@ import { loadPictures, savePictures } from './pictureStore';
 const STORAGE_KEY = 'physics-atlas-proposal-drafts-v2';
 /** Phase 2 kept a single draft here; it's moved into the list once. */
 const OLD_KEY = 'physics-atlas-proposal-draft-v1';
+/** Inside a personal map (Decision 50), its own drafts: saved into the map, never proposed to the atlas. */
+const mapKey = (map: string) => `physics-atlas-map-drafts-v1:${map}`;
 
 interface Stored {
   drafts: Draft[];
   active: string | null;
 }
 
-function load(): Stored {
+function load(map: string | null): Stored {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(map ? mapKey(map) : STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as { drafts?: unknown[]; active?: unknown };
       const drafts = (parsed.drafts ?? []).map(parseDraft).filter((d): d is Draft => d !== null);
       const active = drafts.some((d) => d.suffix === parsed.active) ? (parsed.active as string) : (drafts[0]?.suffix ?? null);
       return { drafts, active };
     }
+    if (map) return { drafts: [], active: null };
     const old = localStorage.getItem(OLD_KEY);
     const draft = old ? parseDraft(JSON.parse(old)) : null;
     return draft ? { drafts: [draft], active: draft.suffix } : { drafts: [], active: null };
@@ -36,7 +40,16 @@ const picturesOf = (drafts: Draft[]) =>
 /** The pictures as last written to IndexedDB; null until they've been read back (nothing is written before). */
 let keptPictures: Map<string, string> | null = null;
 
-function persist(next: Stored) {
+function persist(next: Stored, map: string | null) {
+  if (map) {
+    // A map's drafts have no pictures (maps don't hold pictures yet), and leave the atlas drafts' alone.
+    try {
+      localStorage.setItem(mapKey(map), JSON.stringify(next));
+    } catch {
+      // private mode / quota — drafts just won't survive a reload
+    }
+    return;
+  }
   try {
     // The drafts without their new pictures' data: that's in IndexedDB (pictureStore.ts).
     const light = next.drafts.map((d) => ({ ...d, figures: d.figures.map(({ data: _data, ...f }) => (void _data, f)) }));
@@ -68,10 +81,12 @@ export interface DraftStore {
 
 /** The proposals being written, kept in this browser between visits (the useProgress pattern). */
 export function useDrafts(): DraftStore {
-  const [state, setState] = useState<Stored>(load);
+  const map = useContext(MapScope);
+  const [state, setState] = useState<Stored>(() => load(map));
 
   // The new pictures come back from IndexedDB a moment after the drafts.
   useEffect(() => {
+    if (map) return;
     let live = true;
     void loadPictures().then((kept) => {
       if (!live) return;
@@ -87,15 +102,15 @@ export function useDrafts(): DraftStore {
     return () => {
       live = false;
     };
-  }, []);
+  }, [map]);
 
   const change = useCallback((f: (s: Stored) => Stored) => {
     setState((s) => {
       const next = f(s);
-      persist(next);
+      persist(next, map);
       return next;
     });
-  }, []);
+  }, [map]);
 
   const setActive = useCallback((suffix: string) => change((s) => ({ ...s, active: suffix })), [change]);
   const add = useCallback((draft: Draft) => change((s) => ({ drafts: [...s.drafts, draft], active: draft.suffix })), [change]);

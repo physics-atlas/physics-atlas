@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConceptMapView from './components/ConceptMapView';
+import type { MapEditing } from './components/ConceptMapView';
 import { concepts } from './data/loadConcepts';
 import SearchBox from './components/SearchBox';
 import type { SearchEntry } from './components/SearchBox';
@@ -17,7 +18,8 @@ import { MapScope } from './lib/mapScope';
 import { mapPageSource, PageSourceContext } from './data/pageSources';
 import { fetchMe, loginHref } from './community/api';
 import type { Me } from './community/api';
-import { readMap } from './maps/api';
+import { canEdit, deleteConceptChanges, proposalChanges, readMap, saveMap } from './maps/api';
+import type { MapChange } from './maps/items';
 import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
 import { anchorLabel, canComment, newSince, parseAnchor } from './maps/comments';
@@ -34,6 +36,7 @@ const GuideView = lazy(() => import('./components/GuideView'));
 const MapsView = lazy(() => import('./components/MapsView'));
 const MapPanel = lazy(() => import('./components/MapPanel'));
 const CommentsPanel = lazy(() => import('./components/CommentsPanel'));
+const CourseGoalsPanel = lazy(() => import('./components/CourseGoalsPanel'));
 
 type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'guide' | 'map' | 'maps';
 type PrivacyLang = 'en' | 'de';
@@ -156,16 +159,17 @@ export default function App() {
   }, [wantedMap]);
   const savedMap = mapLoad && mapLoad.id === wantedMap && mapLoad.state === 'ready' ? mapLoad.saved : null;
   const onMapSaved = useCallback((saved: SavedMap) => setMapLoad({ id: saved.map.id, state: 'ready', saved }), []);
-  const [mapPanelOpen, setMapPanelOpen] = useState(false);
+  // The panel open under the map bar, one at a time: edit and members, comments, course goals.
+  const [barPanel, setBarPanel] = useState<'edit' | 'comments' | 'goals' | null>(null);
+  const mapPanelOpen = barPanel === 'edit';
   const personal: ResolvedMap | null = useMemo(() => (savedMap ? resolveMap(savedMap.map, concepts) : null), [savedMap]);
   // Its comments (Phase 3): for members who aren't only viewers. One panel under the bar at a time.
   const commenting = Boolean(savedMap && me?.user && canComment(savedMap.role));
   const mapComments = useComments(commenting && savedMap ? savedMap.map.id : null, me?.user?.login ?? null);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const toggleComments = () => {
+  const commentsOpen = barPanel === 'comments';
+  const toggleBarPanel = (panel: 'edit' | 'comments' | 'goals') => {
     if (commentsOpen) mapComments.markRead();
-    else setMapPanelOpen(false);
-    setCommentsOpen(!commentsOpen);
+    setBarPanel(barPanel === panel ? null : panel);
   };
   const [commentNews, setCommentNews] = useState('');
   const { arrived } = mapComments;
@@ -388,13 +392,58 @@ export default function App() {
     setPageFocus((t) => t + 1);
   }, []);
 
+  // Editing a map (Phase 2): its editor saves into the map; a page is written on the page, and
+  // "Review and save" brings its draft back to the editor (as on the atlas, Decision 49).
+  const mayEditMap = Boolean(savedMap && me?.user && canEdit(savedMap.role));
+  const [mapPageEdit, setMapPageEdit] = useState<string | null>(null);
+  const [mapDraftOnArrival, setMapDraftOnArrival] = useState(false);
+  const editMapPage = useCallback(
+    (id: string) => {
+      setMapDraftOnArrival(false);
+      setMapPageEdit(id);
+      openMapPage({ concept: id });
+    },
+    [openMapPage],
+  );
+  const reviewMapDraft = useCallback(() => {
+    setMapPageEdit(null);
+    setMapDraftOnArrival(true);
+    setMapPlace((p) => (p ? { ...p, view: 'map' } : p));
+  }, []);
+  const mapEditing: MapEditing | undefined = useMemo(() => {
+    if (!savedMap || !mayEditMap) return undefined;
+    const save = async (changes: MapChange[]) => {
+      const r = await saveMap(savedMap.map.id, savedMap.revision, changes);
+      if (r.ok) {
+        onMapSaved(r.value);
+        return { ok: true as const };
+      }
+      if (r.current) onMapSaved(r.current);
+      return { ok: false as const, error: r.error, problems: r.problems };
+    };
+    return {
+      own: new Set(savedMap.map.nodes.map((n) => n.id)),
+      ownEdges: new Set(savedMap.map.edges.map((e) => e.id)),
+      onSave: async (proposal) => {
+        const { changes, problems } = proposalChanges(savedMap.map, proposal);
+        if (problems.length) return { ok: false as const, error: 'This can’t be saved in a map as it is.', problems };
+        return save(changes);
+      },
+      onDelete: (id) => save(deleteConceptChanges(savedMap.map, id)),
+    };
+  }, [savedMap, mayEditMap, onMapSaved]);
+  // The editor opens once on arrival (ConceptMapView reads it when it mounts), not on every return to the map.
+  useEffect(() => {
+    if (mapDraftOnArrival && mapPlace?.view === 'map') setMapDraftOnArrival(false);
+  }, [mapDraftOnArrival, mapPlace?.view]);
+  const ownConcept = useCallback((id: string) => Boolean(mapEditing?.own.has(id)), [mapEditing]);
+
   const openSavedMap = useCallback((id: string) => {
     setMapPlace({ map: id, view: 'map', page: {} });
     setMode('map');
   }, []);
   const leaveMap = useCallback(() => {
-    setMapPanelOpen(false);
-    setCommentsOpen(false);
+    setBarPanel(null);
     setMode('maps');
   }, []);
 
@@ -545,22 +594,30 @@ export default function App() {
               </li>
             ))}
           </ul>
+          {savedMap && (
+            <button
+              type="button"
+              className="draft-button map-bar-goals"
+              aria-expanded={barPanel === 'goals'}
+              aria-controls="goals-panel"
+              onClick={() => toggleBarPanel('goals')}
+            >
+              Course goals ({personal.map.courseGoals?.length ?? 0})
+            </button>
+          )}
           {savedMap && me?.user && (
             <button
               type="button"
               className="draft-button map-bar-panel"
               aria-expanded={mapPanelOpen}
               aria-controls="map-panel"
-              onClick={() => {
-                if (!mapPanelOpen && commentsOpen) toggleComments();
-                setMapPanelOpen(!mapPanelOpen);
-              }}
+              onClick={() => toggleBarPanel('edit')}
             >
               {savedMap.role === 'owner' || savedMap.role === 'editor' ? 'Edit map and members' : 'Contents and members'}
             </button>
           )}
           {commenting && (
-            <button type="button" className="draft-button map-bar-comments" aria-expanded={commentsOpen} aria-controls="comments-panel" onClick={toggleComments}>
+            <button type="button" className="draft-button map-bar-comments" aria-expanded={commentsOpen} aria-controls="comments-panel" onClick={() => toggleBarPanel('comments')}>
               Comments ({commentCounts.open} open{commentCounts.fresh ? `, ${commentCounts.fresh} new` : ''})
             </button>
           )}
@@ -579,6 +636,21 @@ export default function App() {
             </p>
           )}
         </nav>
+      )}
+      {mode === 'map' && savedMap && personal && mapPlace && barPanel === 'goals' && (
+        <div id="goals-panel">
+          <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
+            <CourseGoalsPanel
+              resolved={personal}
+              saved={savedMap}
+              editable={Boolean(me?.user) && canEdit(savedMap.role)}
+              view={mapPlace.view}
+              onPick={(id) => (mapPlace.view === 'pages' ? openMapPage({ concept: id }) : showOnPersonalMap(id))}
+              onSaved={onMapSaved}
+              progress={progress}
+            />
+          </Suspense>
+        </div>
       )}
       {mode === 'map' && savedMap && me?.user && mapPanelOpen && (
         <div id="map-panel">
@@ -708,6 +780,9 @@ export default function App() {
                 onOpenPage={(id) => openMapPage({ concept: id })}
                 onOpenRelationPage={(id) => openMapPage({ relation: id })}
                 fromAtlas={personal.refIds}
+                mapEditing={mapEditing}
+                startEditing={Boolean(mapEditing) && mapDraftOnArrival}
+                onEditPage={mapEditing ? editMapPage : undefined}
               />
             ) : (
               <PageSourceContext.Provider value={personalPages}>
@@ -720,6 +795,9 @@ export default function App() {
                     onShowOnMap={showOnPersonalMap}
                     focusTick={pageFocus}
                     fromAtlas={personal.refIds}
+                    editOnArrival={mapEditing ? mapPageEdit : null}
+                    onReviewDraft={mapEditing ? reviewMapDraft : undefined}
+                    canEditPage={ownConcept}
                   />
                 </Suspense>
               </PageSourceContext.Provider>

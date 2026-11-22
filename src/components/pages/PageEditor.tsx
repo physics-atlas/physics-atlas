@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ConceptGraph, GraphNode } from '../../data/types';
-import { loadPage, PAGE_DEPTHS } from '../../data/pageSources';
+import { PageSourceContext } from '../../data/pageSources';
+import { MapScope } from '../../lib/mapScope';
 import { draftProblems, newEditDraft } from '../../community/draft';
 import { useDrafts } from '../../community/useDraft';
 import { pageHref, relationHref } from '../../lib/pageLinks';
@@ -33,9 +34,12 @@ export default function PageEditor({
 }) {
   const uid = useId();
   const drafts = useDrafts();
+  // Inside a personal map, its own pages, and its drafts: saved into the map (Decision 50).
+  const source = useContext(PageSourceContext);
+  const map = useContext(MapScope);
   const draft = drafts.drafts.find((d) => d.editOf === node.id);
   const [loading, setLoading] = useState(false);
-  const existing = PAGE_DEPTHS[node.id] ?? 0;
+  const existing = source.depths(node.id);
   // Started once, even where effects run twice (React's development mode).
   const started = useRef(false);
   const loadingFor = useRef<string | null>(null);
@@ -61,11 +65,11 @@ export default function PageEditor({
       return;
     }
     setLoading(true);
-    void loadPage(node.id).then((sources) => {
+    void source.load(node.id).then((sources) => {
       drafts.update(draft.suffix, (d) => ({ ...d, page: sources, pageBefore: sources.length }));
       setLoading(false);
     });
-  }, [draft, drafts, existing, loading, node.id]);
+  }, [draft, drafts, existing, loading, node.id, source]);
 
   const problems = useMemo(() => {
     if (!draft?.page) return [];
@@ -89,7 +93,7 @@ export default function PageEditor({
   const setPage = (next: string[]) => drafts.update(draft.suffix, (d) => ({ ...d, page: next }));
   // A link in the preview opens its page in a new tab, so the editor stays where it is.
   const previewLink = (to: LinkTarget, children: ReactNode) => {
-    const href = 'url' in to ? to.url : 'concept' in to ? pageHref(to.concept) : relationHref(to.relation);
+    const href = 'url' in to ? to.url : 'concept' in to ? pageHref(to.concept, map) : relationHref(to.relation, map);
     return (
       <a href={href} target="_blank" rel="noopener noreferrer">
         {children ?? ('url' in to ? to.url : 'concept' in to ? to.concept : to.relation)}
@@ -104,7 +108,7 @@ export default function PageEditor({
       <p className="draft-hint" id={`${uid}-hint`}>
         Markdown and LaTeX, at as many depths as you like — depth 1 first, each deeper one going further; readers choose
         how deep to read. The definition, equation and connections are on the page already, from the card. Your text is
-        saved in this browser as a proposed edit of {node.label}.
+        saved in this browser as {map ? 'an edit' : 'a proposed edit'} of {node.label}.
       </p>
       <details className="draft-page-help">
         <summary>Writing a page, in short</summary>
@@ -159,7 +163,7 @@ export default function PageEditor({
       </button>
       {problems.length > 0 && (
         <div className="draft-warning" role="status">
-          <p>Before it can be proposed:</p>
+          <p>Before it can be {map ? 'saved' : 'proposed'}:</p>
           <ul>
             {problems.map((p, k) => (
               <li key={k}>{p.message}</li>
@@ -169,15 +173,24 @@ export default function PageEditor({
       )}
       <div className="draft-row-actions atlas-page-editor-actions">
         <button type="button" className="draft-button draft-button-primary" onClick={onReview}>
-          Review and submit
+          {map ? 'Review and save' : 'Review and submit'}
         </button>
         <button type="button" className="draft-button" onClick={onClose}>
           Close the editor
         </button>
       </div>
       <p className="draft-hint">
-        Closing keeps your text in this browser; <strong>Review and submit</strong> opens it in the Community view, where
-        it's proposed as a pull request with the rest of the edit.
+        {map ? (
+          <>
+            Closing keeps your text in this browser; <strong>Review and save</strong> opens it in the map's editor, where
+            it's saved into the map with the rest of the edit.
+          </>
+        ) : (
+          <>
+            Closing keeps your text in this browser; <strong>Review and submit</strong> opens it in the Community view, where
+            it's proposed as a pull request with the rest of the edit.
+          </>
+        )}
       </p>
     </section>
   );

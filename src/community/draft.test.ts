@@ -422,8 +422,9 @@ describe('editing a confirmed concept', () => {
   it('needs a change before it can be exported', () => {
     const d = newEditDraft(vlasov(), fixed, at);
     expect(draftProblems(d, alone(d)).map((p) => p.message)).toEqual([
-      'Change something — a field, a new relation, or a relation to remove.',
+      'Change something — a field, a new relation, a relation to remove, or its page.',
     ]);
+    expect(draftProblems({ ...d, page: ['Sample.'], pageBefore: 0 }, alone(d))).toEqual([]);
   });
   it('becomes an edit proposal: the changed concept under its own id', () => {
     const d = edit();

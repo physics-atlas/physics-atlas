@@ -3,6 +3,7 @@ import { NODE_TYPE_LABELS } from '../data/types';
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import {
   NEW_CONCEPT,
+  conceptId,
   draftProposal,
   draftUploads,
   draftRef,
@@ -20,6 +21,7 @@ import { FixtureStore } from '../community/store';
 import { GitHubStore, fetchMe, loginHref, logout, signInProblemOnLoad, signInProblemText, submitProposal } from '../community/api';
 import type { Me, SignInProblem, SubmitResult } from '../community/api';
 import type { Proposal } from '../community/types';
+import type { MapSave } from './DraftEditor';
 import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
 import { buildConceptIndex, conceptPathFor, neighborsOf, splitFluff } from '../graph/concepts';
@@ -39,6 +41,7 @@ import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
 import { isPlainClick, pageHref } from '../lib/pageLinks';
 import { MapScope } from '../lib/mapScope';
+import { completedPrefix } from '../maps/map';
 import { useFold } from '../lib/useFold';
 
 // The proposal card brings KaTeX — load both only when a proposal is opened.
@@ -102,6 +105,18 @@ interface Submitted {
   published: boolean;
 }
 
+/** What saving into a personal map takes (Decision 50, Phase 2) — editors only. */
+export interface MapEditing {
+  /** The map's own concepts: edited and deleted here; the atlas's stay as the atlas has them */
+  own: Set<string>;
+  /** The map's own relations: the only ones an edit may remove */
+  ownEdges: Set<string>;
+  /** Saves a draft, as a proposal would carry it, into the map */
+  onSave: (proposal: Proposal) => ReturnType<MapSave['onSave']>;
+  /** Takes one of the map's own concepts out, with its relations and page */
+  onDelete: (id: string) => ReturnType<MapSave['onSave']>;
+}
+
 interface ConceptMapViewProps {
   graph: ConceptGraph;
   progress: Progress;
@@ -133,6 +148,8 @@ interface ConceptMapViewProps {
   onEditPage?: (id: string) => void;
   /** In a personal map: the concepts it uses from the atlas — marked on their card and in the list (Decision 50) */
   fromAtlas?: Set<string>;
+  /** In a personal map its editors may change: the editor saves into the map */
+  mapEditing?: MapEditing;
 }
 
 export default function ConceptMapView({
@@ -156,6 +173,7 @@ export default function ConceptMapView({
   startEditing = false,
   onEditPage,
   fromAtlas,
+  mapEditing,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -236,7 +254,10 @@ export default function ConceptMapView({
   // Inside a personal map, a card's page link goes to that map's pages (lib/mapScope.ts).
   const mapScope = useContext(MapScope);
   const [editorOpen, setEditorOpen] = useState(startEditing);
-  const drafting = community && editorOpen && drafts.drafts.length > 0;
+  const editing = community || Boolean(mapEditing);
+  const drafting = editing && editorOpen && drafts.drafts.length > 0;
+  // What a save into the map did, said once the editor may have closed.
+  const [mapNote, setMapNote] = useState('');
   const draft = drafting ? (drafts.drafts.find((d) => d.suffix === drafts.active) ?? drafts.drafts[0]) : null;
   const [near, setNear] = useState(NO_NEAR);
   const [draftStatus, setDraftStatus] = useState('');
@@ -425,6 +446,30 @@ export default function ConceptMapView({
     return result;
   };
 
+  // Inside a personal map: saved into the map at once — no pull request, no review.
+  const saveDraftToMap = async () => {
+    if (!draft || !mapEditing) return { ok: false as const, error: 'There is nothing to save.' };
+    const result = await mapEditing.onSave(draftProposal(draft, draftCtx));
+    if (result.ok) {
+      const id = conceptId(draft);
+      const title = proposalTitle(draft);
+      drafts.submitted(draft.suffix);
+      setNear(NO_NEAR);
+      setDraftStatus('');
+      setMapNote(`Saved “${title}” to the map.`);
+      if (drafts.drafts.length <= 1) setEditorOpen(false);
+      onFocus(id);
+    }
+    return result;
+  };
+  const deleteFromMap = async (node: GraphNode) => {
+    if (!mapEditing) return;
+    if (!window.confirm(`Delete “${node.label}” from this map, with its relations and page? This can’t be undone here.`)) return;
+    const result = await mapEditing.onDelete(node.id);
+    setMapNote(result.ok ? `Deleted “${node.label}” from the map.` : `Not deleted: ${result.error}`);
+    if (result.ok) onSelect(null);
+  };
+
   const selected = selectedId ? index.byId.get(selectedId) : undefined;
   // A relation's card: opened by clicking its line, or "Details" in a concept's
   // relation list. Picking a concept closes it, and the other way round.
@@ -477,15 +522,17 @@ export default function ConceptMapView({
     [selectedEdge],
   );
   const fitIds = edgeEnds ?? path?.highlight ?? neighbors;
-  // Concept progress shares the topic store; the prefix keeps the id spaces apart.
+  // Concept progress shares the topic store; the prefix keeps the id spaces apart. In a personal
+  // map it's the learning goals completed there (marked ✓ on the map), kept per map.
+  const progressPrefix = mapScope ? completedPrefix(mapScope) : PROGRESS_PREFIX;
   const doneIds = useMemo(
     () =>
       new Set(
         [...progress.done]
-          .filter((k) => k.startsWith(PROGRESS_PREFIX))
-          .map((k) => k.slice(PROGRESS_PREFIX.length)),
+          .filter((k) => k.startsWith(progressPrefix))
+          .map((k) => k.slice(progressPrefix.length)),
       ),
-    [progress.done],
+    [progress.done, progressPrefix],
   );
   const goal = path && goalId ? index.byId.get(goalId) : undefined;
 
@@ -568,12 +615,14 @@ export default function ConceptMapView({
               onDismissProblem={() => setSignInProblem(null)}
             />
           )}
-          {community && !drafting && (
+          {editing && !drafting && (
             <button ref={editorButtonRef} type="button" className="concept-propose" onClick={openEditor}>
               <span aria-hidden>＋ </span>
               {drafts.drafts.some(hasContent)
                 ? `Continue your drafts (${drafts.drafts.length})`
-                : 'Propose a concept'}
+                : mapEditing
+                  ? 'Add a concept to this map'
+                  : 'Propose a concept'}
             </button>
           )}
           <details className="concept-index">
@@ -679,7 +728,7 @@ export default function ConceptMapView({
                         <input
                           type="checkbox"
                           checked={doneIds.has(id)}
-                          onChange={() => progress.toggle(PROGRESS_PREFIX + id)}
+                          onChange={() => progress.toggle(progressPrefix + id)}
                           aria-label={`Learned: ${n.label}`}
                         />
                         Learned
@@ -733,6 +782,7 @@ export default function ConceptMapView({
             <Suspense fallback={<p className="concept-empty">Loading the editor…</p>}>
               <DraftEditor
                 onEditPage={onEditPage}
+                mapSave={mapEditing ? { removable: mapEditing.ownEdges, onSave: saveDraftToMap } : undefined}
                 draft={draft}
                 update={(change) => drafts.update(draft.suffix, change)}
                 ctx={draftCtx}
@@ -766,7 +816,7 @@ export default function ConceptMapView({
                 }
               />
             </Suspense>
-            <button className="map-card-close" onClick={closeEditor} aria-label="Close the proposal editor (the draft is kept)">
+            <button className="map-card-close" onClick={closeEditor} aria-label={`Close the ${mapEditing ? 'editor' : 'proposal editor'} (the draft is kept)`}>
               ×
             </button>
           </aside>
@@ -802,6 +852,13 @@ export default function ConceptMapView({
             <>
             <ConceptCard node={selected} index={index} onPick={onFocus}>
               {fromAtlas?.has(selected.id) && <FromAtlas id={selected.id} />}
+              {mapScope && selected.type === 'learning_goal' && (
+                <label className="learned-toggle goal-completed-toggle">
+                  <input type="checkbox" checked={doneIds.has(selected.id)} onChange={() => progress.toggle(progressPrefix + selected.id)} />
+                  I’ve completed this learning goal
+                  <span className="concept-via"> — kept in this browser only</span>
+                </label>
+              )}
               {selected.figures && selected.figures.length > 0 && (
                 <Suspense fallback={<p className="concept-empty">Loading the pictures…</p>}>
                   <Figures figures={selected.figures} />
@@ -904,6 +961,16 @@ export default function ConceptMapView({
                   <button type="button" className="draft-button map-card-edit" onClick={() => proposeEdit(selected)}>
                     <span aria-hidden>✎ </span>Propose an edit
                   </button>
+                )}
+                {mapEditing?.own.has(selected.id) && (
+                  <>
+                    <button type="button" className="draft-button map-card-edit" onClick={() => proposeEdit(selected)}>
+                      <span aria-hidden>✎ </span>Edit
+                    </button>
+                    <button type="button" className="draft-button" onClick={() => void deleteFromMap(selected)}>
+                      Delete from the map
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -1022,6 +1089,11 @@ export default function ConceptMapView({
             </>
           }
         />
+        {mapEditing && (
+          <p className="visually-hidden" role="status">
+            {mapNote}
+          </p>
+        )}
         <p className="visually-hidden" role="status" aria-live="polite">
           {fun
             ? 'Fun mode on: concepts without relations say so in a speech bubble after the map, and fluff concepts appear.'

@@ -1,6 +1,8 @@
 import type { MapComment } from './comments';
 import type { MapChange } from './items';
 import type { PersonalMap } from './map';
+import type { GraphNode } from '../data/types';
+import type { Proposal } from '../community/types';
 
 // The browser side of the maps backend (server/maps.ts). Every call says what
 // happened in words a person can act on; where there's no backend (the dev
@@ -80,13 +82,62 @@ export const resolveThread = (id: string, thread: string, resolved: boolean) =>
 export const deleteComment = (id: string, comment: string) =>
   call<{ comments: MapComment[] }>(`${commentsPath(id)}/${encodeURIComponent(comment)}`, { method: 'DELETE' });
 
+/** What else goes when a concept leaves a map: its relations there, and its place in the course goals. */
+function leavingChanges(map: PersonalMap, id: string): MapChange[] {
+  return [
+    ...map.edges.filter((e) => e.source === id || e.target === id).map((e) => ({ kind: 'edge' as const, id: e.id, body: null })),
+    ...(map.courseGoals ?? [])
+      .filter((g) => g.goals.includes(id))
+      .map((g) => ({ kind: 'goal' as const, id: g.id, body: { ...g, goals: g.goals.filter((x) => x !== id) } })),
+  ];
+}
+
 /**
- * The changes that take an atlas concept out of a map: the reference, and the
- * map's own relations to it (they'd point at nothing).
+ * The changes that take an atlas concept out of a map: the reference, the map's
+ * own relations to it (they'd point at nothing), and its place in course goals.
  */
 export function removeRefChanges(map: PersonalMap, id: string): MapChange[] {
+  return [{ kind: 'ref', id, body: null }, ...leavingChanges(map, id)];
+}
+
+/** The changes that delete one of the map's own concepts: it, its page, and what removeRefChanges takes too. */
+export function deleteConceptChanges(map: PersonalMap, id: string): MapChange[] {
   return [
-    { kind: 'ref', id, body: null },
-    ...map.edges.filter((e) => e.source === id || e.target === id).map((e) => ({ kind: 'edge' as const, id: e.id, body: null })),
+    { kind: 'node', id, body: null },
+    ...(map.pages?.[id] ? [{ kind: 'page' as const, id, body: null }] : []),
+    ...leavingChanges(map, id),
   ];
+}
+
+/**
+ * A draft from the editor, as a proposal carries it, turned into a save into the
+ * map (Phase 2): its concept, relations, removals and page. What a map can't hold
+ * yet — new kinds of relation, pictures, removing the atlas's own relations — is
+ * named in `problems` instead.
+ */
+export function proposalChanges(map: PersonalMap, p: Proposal): { changes: MapChange[]; problems: string[] } {
+  const problems: string[] = [];
+  const own = new Set(map.edges.map((e) => e.id));
+  const strip = (n: GraphNode): GraphNode => {
+    const { figures: _f, ...rest } = n;
+    void _f;
+    return rest as GraphNode;
+  };
+  const changes: MapChange[] = [
+    ...[...p.nodes, ...(p.edits ?? [])].map((n) => ({ kind: 'node' as const, id: n.id, body: strip(n) })),
+    ...p.edges.map((e) => ({ kind: 'edge' as const, id: e.id, body: e })),
+  ];
+  for (const id of p.removals ?? []) {
+    if (own.has(id)) changes.push({ kind: 'edge', id, body: null });
+    else problems.push('A relation from the atlas can’t be removed in a map: it comes with its two concepts.');
+  }
+  for (const page of p.pages ?? []) {
+    const depths = page.depths.filter((d) => d.trim());
+    changes.push({ kind: 'page', id: page.concept, body: depths.length ? depths : null });
+  }
+  if (p.relationTypes?.length)
+    problems.push(`A map can’t add new kinds of relation yet (${p.relationTypes.map((t) => `“${t.type}”`).join(', ')}): choose one from the list.`);
+  if ([...p.nodes, ...(p.edits ?? [])].some((n) => n.figures?.length)) problems.push('A map can’t hold pictures yet.');
+  // A page the map never had, written empty, is no change.
+  return { changes: changes.filter((c) => !(c.kind === 'page' && c.body === null && !map.pages?.[c.id])), problems: [...new Set(problems)] };
 }

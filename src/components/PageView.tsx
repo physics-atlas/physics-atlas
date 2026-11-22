@@ -55,6 +55,8 @@ interface PageViewProps {
   editOnArrival?: string | null;
   /** Opens the concept's edit draft in the Community view, to review and submit; without it, pages aren't editable here */
   onReviewDraft?: () => void;
+  /** Which concepts' pages may be edited (a personal map: only its own); all, when left out */
+  canEditPage?: (id: string) => boolean;
   /** In a personal map: the concepts it uses from the atlas (Decision 50) */
   fromAtlas?: Set<string>;
 }
@@ -67,6 +69,7 @@ export default function PageView({
   focusTick,
   editOnArrival = null,
   onReviewDraft,
+  canEditPage,
   fromAtlas,
 }: PageViewProps) {
   const index = useMemo(() => buildConceptIndex(graph), [graph]);
@@ -191,9 +194,9 @@ export default function PageView({
               store(DEPTH_KEY, String(d));
             }}
             fromAtlas={fromAtlas?.has(node.id) ?? false}
-            onEditPage={onReviewDraft ? () => setEditing(node.id) : undefined}
+            onEditPage={onReviewDraft && (canEditPage?.(node.id) ?? true) ? () => setEditing(node.id) : undefined}
             pageEditor={
-              editing === node.id && onReviewDraft ? (
+              editing === node.id && onReviewDraft && (canEditPage?.(node.id) ?? true) ? (
                 <PageEditor
                   node={node}
                   graph={graph}

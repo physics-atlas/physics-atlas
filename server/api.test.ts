@@ -412,7 +412,7 @@ describe('personal maps (Decision 50)', () => {
 
 /**
  * The maps database: D1 is SQLite, so Node's built-in SQLite stands in for it
- * with the real schema (migrations/0001). Needs Node 22.13 or later.
+ * with the real schema (migrations/0001, 0002). Needs Node 22.13 or later.
  */
 interface SqliteDb {
   exec(sql: string): void;
@@ -424,7 +424,7 @@ const sqlite = (await nodeModule('node:sqlite')) as { DatabaseSync: new (path: s
 const { readFileSync } = (await nodeModule('node:fs')) as { readFileSync: (path: URL, encoding: 'utf8') => string };
 function mapsDb(): D1Database & { raw: SqliteDb } {
   const raw = new sqlite!.DatabaseSync(':memory:');
-  raw.exec(readFileSync(new URL('../migrations/0001_personal_maps.sql', import.meta.url), 'utf8'));
+  for (const f of ['0001_personal_maps.sql', '0002_course_goals.sql']) raw.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const statement = (sql: string, values: unknown[] = []): D1Statement & { exec: () => unknown } => {
     const args = () => values.map((v) => (v === undefined ? null : v));
     return {
@@ -540,6 +540,23 @@ describe.skipIf(!sqlite)('saved personal maps (Decision 50, Phase 2)', () => {
     expect((await req('Bob', 'DELETE', `/api/maps/${id}/members/bob`)).status).toBe(204);
     expect((await req('Bob', 'GET', `/api/maps/${id}`)).status).toBe(404);
     expect((await (await req('ada', 'DELETE', `/api/maps/${id}/members/cleo`)).json()).members).toEqual([{ login: 'ada', role: 'owner' }]);
+  });
+
+  it('save course goals and the map’s own concepts, pages and relations (Phase 2)', async () => {
+    const { req, id } = await setUp();
+    const goal = { id: 'sample_goal_ab12', type: 'learning_goal', label: 'Sample goal', attrs: { description: 'Sample.' } };
+    const edge = { id: 'sample_goal_ab12_e1', source: 'sample_goal_ab12', target: 'velocity_7r85', relationship: 'is a learning goal of' };
+    const course = { id: 'goal_x1', name: 'Sample week 1', goals: ['sample_goal_ab12'], position: 1 };
+    const saved = await (
+      await req('ada', 'POST', `/api/maps/${id}/save`, {
+        base: 0,
+        changes: [ref('velocity_7r85'), { kind: 'node', id: goal.id, body: goal }, { kind: 'edge', id: edge.id, body: edge }, { kind: 'page', id: goal.id, body: ['Sample page.'] }, { kind: 'goal', id: course.id, body: course }],
+      })
+    ).json();
+    expect(saved.map).toMatchObject({ nodes: [goal], edges: [edge], pages: { [goal.id]: ['Sample page.'] }, courseGoals: [course] });
+    // A course goal without a name doesn't fit; a page of an atlas concept neither.
+    expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 1, changes: [{ kind: 'goal', id: 'goal_x2', body: { ...course, id: 'goal_x2', name: '' } }] })).status).toBe(422);
+    expect((await req('ada', 'POST', `/api/maps/${id}/save`, { base: 1, changes: [{ kind: 'page', id: 'velocity_7r85', body: ['Sample.'] }] })).status).toBe(422);
   });
 
   it('hold comment threads on what the map has, for everyone but viewers (Phase 3)', async () => {

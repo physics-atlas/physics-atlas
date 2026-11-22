@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { concepts } from '../data/loadConcepts';
 import { applyChanges, changeProblem, itemsOf, mapFromItems } from './items';
-import { removeRefChanges } from './api';
-import { mapProblems, resolveMap } from './map';
+import { deleteConceptChanges, proposalChanges, removeRefChanges } from './api';
+import { courseGoalTopics, mapProblems, resolveMap } from './map';
 import type { PersonalMap } from './map';
 
 const map = (extra: Partial<PersonalMap> = {}): PersonalMap => ({
@@ -97,5 +97,61 @@ describe('a saved map, as items (Phase 2)', () => {
     expect(changeProblem({ kind: 'node', id: 'a b', body: {} })).toMatch(/item id/);
     expect(changeProblem({ kind: 'node', id: 'a', body: { id: 'b' } })).toMatch(/id differs/);
     expect(changeProblem({ kind: 'page', id: 'a', body: 'text' })).toMatch(/list of depths/);
+  });
+});
+
+describe('course goals and the editor saving into a map (Phase 2)', () => {
+  const goals = [
+    { id: 'goal_b', name: 'Sample week 2', goals: ['goal'], position: 2 },
+    { id: 'goal_a', name: 'Sample week 1', goals: ['goal', 'gone'], position: 1 },
+  ];
+
+  it('keeps course goals as items, in order, and shows only learning goals the map has', () => {
+    const m = map({ courseGoals: goals });
+    const back = mapFromItems(m, itemsOf(m));
+    expect(back.courseGoals?.map((g) => g.id)).toEqual(['goal_a', 'goal_b']);
+    expect(courseGoalTopics(back.courseGoals![0], resolveMap(back, concepts).graph)).toEqual({
+      topics: [expect.objectContaining({ id: 'goal' })],
+      lost: ['gone'],
+    });
+    expect(mapProblems(m, concepts)).toEqual([]);
+    expect(mapProblems(map({ courseGoals: [{ id: 'g', name: ' ', goals: ['goal', 'goal'], position: 1 }] }), concepts)).toHaveLength(2);
+    expect(changeProblem({ kind: 'goal', id: 'g', body: { id: 'g', name: 'Sample', goals: [], position: 1 } })).toBeNull();
+    expect(changeProblem({ kind: 'goal', id: 'g', body: { id: 'g', name: 'Sample', goals: 'goal', position: 1 } })).toMatch(/isn't one/);
+  });
+
+  it('takes a concept out of the course goals with it, whether the atlas’s or its own', () => {
+    const m = map({ courseGoals: goals, pages: { goal: ['Sample.'] } });
+    const deleted = applyChanges(m, deleteConceptChanges(m, 'goal'));
+    expect(deleted.nodes).toEqual([]);
+    expect(deleted.edges).toEqual([]);
+    expect(deleted.pages).toEqual({});
+    expect(deleted.courseGoals?.map((g) => g.goals)).toEqual([['gone'], []]);
+    const withRef = map({ courseGoals: [{ id: 'g', name: 'Sample', goals: ['tangent_vector'], position: 1 }] });
+    expect(applyChanges(withRef, removeRefChanges(withRef, 'tangent_vector')).courseGoals?.[0].goals).toEqual([]);
+  });
+
+  it('turns a draft into a save: its concept, relations, own removals and page — and says what a map can’t hold', () => {
+    const base = { id: 'p', title: 'Sample', state: 'open' as const, author: { name: 'Sample' }, createdAt: '', evidence: [] };
+    const node = { id: 'sample_x_ab12', type: 'learning_goal' as const, label: 'Sample', attrs: { description: 'Sample.' } };
+    const edge = { id: 'sample_x_ab12_e1', source: 'sample_x_ab12', target: 'tangent_vector', relationship: 'is a learning goal of' };
+    const fine = proposalChanges(map(), { ...base, nodes: [node], edges: [edge], removals: ['m_e1'], pages: [{ concept: 'sample_x_ab12', depths: ['Sample.', ' '] }] });
+    expect(fine.problems).toEqual([]);
+    expect(fine.changes).toEqual([
+      { kind: 'node', id: 'sample_x_ab12', body: node },
+      { kind: 'edge', id: 'sample_x_ab12_e1', body: edge },
+      { kind: 'edge', id: 'm_e1', body: null },
+      { kind: 'page', id: 'sample_x_ab12', body: ['Sample.'] },
+    ]);
+    expect(mapProblems(applyChanges(map(), fine.changes), concepts)).toEqual([]);
+    const atlasEdge = concepts.edges.find((e) => e.source === 'tangent_vector' || e.target === 'tangent_vector')!.id;
+    const refused = proposalChanges(map(), {
+      ...base,
+      nodes: [{ ...node, figures: [{ file: 'x/y.png', alt: '', credit: '' }] }],
+      edges: [],
+      removals: [atlasEdge],
+      relationTypes: [{ type: 'is a sample of', category: 'other' }],
+    });
+    expect(refused.problems).toHaveLength(3);
   });
 });

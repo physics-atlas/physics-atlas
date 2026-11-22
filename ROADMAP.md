@@ -6,6 +6,29 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-82: personal maps Phase 2, part 2 — editing a map's own content; course goals
+
+**Status:** ✅ Implemented <!-- status-line: feature-82 -->
+**Planned:** 2026-11-22 — requested: conclude Phase 2 part 2; course goals — a tab in both the map and its pages listing the map's learning goals; editors add several course-level goals, each a name and a set of topic-level (learning) goals; picking one goes to it on the map or its page; later, students mark goals completed, in their browser
+**Implemented:** 2026-11-22
+
+### Implemented
+- The proposal editor in a map mode (`DraftEditor` `mapSave`, `ConceptMapView` `mapEditing`): **Add a concept to this map**; **Edit** and **Delete from the map** on the map's own concepts; **Save to the map** instead of a pull request (no evidence, author, pictures or files); only the map's own relations can be removed; drafts kept per map (`useDrafts` scoped by `MapScope`)
+- `src/maps/api.ts`: `proposalChanges` (a draft → a save, saying what a map can't hold yet), `deleteConceptChanges`; a concept leaving the map leaves its course goals
+- Pages: **Edit this page** on the map's own concepts; the page editor reads the map's pages; **Review and save** opens the draft in the map's editor. A page-only edit now counts as a change (also on the atlas)
+- Course goals: `CourseGoal` in `src/maps/map.ts`, items of kind `goal`, `migrations/0002_course_goals.sql`; `CourseGoalsPanel` from the map bar's **Course goals (n)**, in both views: make, rename, move up/down, delete, add and take out learning goals; every learning goal on the map, with its course goals; picking one centres it on the map or opens its page
+- Tests: items, mapProblems, proposalChanges, deletion; the API saving own concepts, pages, relations and course goals; migration 0002 keeps rows; smoke: course goals on the map and its pages, a concept added by the editor, a page written and saved
+
+### By hand
+- `npx wrangler d1 migrations apply physics-atlas-maps --remote` (applies 0002) after deploying
+
+### Also done (2026-11-22)
+- Students mark the learning goals they've completed: a "Completed" tick in the course goals panel and on a learning goal's card, counts per course goal, ✓ on the map; per map, in the browser only (`completedKey`, the `useProgress` store); privacy notice (EN/DE) reworded. Link viewers get it with Phase 4's share link
+
+### Review
+Not run — direct session.
+
+
 ## feature-81: personal maps Phase 3 — comment threads; "Leave shared map"
 
 **Status:** ✅ Implemented <!-- status-line: feature-81 -->

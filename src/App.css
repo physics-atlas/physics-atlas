@@ -3662,12 +3662,14 @@ a.mode-tab {
   font-style: italic;
 }
 
-.map-bar-panel {
+/* The bar's buttons sit together on the right: the first one pushes them there. */
+.map-bar-goals {
   margin-left: auto;
 }
 
-.map-bar-panel + .map-bar-back,
-.map-bar-comments + .visually-hidden + .map-bar-back {
+.map-bar-goals ~ .map-bar-panel,
+.map-bar-goals ~ .map-bar-comments,
+.map-bar-goals ~ .map-bar-back {
   margin-left: 0;
 }
 
@@ -3830,8 +3832,68 @@ a.mode-tab {
   margin: 2px 0;
 }
 
-.map-bar-panel + .map-bar-comments {
-  margin-left: 0;
+/* A map's course goals: the sets, then every learning goal it has. */
+.goals-main {
+  flex: 2 1 360px;
+}
+
+.goals-list,
+.goals-topics {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.goals-list {
+  padding-left: 22px;
+}
+
+.goals-topics {
+  padding-left: 20px;
+  gap: 2px;
+}
+
+.goals-topics li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.goals-name {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.goals-edit {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.goals-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.goals-done input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.goal-completed-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 0 10px;
+}
+
+.goals-all li {
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .maps-list {

@@ -57,7 +57,7 @@ sophie_scicom/
 │   │                 # the editor's draft (draft.ts: export without positions, useDraft.ts)
 │   ├── components/   # GraphView (Cytoscape wrapper), ConceptMapView, ConceptCard,
 │   │                 # DraftEditor, ProposalCard, Legend, PageView (the atlas pages, lazy)
-│   ├── maps/         # personal maps (Decision 50): map.ts (format, resolveMap with the atlas, checks), items.ts (saved rows ↔ map), api.ts, comments.ts + useComments.ts (threads, Phase 3)
+│   ├── maps/         # personal maps (Decision 50): map.ts (format, resolveMap with the atlas, checks), items.ts (saved rows ↔ map), api.ts (calls; a draft → a save, proposalChanges), comments.ts + useComments.ts (threads, Phase 3); course goals in map.ts
 │   ├── App.tsx       # mode switch (concepts — the front page | community | page | feedback | privacy | guide | map | maps), reads ?mode= (and ?concept=, ?map=) from the URL
 │   └── App.css       # all styles; tokens as CSS variables in :root
 ├── server/           # community backend (Cloudflare): sign-in with GitHub, proposals ↔ pull requests; maps.ts — personal maps in D1

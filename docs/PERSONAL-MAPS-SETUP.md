@@ -55,8 +55,10 @@ database exists: a deploy with an unknown id fails.
 npx wrangler d1 migrations apply physics-atlas-maps --remote
 ```
 
-This runs `migrations/0001_personal_maps.sql`. Later migrations are new numbered files in
-`migrations/`; the same command applies the ones not applied yet. `npm test` checks the
+This runs `migrations/0001_personal_maps.sql` and `0002_course_goals.sql` (course goals: a map's items
+may also be a course goal). Later migrations are new numbered files in `migrations/`; the same
+command applies the ones not applied yet — **run it again after deploying a version that adds one**,
+before anyone saves a course goal. `npm test` checks the
 schema against SQLite (`scripts/maps-schema.test.mjs`).
 
 ## 4. Who may create maps

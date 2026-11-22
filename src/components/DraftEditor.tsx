@@ -90,6 +90,17 @@ interface DraftEditorProps {
   } | null;
   /** Opens a concept's atlas page with its page editor (Decision 49) */
   onEditPage?: (conceptId: string) => void;
+  /**
+   * Inside a personal map (Decision 50, Phase 2): the draft is saved into the map
+   * instead of proposed to the atlas — no review, no evidence, no files.
+   */
+  mapSave?: MapSave;
+}
+
+export interface MapSave {
+  /** Relations the map holds itself: the only ones an edit may remove (the atlas's come with its concepts) */
+  removable: Set<string>;
+  onSave: () => Promise<{ ok: true } | { ok: false; error: string; problems?: string[] }>;
 }
 
 const RELATION_TYPES = Object.keys(EDGE_SENTENCE_TEMPLATES) as EdgeType[];
@@ -161,6 +172,7 @@ export default function DraftEditor({
   status,
   submission,
   onEditPage,
+  mapSave,
 }: DraftEditorProps) {
   const uid = useId();
   const fieldId = (f: DraftField | string) => `${uid}-${f}`;
@@ -237,6 +249,18 @@ export default function DraftEditor({
       setNote(`Not submitted: ${result.error}`);
     }
   };
+  const [saving, setSaving] = useState(false);
+  const saveToMap = async () => {
+    if (!mapSave) return;
+    setSaving(true);
+    setSendError(null);
+    const result = await mapSave.onSave();
+    setSaving(false);
+    if (!result.ok) {
+      setSendError({ error: result.error, problems: result.problems });
+      setNote(`Not saved: ${result.error}`);
+    }
+  };
   const dependents = ctx.drafts.filter((d) =>
     d.relations.some((r) => r.source === `@draft:${draft.suffix}` || r.target === `@draft:${draft.suffix}`),
   ).length;
@@ -272,9 +296,11 @@ export default function DraftEditor({
 
   return (
     <div className="draft-editor">
-      <p className="proposal-status proposal-status-draft">Draft · not submitted · saved in this browser</p>
+      <p className="proposal-status proposal-status-draft">
+        {mapSave ? 'Draft · not on the map yet · kept in this browser' : 'Draft · not submitted · saved in this browser'}
+      </p>
       <nav className="draft-switcher" aria-label="Your drafts">
-        <p className="draft-label">Your drafts — each one is its own proposal</p>
+        <p className="draft-label">{mapSave ? 'Your drafts for this map — each one is saved on its own' : 'Your drafts — each one is its own proposal'}</p>
         <ul className="draft-switcher-list">
           {ctx.drafts.map((d) => {
             const current = d.suffix === draft.suffix;
@@ -301,9 +327,15 @@ export default function DraftEditor({
         </ul>
       </nav>
       <h2 className="map-card-title" id={CONCEPT_CARD_TITLE_ID}>
-        {original ? `Propose an edit: ${original.label}` : 'Propose a concept'}
+        {mapSave ? (original ? `Edit: ${original.label}` : 'New concept for this map') : original ? `Propose an edit: ${original.label}` : 'Propose a concept'}
       </h2>
-      {original ? (
+      {mapSave ? (
+        <p className="draft-intro">
+          {original
+            ? 'The form is filled in from the concept. Change what should change, add relations, or remove ones that are wrong; the concept on the map previews your edit. Saving changes it for everyone on the map.'
+            : 'Drag the dashed concept on the map to see where it fits — the concepts nearest it are offered as connections, and clicking any concept on the map connects it. Everything can also be done with this form alone. Where you put it is only a sketch. Saving adds it to the map for everyone on it.'}
+        </p>
+      ) : original ? (
         <p className="draft-intro">
           The form is filled in from the concept. Change what should change, add relations, or propose removing ones
           that are wrong; the concept on the map previews your edit. It's one proposal, reviewed on its own.
@@ -441,12 +473,16 @@ export default function DraftEditor({
             <ul className="draft-existing-list">
               {existing.map((e) => {
                 const removing = draft.removals.includes(e.id);
+                const fixed = mapSave && !mapSave.removable.has(e.id);
                 return (
                   <li key={e.id} className={removing ? 'draft-removing' : undefined}>
                     <span className="draft-sentence">
                       <RelationSentence edge={e} byId={byId} selfId={own} onPick={onShow} />
                     </span>
-                    {removing && <span className="concept-via"> — removal proposed</span>}{' '}
+                    {removing && <span className="concept-via"> — {mapSave ? 'to be removed' : 'removal proposed'}</span>}{' '}
+                    {fixed ? (
+                      <span className="concept-via">· from the atlas</span>
+                    ) : (
                     <button
                       type="button"
                       className="draft-button"
@@ -458,8 +494,9 @@ export default function DraftEditor({
                         }))
                       }
                     >
-                      Propose removing
+                      {mapSave ? 'Remove' : 'Propose removing'}
                     </button>
+                    )}
                   </li>
                 );
               })}
@@ -825,20 +862,82 @@ export default function DraftEditor({
         />
       </section>
 
-      <section className="rel-block draft-section" aria-labelledby={fieldId('h-figures')}>
-        <h3 className="block-heading" id={fieldId('h-figures')}>
-          Pictures <span className="draft-optional">optional</span>
-        </h3>
-        <FigureFields draft={draft} update={update} fieldId={fieldId} />
-      </section>
+      {!mapSave && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-figures')}>
+          <h3 className="block-heading" id={fieldId('h-figures')}>
+            Pictures <span className="draft-optional">optional</span>
+          </h3>
+          <FigureFields draft={draft} update={update} fieldId={fieldId} />
+        </section>
+      )}
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-page')}>
         <h3 className="block-heading" id={fieldId('h-page')}>
           Its page <span className="draft-optional">optional</span>
         </h3>
-        <PageNote draft={draft} onEditPage={onEditPage} />
+        <PageNote draft={draft} onEditPage={onEditPage} inMap={Boolean(mapSave)} />
       </section>
 
+      {mapSave ? (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-save')}>
+          <h3 className="block-heading" id={fieldId('h-save')}>
+            Check and save
+          </h3>
+          {problems.length > 0 ? (
+            <>
+              <p>Before it can be saved:</p>
+              <ul className="draft-problems">
+                {problems.map((p, i) => (
+                  <li key={i}>
+                    {p.field === 'other' ? (
+                      p.message
+                    ) : (
+                      <button type="button" className="draft-link" onClick={() => focusField(p.field, p.index)}>
+                        {p.message}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : deps.length > 0 ? (
+            <p>
+              Save {deps.map((x) => `“${x.title}”`).join(', ')} first: this one is connected to {deps.length === 1 ? 'it' : 'them'}.
+            </p>
+          ) : (
+            <>
+              <p>Ready. Saving puts it on the map for everyone on it; the map’s history records who saved it.</p>
+              <div className="draft-row-actions">
+                <button
+                  type="button"
+                  className="draft-button draft-button-primary"
+                  onClick={() => void saveToMap()}
+                  disabled={saving}
+                  aria-disabled={saving}
+                >
+                  {saving ? 'Saving…' : original ? 'Save the changes' : 'Save to the map'}
+                </button>
+              </div>
+            </>
+          )}
+          {sendError && (
+            <div className="draft-warning" role="alert">
+              <p>
+                <span aria-hidden>⚠ </span>
+                {sendError.error}
+              </p>
+              {sendError.problems && (
+                <ul className="draft-problems">
+                  {sendError.problems.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      ) : (
+      <>
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-evidence')}>
         <h3 className="block-heading" id={fieldId('h-evidence')}>
           Source/Evidence <span className="rel-count">{draft.evidence.length}</span>{' '}
@@ -1089,6 +1188,8 @@ export default function DraftEditor({
           </>
         )}
       </section>
+      </>
+      )}
 
       <div className="map-card-cta draft-footer">
         <button type="button" className="draft-button" onClick={onClose}>
@@ -1284,13 +1385,13 @@ function VariableRows({
  * concept has one from the start, built from its card. This says where to
  * write it, and what of it this draft already carries (drafts from before).
  */
-function PageNote({ draft, onEditPage }: { draft: Draft; onEditPage?: (conceptId: string) => void }) {
+function PageNote({ draft, onEditPage, inMap = false }: { draft: Draft; onEditPage?: (conceptId: string) => void; inMap?: boolean }) {
   const written = (draft.page ?? []).filter((x) => x.trim()).length;
   return (
     <div className="draft-page-note">
       {written > 0 && (
         <p>
-          This draft carries {written === 1 ? 'one depth' : `${written} depths`} of the concept's page, proposed with it.
+          This draft carries {written === 1 ? 'one depth' : `${written} depths`} of the concept's page, {inMap ? 'saved' : 'proposed'} with it.
         </p>
       )}
       {draft.editOf ? (
@@ -1305,7 +1406,7 @@ function PageNote({ draft, onEditPage }: { draft: Draft; onEditPage?: (conceptId
         </p>
       ) : (
         <p>
-          Every concept gets a page in the atlas pages, built from this card. Once the concept is on the map, more of its
+          Every concept gets a page{inMap ? " in the map's pages" : ' in the atlas pages'}, built from this card. Once the concept is on the map, more of its
           page can be written there, with <strong>Edit this page</strong>.
         </p>
       )}

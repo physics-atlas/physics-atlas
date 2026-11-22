@@ -739,8 +739,9 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
     out.push({ field: 'importance', message: `Importance is a whole number from 1 to ${IMPORTANCE_MAX}.` });
   if (!d.editOf && d.relations.length === 0)
     out.push({ field: 'relations', message: 'Connect the concept to at least one concept on the map.' });
-  if (d.editOf && !editChanges(d, ctx.confirmed).length && !d.relations.length && !d.removals.length)
-    out.push({ field: 'other', message: 'Change something — a field, a new relation, or a relation to remove.' });
+  // A page written on the page (Decision 49) is a change of its own.
+  if (d.editOf && !editChanges(d, ctx.confirmed).length && !d.relations.length && !d.removals.length && !draftPage(d))
+    out.push({ field: 'other', message: 'Change something — a field, a new relation, a relation to remove, or its page.' });
   const known = new Set([
     NEW_CONCEPT,
     ...ctx.confirmed.nodes.map((n) => n.id),
