@@ -2,10 +2,12 @@
   "//": "A personal map made before the app could make it (Phase 2): node scripts/seed-map.mjs scripts/maps-seed/newtonian-mechanics.json. Its concepts are the atlas's subgraph from Newtonian (Classical) Mechanics — without its relation to Newtonian gravity — to Four-velocity, by its relation to Velocity only (as of 2026-11-21). The owner can rename it in the app.",
   "id": "j72XBjI9PGIG8jtT",
   "title": "Newtonian mechanics",
-  "owner": "gdaudt",
+  "owner": "walterpfeiffer1",
   "members": {
+    "sophelsa": "editor",
     "mhardtke": "editor",
-    "onedandelion": "editor"
+    "onedandelion": "editor",
+    "gdaudt": "editor"
   },
   "refs": [
     "1d_motion_graph_game_z32b",

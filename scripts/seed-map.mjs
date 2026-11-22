@@ -53,7 +53,10 @@ async function account(login) {
   const res = await fetch(`https://api.github.com/users/${encodeURIComponent(login)}`, {
     headers: { accept: 'application/vnd.github+json', 'user-agent': 'physics-atlas' },
   });
-  if (!res.ok) throw new Error(`GitHub has no user @${login} (${res.status})`);
+  if (res.status === 404) throw new Error(`GitHub has no user @${login}`);
+  if (res.status === 403 || res.status === 429)
+    throw new Error(`GitHub refused to look up @${login} (${res.status}) — most likely its limit of 60 lookups an hour without a token; try again later`);
+  if (!res.ok) throw new Error(`GitHub could not look up @${login} (${res.status})`);
   const u = await res.json();
   return { id: u.id, login: u.login };
 }
