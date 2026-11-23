@@ -1,0 +1,47 @@
+{
+  "id": "orbital_angular_momentum_operator_xufb",
+  "label": "Orbital Angular Momentum Operator",
+  "type": "formalism",
+  "importance": 7,
+  "generality": 5,
+  "attrs": {
+    "description": "When acting on a quantum state the operator returns the angular momentum measured (one of the eigenstates of the superpostition)",
+    "formulas": [
+      {
+        "name": "the position representation of the orbital angular momentum operator L, is the cross of the position operator with the momentum operator",
+        "equation": "\\hat{\\mathbf{L}} = \\hat{\\mathbf{r}} \\times \\hat{\\mathbf{p}}",
+        "plain": "the orbital angular momentum operator L, is the cross of the position operator with the momentum operator. this means that it is perpendicular to the plane formed by the position and momentum vectors, \"pointing out of the circle)",
+        "variables": [
+          {
+            "symbol": "\\hat{\\mathbf{L}}",
+            "meaning": "Orbital angular momentum operator"
+          },
+          {
+            "symbol": "\\hat{\\mathbf{r}}",
+            "meaning": "position operator"
+          },
+          {
+            "symbol": "\\hat{\\mathbf{p}}",
+            "meaning": "linear momentum operator"
+          }
+        ]
+      },
+      {
+        "name": "the above equation but with the momentum operator's representation in position space.",
+        "equation": "\\hat{\\mathbf{L}} = -i\\hbar \\left(\\mathbf{r} \\times \\nabla\\right)",
+        "plain": "The angular momentum operator is perpendicular to the position and the change in state by position"
+      },
+      {
+        "name": "cartesian components",
+        "equation": "\\hat{L}_x = -i\\hbar \\left(y\\frac{\\partial}{\\partial z} - z\\frac{\\partial}{\\partial y}\\right)"
+      },
+      {
+        "name": "eigenvalue equation",
+        "equation": "\\hat{L}^2 Y_l^m = \\hbar^2 l(l+1)Y_l^m"
+      },
+      {
+        "equation": "\\hat{L}_z Y_l^m = \\hbar m Y_l^m"
+      }
+    ]
+  }
+}
