@@ -1,0 +1,25 @@
+{
+  "id": "hydrogen_atom_hamiltonian_classical_no_ta8h",
+  "label": "Hydrogen atom Hamiltonian (classical-no corrections)",
+  "type": "formalism",
+  "importance": 7,
+  "generality": 4,
+  "assumes": [
+    {
+      "label": "Not relativistic velocity"
+    },
+    {
+      "label": "No spin correction"
+    }
+  ],
+  "attrs": {
+    "description": "The function/operator describing the energy of the of the hydrogen atom for different quantum states it can be in.",
+    "formulas": [
+      {
+        "name": "The Hamiltonian as a differential operator in position space",
+        "equation": "\\hat{H} = -\\frac{\\hbar^2}{2m_e}\\nabla^2 - \\frac{e^2}{4\\pi\\epsilon_0 r}",
+        "plain": "The energy of the hydrogen atom is proportional to the 2nd spatial derivative of the wave function - the coulomb potential which decreases as 1 over r"
+      }
+    ]
+  }
+}
