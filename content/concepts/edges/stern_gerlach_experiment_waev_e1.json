@@ -1,0 +1,6 @@
+{
+  "id": "stern_gerlach_experiment_waev_e1",
+  "source": "stern_gerlach_experiment_waev",
+  "target": "quantum_mechanics_qm_bnul",
+  "relationship": "relates"
+}
