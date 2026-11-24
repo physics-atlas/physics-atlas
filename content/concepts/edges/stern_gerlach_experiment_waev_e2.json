@@ -1,0 +1,6 @@
+{
+  "id": "stern_gerlach_experiment_waev_e2",
+  "source": "stern_gerlach_experiment_waev",
+  "target": "atom_gd2j",
+  "relationship": "relates"
+}
