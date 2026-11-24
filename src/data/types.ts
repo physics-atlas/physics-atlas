@@ -26,6 +26,15 @@ export interface NodeTypeDefinition {
  */
 export const CONCEPT_DOMAINS: string[] = vocab.domains;
 
+/**
+ * Suggested values for a concept's `physicalRole` (layer 2: what role it plays
+ * in physics) and `mathematicalCharacter` (layer 3: how it's represented).
+ * Suggestions only: a concept may name others, or qualify one ("Conserved
+ * quantity (under appropriate conditions)").
+ */
+export const PHYSICAL_ROLES: string[] = vocab.physicalRoles;
+export const MATHEMATICAL_CHARACTERS: string[] = vocab.mathematicalCharacters;
+
 /** Partial: a type without an agreed definition shows a "not defined yet" note. */
 export const NODE_TYPE_DEFINITIONS: Partial<Record<NodeType, NodeTypeDefinition>> =
   vocab.nodeTypeDefinitions;
@@ -156,7 +165,27 @@ interface GraphNodeBase {
   assumes?: Assumption[];
   /** Pictures of it, shown on its card and page (files in content/media/) */
   figures?: Figure[];
+  /** Layer 2, what role it plays in physics: "State characteristic", "Conserved quantity" (PHYSICAL_ROLES suggests some) */
+  physicalRole?: string[];
+  /** Layer 3, its mathematical character: "Scalar", "Extensive" (MATHEMATICAL_CHARACTERS suggests some) */
+  mathematicalCharacter?: string[];
+  /** How it's written: `E`, `E = mc^2` with the note "rest energy" */
+  expressions?: MathExpression[];
 }
+
+/** One way a concept is written mathematically, with where that form applies. */
+export interface MathExpression {
+  /** LaTeX: `E = T + V` */
+  tex: string;
+  /** Plain words: "in a suitable mechanical model" */
+  note?: string;
+}
+
+/**
+ * The kinds that make no physical claim of their own, so carry no physical
+ * role, mathematical character or expressions (the validator and the form agree).
+ */
+export const UNCHARACTERISED_TYPES: readonly NodeType[] = ['learning_goal', 'resource', 'fluff'];
 
 /** A picture of a concept: content/media/<file>, described for people who can't see it. */
 export interface Figure {

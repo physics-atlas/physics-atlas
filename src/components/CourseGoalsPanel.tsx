@@ -20,7 +20,7 @@ interface CourseGoalsPanelProps {
   view: 'map' | 'pages';
   onPick: (id: string) => void;
   onSaved: (saved: SavedMap) => void;
-  /** Which learning goals this person has completed — in their browser only */
+  /** Which learning goals this person has completed, in their browser only. Students tick them; owners and editors don't (editable). */
   progress: Progress;
 }
 
@@ -77,10 +77,10 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
         <div className="map-panel-part goals-main">
           <h2 className="map-panel-heading">Course goals ({goals.length})</h2>
           <p className="map-panel-note">
-            What the course sets out to reach. Each is a set of the map’s learning goals. {pickHint} Tick the ones you’ve
-            completed: that’s kept in this browser only, never sent anywhere.
+            What the course sets out to reach. Each is a set of the map’s learning goals. {pickHint}
+            {!editable && ' Tick the ones you’ve completed: that’s kept in this browser only, never sent anywhere.'}
           </p>
-          {goals.length === 0 && <p>{editable ? 'No course goals yet — make the first one below.' : 'No course goals yet.'}</p>}
+          {goals.length === 0 && <p>{editable ? 'No course goals yet. Make the first one below.' : 'No course goals yet.'}</p>}
           <ol className="goals-list">
             {goals.map((g, i) => (
               <CourseGoalItem
@@ -133,7 +133,7 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
         <div className="map-panel-part">
           <h2 className="map-panel-heading" id={ids.all}>
             All learning goals on this map ({learningGoals.length}
-            {learningGoals.length ? `, ${learningGoals.filter((n) => done(n.id)).length} completed` : ''})
+            {learningGoals.length && !editable ? `, ${learningGoals.filter((n) => done(n.id)).length} completed` : ''})
           </h2>
           {learningGoals.length === 0 ? (
             <p className="map-panel-note">
@@ -143,7 +143,7 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
             <ul className="map-panel-list goals-all" aria-labelledby={ids.all}>
               {learningGoals.map((n) => (
                 <li key={n.id}>
-                  <Completed label={n.label} checked={done(n.id)} onChange={() => toggle(n.id)} />
+                  {!editable && <Completed label={n.label} checked={done(n.id)} onChange={() => toggle(n.id)} />}
                   <button type="button" className="draft-link" onClick={() => onPick(n.id)}>
                     {n.label}
                   </button>
@@ -201,15 +201,15 @@ function CourseGoalItem({ goal, resolved, learningGoals, editable, busy, first, 
         <h3 className="goals-name" id={ids.heading}>
           {goal.name}{' '}
           <span className="map-panel-role">
-            — {topics.length === 1 ? '1 learning goal' : `${topics.length} learning goals`}
-            {topics.length > 0 && `, ${topics.filter((n) => done(n.id)).length} completed`}
+            ({topics.length === 1 ? '1 learning goal' : `${topics.length} learning goals`}
+            {topics.length > 0 && !editable && `, ${topics.filter((n) => done(n.id)).length} completed`})
           </span>
         </h3>
         {topics.length > 0 ? (
           <ol className="goals-topics">
             {topics.map((n) => (
               <li key={n.id}>
-                <Completed label={n.label} checked={done(n.id)} onChange={() => onToggle(n.id)} />
+                {!editable && <Completed label={n.label} checked={done(n.id)} onChange={() => onToggle(n.id)} />}
                 <button type="button" className="draft-link" onClick={() => onPick(n.id)}>
                   {n.label}
                 </button>

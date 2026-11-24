@@ -363,6 +363,36 @@ for (const [type, variants] of casingByType) {
   }
 }
 
+// Layers 2 and 3 of a concept (optional): its physical role, its mathematical
+// character (free text; the vocabulary only suggests) and how it's written.
+// Mirrors UNCHARACTERISED_TYPES in src/data/types.ts — keep in sync.
+const UNCHARACTERISED_TYPES = ['learning_goal', 'resource', 'fluff'];
+for (const n of data.nodes) {
+  const where = `node "${n.id}"`;
+  const fields = ['physicalRole', 'mathematicalCharacter', 'expressions'].filter((k) => n[k] !== undefined);
+  if (fields.length && UNCHARACTERISED_TYPES.includes(n.type))
+    errors.push(`${where}: a ${n.type} has no ${fields.map((k) => `"${k}"`).join(' or ')} — delete it`);
+  for (const key of ['physicalRole', 'mathematicalCharacter']) {
+    const list = n[key];
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.length === 0 || list.some((x) => typeof x !== 'string' || !x.trim()))
+      errors.push(`${where}: "${key}" must be a non-empty list of text — delete the field if there's nothing to say`);
+    else if (new Set(list.map((x) => x.trim().toLowerCase())).size !== list.length) errors.push(`${where}: "${key}" lists something twice`);
+  }
+  if (n.expressions === undefined) continue;
+  if (!Array.isArray(n.expressions) || n.expressions.length === 0 || n.expressions.some((x) => !x || typeof x !== 'object' || Array.isArray(x))) {
+    errors.push(`${where}: "expressions" must be a non-empty list of { "tex", "note" } — delete the field if there's nothing to say`);
+    continue;
+  }
+  n.expressions.forEach((x, i) => {
+    const at = `${where}: expression ${i + 1}`;
+    for (const key of Object.keys(x)) if (!['tex', 'note'].includes(key)) errors.push(`${at}: unknown field "${key}"`);
+    if (typeof x.tex !== 'string' || !x.tex.trim()) errors.push(`${at}: needs "tex", its LaTeX`);
+    else checkLatex(where, `expression ${i + 1}`, x.tex);
+    if (x.note !== undefined && (typeof x.note !== 'string' || !x.note.trim())) errors.push(`${at}: "note" must be text, or left out`);
+  });
+}
+
 // `assumes`: what a concept takes for granted, in words — { label, description?,
 // concept? }. Not a relation, so it draws no line; one may point to a concept.
 const ASSUMPTION_KEYS = new Set(['label', 'description', 'concept']);

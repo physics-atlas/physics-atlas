@@ -1,6 +1,15 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
+import {
+  CONCEPT_DOMAINS,
+  EDGE_SENTENCE_TEMPLATES,
+  MATHEMATICAL_CHARACTERS,
+  NODE_TYPE_DEFINITIONS,
+  NODE_TYPE_LABELS,
+  PHYSICAL_ROLES,
+  RELATION_CATEGORIES,
+  UNCHARACTERISED_TYPES,
+} from '../data/types';
 import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
 import { figureUrl } from '../data/media';
 import vocabularyText from '../data/conceptVocabulary.json?raw';
@@ -27,6 +36,7 @@ import type {
   DraftAssumption,
   DraftFigure,
   DraftContext,
+  DraftExpression,
   DraftField,
   DraftRelation,
   DraftRepresentation,
@@ -848,6 +858,15 @@ export default function DraftEditor({
         </Field>
         <p className="draft-hint">Leave either empty and the curator sets it.</p>
       </section>
+
+      {draft.type && !UNCHARACTERISED_TYPES.includes(draft.type) && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-character')}>
+          <h3 className="block-heading" id={fieldId('h-character')}>
+            Role and mathematical character <span className="draft-optional">optional</span>
+          </h3>
+          <CharacterFields draft={draft} update={update} fieldId={fieldId} />
+        </section>
+      )}
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-assumes')}>
         <h3 className="block-heading" id={fieldId('h-assumes')}>
@@ -1870,6 +1889,163 @@ function FormulaFields({
       >
         Add a formula
       </button>
+    </fieldset>
+  );
+}
+
+/**
+ * Layers 2 and 3 of a concept: the role it plays in physics, its mathematical
+ * character, and how it's written. Layer 1 is its kind; its physical domain is
+ * its Field.
+ */
+function CharacterFields({
+  draft,
+  update,
+  fieldId,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+}) {
+  const setExpression = (i: number, change: Partial<DraftExpression>) =>
+    update((d) => ({ ...d, expressions: d.expressions.map((x, j) => (j === i ? { ...x, ...change } : x)) }));
+  return (
+    <>
+      <p className="draft-hint">
+        Its kind, chosen above, says what sort of concept it is. Here: what role it plays in physics, and how it is
+        represented mathematically. Its physical domain is its Field, above.
+      </p>
+      <TermRows
+        title="Physical role"
+        hint="What role it plays in physics. Pick a suggestion or write your own; qualify it when it needs it: “Conserved quantity (under appropriate conditions)”."
+        suggestions={PHYSICAL_ROLES}
+        values={draft.physicalRole}
+        onChange={(physicalRole) => update((d) => ({ ...d, physicalRole }))}
+        idBase={fieldId('role')}
+        placeholder="State characteristic"
+      />
+      <TermRows
+        title="Mathematical character"
+        hint="How it is represented: a scalar, a vector, a field… Pick a suggestion or write your own."
+        suggestions={MATHEMATICAL_CHARACTERS}
+        values={draft.mathematicalCharacter}
+        onChange={(mathematicalCharacter) => update((d) => ({ ...d, mathematicalCharacter }))}
+        idBase={fieldId('character')}
+        placeholder="Scalar"
+      />
+      <fieldset className="draft-representations">
+        <legend className="draft-label">
+          Mathematical expressions <span className="draft-optional">optional</span>
+        </legend>
+        <p className="draft-hint">How it is written, in LaTeX, each with where that form applies when it doesn’t always.</p>
+        {draft.expressions.map((x, i) => (
+          <div key={i} className="draft-relation draft-representation">
+            <Field id={fieldId(`expressions-${i}`)} label={`Expression ${i + 1} (LaTeX)`}>
+              <LatexInput id={fieldId(`expressions-${i}`)} value={x.tex} placeholder="E = mc^2" onChange={(tex) => setExpression(i, { tex })} />
+            </Field>
+            <Field id={fieldId(`expression-note-${i}`)} label="Where it applies" optional>
+              <input
+                id={fieldId(`expression-note-${i}`)}
+                className="draft-input"
+                value={x.note}
+                placeholder="rest energy"
+                onChange={(e) => setExpression(i, { note: e.target.value })}
+              />
+            </Field>
+            <div className="draft-row-actions">
+              <button
+                type="button"
+                className="draft-button"
+                onClick={() => update((d) => ({ ...d, expressions: d.expressions.filter((_, j) => j !== i) }))}
+              >
+                Remove expression {i + 1}
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="draft-button"
+          onClick={() => update((d) => ({ ...d, expressions: [...d.expressions, { tex: '', note: '' }] }))}
+        >
+          Add an expression
+        </button>
+      </fieldset>
+    </>
+  );
+}
+
+/** A list of short terms, one per row: free text, with the vocabulary's suggestions one click away. */
+function TermRows({
+  title,
+  hint,
+  suggestions,
+  values,
+  onChange,
+  idBase,
+  placeholder,
+}: {
+  title: string;
+  hint: string;
+  suggestions: string[];
+  values: string[];
+  onChange: (values: string[]) => void;
+  idBase: string;
+  placeholder: string;
+}) {
+  const taken = new Set(values.map((v) => v.trim().toLowerCase()));
+  const offered = suggestions.filter((t) => !taken.has(t.toLowerCase()));
+  return (
+    <fieldset className="draft-representations" aria-describedby={`${idBase}-hint`}>
+      <legend className="draft-label">
+        {title} <span className="draft-optional">optional</span>
+      </legend>
+      <p className="draft-hint" id={`${idBase}-hint`}>
+        {hint}
+      </p>
+      {values.length > 0 && (
+        <ul className="draft-variable-list">
+          {values.map((v, i) => (
+            <li key={i} className="draft-term">
+              <input
+                id={`${idBase}-${i}`}
+                className="draft-input"
+                value={v}
+                placeholder={placeholder}
+                aria-label={`${title} ${i + 1}`}
+                onChange={(e) => onChange(values.map((x, j) => (j === i ? e.target.value : x)))}
+              />
+              <button type="button" className="draft-button" onClick={() => onChange(values.filter((_, j) => j !== i))}>
+                Remove<span className="visually-hidden"> {v.trim() || `${title.toLowerCase()} ${i + 1}`}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {offered.length > 0 && (
+        <ul className="draft-suggestion-list" aria-label={`Suggested: ${title.toLowerCase()}`}>
+          {offered.map((t) => (
+            <li key={t}>
+              <button type="button" className="draft-suggestion" onClick={() => onChange([...values, t])}>
+                <span aria-hidden>+ </span>
+                {t}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>
+        <button
+          type="button"
+          className="draft-button"
+          onClick={() => {
+            onChange([...values, '']);
+            requestAnimationFrame(() => document.getElementById(`${idBase}-${values.length}`)?.focus());
+          }}
+        >
+          Write your own
+        </button>
+      </p>
     </fieldset>
   );
 }

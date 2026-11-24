@@ -30,7 +30,7 @@ describe('comment anchors (Phase 3)', () => {
     expect(anchorInMap(parseAnchor('node:velocity_7r85')!, resolved)).toBe(true);
     expect(anchorInMap(parseAnchor(`edge:${edge.id}`)!, resolved)).toBe(true);
     expect(anchorInMap(parseAnchor('node:force_q27c')!, resolved)).toBe(false);
-    expect(anchorLabel(parseAnchor('page:velocity_7r85:2'), resolved)).toBe('Velocity — page, depth 2');
+    expect(anchorLabel(parseAnchor('page:velocity_7r85:2'), resolved)).toBe('Velocity (page, depth 2)');
     expect(anchorLabel(parseAnchor(`edge:${edge.id}`), resolved)).toMatch(/Velocity|Four-velocity/);
     expect(anchorLabel(parseAnchor('node:force_q27c'), resolved)).toMatch(/no longer on the map/);
     expect(anchorLabel(parseAnchor('map'), resolved)).toBe('The whole map');

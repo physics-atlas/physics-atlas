@@ -580,10 +580,11 @@ const styleFor = (light: boolean) => {
       'target-arrow-color': goldArrow,
     },
   },
-  // A clicked concept is a sub-view: the rest fades as far as a goal path's
-  // dim, and its neighbours stay readable even where the zoom fade hid them.
-  { selector: 'node.concept-node.sel-soft', style: { opacity: 0.16 } },
-  { selector: 'edge.concept-edge.sel-soft', style: { opacity: 0.08 } },
+  // A clicked concept is a sub-view: the rest fades (a fifth less than a goal
+  // path's dim, so the map behind stays visible), and its neighbours stay
+  // readable even where the zoom fade hid them.
+  { selector: 'node.concept-node.sel-soft', style: { opacity: 0.33 } },
+  { selector: 'edge.concept-edge.sel-soft', style: { opacity: 0.26 } },
   {
     selector: 'node.concept-node.sel-pre, node.concept-node.sel-post',
     style: { opacity: 1, 'text-opacity': 1, 'background-opacity': 0.7 },

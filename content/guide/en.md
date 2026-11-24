@@ -1,18 +1,18 @@
-The Physics Atlas is a map of physics concepts. Every concept is linked to what it stands on and what it leads to, and every link reads as a sentence: "Energy **is one property of** a physical system."
+The Physics Atlas is a knowledge graph for the physics field. Concepts are stored as nodes which include all the relevant attributes and some explanations. Connections between the nodes are edges, which contain the source and target node and more information about how exactly they are connected. Every edge reads as a sentence: "Energy **is one property of** a physical system."
 
 ## How to use the atlas
 
 ### In the map view
 
 - **Click a concept** (a circle) to open its card. The card is a summary of the concept's page, and the concept's direct connections are highlighted on the map: silver lines lead into it, gold lines lead out of it. **Open its page** on the card takes you to the full page.
-- **Click a connection** (a line) to open its card: what kind of relation it is, the two concepts it joins and, where someone has written it, how they connect.
+- **Click a connection** (a line) to open its card.
 - **Hover a line** to highlight the two concepts it joins.
-- **Colour** shows the kind of concept, and **size** shows how general it is. **Zoom in** to see more specific, less central concepts. Click a kind in the legend to read what it means.
+- **Icons** show the general categorisation of the concept. **Size** shows the generality and how far away you see it from is chosen by "importance". Click a category in the legend to read what it means.
 - **Search** at the top finds a concept and centres the map on it.
 
 ### In the atlas pages
 
-Every concept has a page, built from its card: its definition, equation, assumptions and connections, plus written text at one or more depths. **Atlas pages** in the header opens them, and the sidebar lists them in reading order.
+Every concept has a page, built from its definition, equation, assumptions and connections, plus written text at one or more depths. There is navigation through a side bar where the most general concepts are the chapters, the first drop down shows all the concepts directly connected to the chapter concept and clicking on one of those shows all that are directly related to those. In each card you can also see lists that connect to the learning goals, the resources and first and second order connections centred on that node.
 
 ### Proposing an edit or a new concept
 
@@ -31,5 +31,6 @@ Apart from building and improving the content with everyone, we plan to improve:
 
 - **The map's layout:** where concepts sit, how big they are and how far apart.
 - **Moving through the atlas by its pages.**
+- **Considering which extra features would be useful.** E.g. forums for discussion on each concept, filters, etc.
 
 Something unclear, or broken? Tell us through **Feedback** in the header.

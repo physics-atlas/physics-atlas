@@ -13,6 +13,7 @@ import {
 import { assumptionsOf } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import type { ConditionItem } from '../graph/cardSections';
+import Characterisation from './Characterisation';
 import TypeBadge from './TypeBadge';
 
 interface ConceptCardProps {
@@ -68,6 +69,8 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
       )}
 
       {children}
+
+      <Characterisation node={node} level={3} />
 
       {conditionSection && (
         <section className="rel-block">

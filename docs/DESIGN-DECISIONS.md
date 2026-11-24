@@ -802,6 +802,23 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 55 — Three layers of a concept: kind, physical role, mathematical character (2026-11)
+
+**Aim:** say more about a physical concept than its kind: what role it plays in physics, and
+how it's represented mathematically (Energy: a state characteristic, conserved under
+appropriate conditions; a scalar, extensive; written $E$, $E = T + V$, $E = mc^2$).
+
+| Piece | Rule |
+|---|---|
+| Layer 1 | Its kind (`type`), as before. The picture's own list (System, Quantity, Process, Phenomenon, Principle, Model, Mathematical object, Method) mostly maps onto the existing kinds; no kind was added or renamed. |
+| Layer 2 | `physicalRole`: a list of text. `conceptVocabulary.json` → `physicalRoles` only **suggests** (the form offers them one click away): a concept may name others or qualify one, "Conserved quantity (under appropriate conditions)". |
+| Layer 3 | `mathematicalCharacter`: the same, suggested by `mathematicalCharacters`. Plus `expressions`: how it's written, `{ tex, note? }`. |
+| Physical domain | Its existing `attrs.domain` (the Field, a controlled list); not a second field. Shown with the layers when they're there. |
+| Where | Top-level on the concept, optional, all empty for the existing concepts. Not on learning goals, resources or fluff (`UNCHARACTERISED_TYPES`; the validator refuses them there). Shown on the card and page only when one is filled in. |
+
+**Open paths:** a controlled list (refusing other values), once the suggestions settle; filtering
+the map by role or character.
+
 ## Decision 54 — Even: fewer crossings between relations of the same standing (2026-11)
 
 **Aim:** at each zoom level, the relations you see together (the ones of the same standing)

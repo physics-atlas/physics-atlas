@@ -195,6 +195,8 @@
   ],
   "mediaTypes": ["text", "video", "quiz", "other"],
   "epistemicStatuses": ["Candidate"],
+  "physicalRoles": ["Kinematic", "Dynamical", "Conserved", "Interaction-related", "Thermodynamic", "Geometrical", "Probabilistic", "Observational", "State characteristic"],
+  "mathematicalCharacters": ["Scalar", "Vector", "Tensor", "Function", "Field", "Operator", "Differential form", "Equation", "Distribution", "Extensive", "Intensive"],
   "domains": [
     "Astrophysics",
     "Classical mechanics",

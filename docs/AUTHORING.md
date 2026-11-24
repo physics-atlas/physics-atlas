@@ -364,6 +364,27 @@ file in `content/media/` that no concept uses. The editor's **Pictures** field t
 file, makes a large one smaller (to 1600 px), and asks for the description and credit;
 the picture goes into the same pull request.
 
+## Physical role, mathematical character, expressions (Decision 55)
+
+Optional, on the concept itself (not in `attrs`), and not for learning goals, resources or
+fluff. Layer 1 is the concept's kind; these are layers 2 and 3:
+
+```json
+"physicalRole": ["State characteristic", "Conserved quantity (under appropriate conditions)"],
+"mathematicalCharacter": ["Scalar", "Extensive (for ordinary additive systems)"],
+"expressions": [
+  { "tex": "E" },
+  { "tex": "E = T + V", "note": "in a suitable mechanical model" },
+  { "tex": "E = mc^2", "note": "rest energy" }
+]
+```
+
+`physicalRole` and `mathematicalCharacter` are free text; `conceptVocabulary.json` →
+`physicalRoles` and `mathematicalCharacters` are suggestions, offered in the editor. Each list
+is non-empty when present (delete the field rather than leave it empty) and names nothing twice.
+An expression's `tex` is LaTeX (checked to typeset), its `note` plain words. The physical domain
+is the concept's `attrs.domain`. The card and page show them only when there are any.
+
 ## Assumptions — `assumes` on the concept
 
 What a concept takes for granted — a limit, an approximation, a condition — is written

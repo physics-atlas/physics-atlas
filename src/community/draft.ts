@@ -10,8 +10,10 @@ import type {
   Formula,
   GraphEdge,
   GraphNode,
+  MathExpression,
   NodeType,
 } from '../data/types';
+import { UNCHARACTERISED_TYPES } from '../data/types';
 import { FIGURE_MAX_BYTES, FIGURE_TYPES, MAX_FIGURES, figurePath, figureSlug } from './figures';
 import type { FigureExt, FigureUpload } from './figures';
 import { relationPhrase, relationTypeProblems, withRelationTypes } from './relationTypes';
@@ -94,6 +96,12 @@ export interface DraftRepresentation {
   variables: EquationVariable[];
 }
 
+/** A mathematical expression as the form edits it: both fields there, empty until filled in. */
+export interface DraftExpression {
+  tex: string;
+  note: string;
+}
+
 /** One assumption in the editor: its words, more detail, and (optionally) the concept it is. */
 export interface DraftAssumption {
   label: string;
@@ -134,6 +142,12 @@ export interface Draft {
   assumes: DraftAssumption[];
   /** Pictures of it, on its card and page */
   figures: DraftFigure[];
+  /** Layer 2: what role it plays in physics, one per row (free text; PHYSICAL_ROLES suggests) */
+  physicalRole: string[];
+  /** Layer 3: its mathematical character, one per row (free text; MATHEMATICAL_CHARACTERS suggests) */
+  mathematicalCharacter: string[];
+  /** How it's written: LaTeX, each with an optional note on where that form applies */
+  expressions: DraftExpression[];
   /**
    * Its atlas page, in Markdown + LaTeX (lib/pageText.ts) — one text per depth, depth 1 first. null: the
    * page is left as it is (an edit that doesn't touch it, until it's loaded).
@@ -190,6 +204,9 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     accessibility: '',
     assumes: [],
     figures: [],
+    physicalRole: [],
+    mathematicalCharacter: [],
+    expressions: [],
     page: [],
     pageBefore: 0,
     relations: [],
@@ -239,6 +256,9 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
       caption: f.caption ?? '',
       credit: f.credit,
     })),
+    physicalRole: [...(node.physicalRole ?? [])],
+    mathematicalCharacter: [...(node.mathematicalCharacter ?? [])],
+    expressions: (node.expressions ?? []).map((x) => ({ tex: x.tex, note: x.note ?? '' })),
     // The page stays as it is until the editor loads it (DraftEditor's "Edit the page").
     page: null,
     pageBefore: 0,
@@ -294,6 +314,20 @@ export const PAGE_MAX = 100_000;
  * The assumptions as they're exported: trimmed, empty ones dropped, each
  * listed once (the same concept, or the same words).
  */
+/** A list of terms, trimmed, without empty rows or repeats (ignoring case). */
+export function cleanTerms(list: string[]): string[] {
+  const seen = new Set<string>();
+  return list.map((t) => t.trim()).filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
+}
+
+/** Expressions with LaTeX, trimmed; a note without LaTeX is left out (draftProblems says so). */
+export function cleanExpressions(list: DraftExpression[]): MathExpression[] {
+  return list.flatMap((x) => {
+    const tex = x.tex.trim(), note = x.note.trim();
+    return tex ? [{ tex, ...(note ? { note } : {}) }] : [];
+  });
+}
+
 export function cleanAssumptions(list: DraftAssumption[]): Assumption[] {
   const seen = new Set<string>();
   const out: Assumption[] = [];
@@ -359,11 +393,18 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const domain = d.domains.length ? d.domains.join(' / ') : undefined;
   const type = d.type || 'property';
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
-  const { importance: _i, generality: _g, assumes: _a, figures: _f, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
-  void _i;
-  void _g;
-  void _a;
-  void _f;
+  const {
+    importance: _i,
+    generality: _g,
+    assumes: _a,
+    figures: _f,
+    physicalRole: _r,
+    mathematicalCharacter: _m,
+    expressions: _x,
+    attrs: baseAttrs,
+    ...rest
+  } = base ?? ({} as Partial<GraphNode>);
+  void [_i, _g, _a, _f, _r, _m, _x];
   const kept = Object.fromEntries(
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, a curated rating) is kept.
@@ -380,7 +421,22 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   };
   const assumes = cleanAssumptions(d.assumes);
   const figures = draftFigures(d, id).map((x) => x.figure);
-  const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}), ...(figures.length ? { figures } : {}) };
+  const characterised = !UNCHARACTERISED_TYPES.includes(type);
+  const physicalRole = characterised ? cleanTerms(d.physicalRole) : [];
+  const mathematicalCharacter = characterised ? cleanTerms(d.mathematicalCharacter) : [];
+  const expressions = characterised ? cleanExpressions(d.expressions) : [];
+  const head = {
+    ...rest,
+    id,
+    label,
+    type,
+    ...scales,
+    ...(assumes.length ? { assumes } : {}),
+    ...(figures.length ? { figures } : {}),
+    ...(physicalRole.length ? { physicalRole } : {}),
+    ...(mathematicalCharacter.length ? { mathematicalCharacter } : {}),
+    ...(expressions.length ? { expressions } : {}),
+  };
   const attrs =
     type === 'equation'
       ? {
@@ -621,6 +677,7 @@ export type DraftField =
   | 'formulas'
   | 'assumes'
   | 'figures'
+  | 'expressions'
   | 'link'
   | 'mediaType'
   | 'mediaTypeOther'
@@ -690,6 +747,11 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
           index,
           message: `In formula ${index + 1}, give every variable both its symbol and what it stands for.`,
         });
+    });
+  if (d.type && !UNCHARACTERISED_TYPES.includes(d.type))
+    d.expressions.forEach((x, index) => {
+      if (!x.tex.trim() && x.note.trim())
+        out.push({ field: 'expressions', index, message: `Write expression ${index + 1} in LaTeX, or remove it.` });
     });
   const confirmedIds = new Set(ctx.confirmed.nodes.map((n) => n.id));
   (d.page ?? []).forEach((source, index) => {
@@ -1087,6 +1149,12 @@ export function parseDraft(raw: unknown): Draft | null {
     );
   };
   if (!Array.isArray(figures) || !figures.every(figureOk)) return null;
+  // Added 2026-11: a concept's physical role, mathematical character and expressions.
+  for (const key of ['physicalRole', 'mathematicalCharacter'] as const)
+    if (d[key] !== undefined && (!Array.isArray(d[key]) || !(d[key] as unknown[]).every(isString))) return null;
+  const expressions = d.expressions ?? [];
+  const expressionOk = (x: unknown) => Boolean(x) && isString((x as DraftExpression).tex) && isString((x as DraftExpression).note);
+  if (!Array.isArray(expressions) || !expressions.every(expressionOk)) return null;
   // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
   const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
     void _c;
@@ -1115,6 +1183,9 @@ export function parseDraft(raw: unknown): Draft | null {
     link: (d.link as string | undefined) ?? '',
     mediaType: (d.mediaType as string | undefined) ?? '',
     figures: figures as DraftFigure[],
+    physicalRole: (d.physicalRole as string[] | undefined) ?? [],
+    mathematicalCharacter: (d.mathematicalCharacter as string[] | undefined) ?? [],
+    expressions: expressions as DraftExpression[],
     page: page as string[] | null,
     pageBefore,
     relations,

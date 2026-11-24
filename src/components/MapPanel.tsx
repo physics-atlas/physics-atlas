@@ -148,7 +148,7 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
             {members.map((m) => (
               <li key={m.login}>
                 <span>
-                  @{m.login} <span className="map-panel-role">— {ROLE_LABELS[m.role]}</span>
+                  @{m.login} <span className="map-panel-role">({ROLE_LABELS[m.role]})</span>
                 </span>
                 {m.role !== 'owner' && (role === 'owner' || m.login.toLowerCase() === login.toLowerCase()) && (
                   <button
@@ -211,7 +211,7 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
             <div className="map-panel-share">
               <h2 className="map-panel-heading">Share with a link</h2>
               <p className="map-panel-note" id={ids.linkHint}>
-                Anyone with the link can read the map, its pages and course goals — not its members or comments — without
+                Anyone with the link can read the map, its pages and course goals (not its members or comments) without
                 signing in.{' '}
                 {role === 'owner'
                   ? 'Editors see it too, to pass it on. Making a new link stops the old one working.'

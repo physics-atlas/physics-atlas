@@ -46,7 +46,7 @@ export default function CommentsPanel({ resolved, comments, error, seen, login, 
     const nodes = resolved.graph.nodes.map((n) => ({ key: `node:${n.id}`, label: n.label })).sort(byLabel);
     const edges = resolved.graph.edges.map((e) => ({ key: `edge:${e.id}`, label: anchorLabel({ kind: 'edge', id: e.id }, resolved) })).sort(byLabel);
     const pageDepths = resolved.graph.nodes
-      .flatMap((n) => Array.from({ length: pages.depths(n.id) }, (_, i) => ({ key: `page:${n.id}:${i + 1}`, label: `${n.label} — depth ${i + 1}` })))
+      .flatMap((n) => Array.from({ length: pages.depths(n.id) }, (_, i) => ({ key: `page:${n.id}:${i + 1}`, label: `${n.label} (depth ${i + 1})` })))
       .sort(byLabel);
     return { nodes, edges, pageDepths };
   }, [resolved, pages]);
@@ -167,7 +167,7 @@ export default function CommentsPanel({ resolved, comments, error, seen, login, 
           </fieldset>
           {comments === null && !error && <p>Loading the comments…</p>}
           {comments !== null && shown.length === 0 && (
-            <p>{threads.length === 0 ? 'No threads yet.' : 'No threads here — try another choice above.'}</p>
+            <p>{threads.length === 0 ? 'No threads yet.' : 'No threads here. Try another choice above.'}</p>
           )}
           <ol className="comments-list" aria-labelledby={ids.threads}>
             {shown.map((t) => (
@@ -231,7 +231,7 @@ function Thread({ thread, label, nodeId, fresh, login, role, busy, onShow, onRep
         <h3 className="comments-about" id={ids.heading}>
           {label}{' '}
           <span className="comments-state">
-            — {first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'}
+            ({first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'})
           </span>
         </h3>
         <ol className="comments-entries">

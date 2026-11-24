@@ -1176,6 +1176,13 @@ a.map-hint-toggle[aria-current='page'] {
   color: var(--ink-2);
 }
 
+.concept-character-list {
+  margin: 6px 0 0;
+  padding-left: 1.25em;
+  display: grid;
+  gap: 4px;
+}
+
 .concept-section-list {
   list-style: none;
   margin: 6px 0 0;
@@ -2165,6 +2172,18 @@ textarea.draft-input {
 
 .draft-representation {
   margin-top: 10px;
+}
+
+.draft-term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.draft-representations .draft-suggestion-list {
+  margin-top: 6px;
 }
 
 @media (max-width: 520px) {
