@@ -136,6 +136,17 @@ export interface ResourceAttrs {
   reviewCount?: number;
 }
 
+/** The two tag layers beside a concept's kind (src/data/tags.ts). */
+export type TagLayer = 'semantic' | 'representation';
+
+/** A concept's tags: several per layer, free words (suggested from conceptVocabulary.json "tagLayers" and the map). */
+export interface ConceptTags {
+  /** What role it plays in physics: "Kinematic", "Conserved" */
+  semantic?: string[];
+  /** How it's represented: "Vector", "Field" */
+  representation?: string[];
+}
+
 interface GraphNodeBase {
   /** snake_case, unique, kept verbatim from Sophie's CSVs */
   id: string;
@@ -147,6 +158,8 @@ interface GraphNodeBase {
   importance?: number;
   /** 1 (most specific) – 10 (most general): the size of the node's circle */
   generality?: number;
+  /** Its tags, in two layers: the role it plays, and how it's represented */
+  tags?: ConceptTags;
   /** How settled the concept is, e.g. "Candidate"; known values in conceptVocabulary.json */
   epistemicStatus?: string;
   /**

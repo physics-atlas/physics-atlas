@@ -47,6 +47,9 @@ import RichText, { MathText } from './RichText';
 import SearchBox from './SearchBox';
 import type { SearchEntry } from './SearchBox';
 import TypeBadge from './TypeBadge';
+import TagInput from './TagInput';
+import { concepts as atlasConcepts } from '../data/loadConcepts';
+import { TAG_LAYERS, tagSuggestions } from '../data/tags';
 import { pageMathProblems } from '../lib/pageMaths';
 import { equationSymbols, symbolKey } from '../lib/equationSymbols';
 
@@ -209,6 +212,19 @@ export default function DraftEditor({
     return searchEntries.filter((e) => confirmed.has(e.ref) && e.ref !== draft.editOf && !linked.has(e.ref));
   }, [searchEntries, ctx.confirmed, draft.editOf, draft.assumes]);
   const deps = useMemo(() => draftDependencies(draft, ctx), [draft, ctx]);
+  // Tags to suggest: the vocabulary's, and every tag a concept carries — on the atlas, in this map,
+  // in open proposals and in the other drafts.
+  const tagPool = useMemo(
+    () => [
+      ...atlasConcepts.nodes,
+      ...ctx.confirmed.nodes,
+      ...ctx.proposals.flatMap((p) => [...p.nodes, ...(p.edits ?? [])]),
+      ...ctx.drafts
+        .filter((d) => d.suffix !== draft.suffix)
+        .map((d) => ({ tags: { semantic: d.tags.semantic, representation: d.tags.representation } }) as GraphNode),
+    ],
+    [ctx, draft.suffix],
+  );
   // What this draft's relations are checked against: other proposals, and your other drafts.
   const otherRelations = useMemo(
     () => [
@@ -451,6 +467,25 @@ export default function DraftEditor({
         {draft.type === 'formalism' && <FormulaFields draft={draft} update={update} fieldId={fieldId} />}
         {draft.type === 'resource' && <ResourceFields part="optional" draft={draft} update={update} fieldId={fieldId} />}
       </section>
+      )}
+
+      {/* Two layers of tags beside its kind (the first layer): its role in physics, how it's represented. */}
+      {draft.type !== 'learning_goal' && draft.type !== 'resource' && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-tags')}>
+          <h3 className="block-heading" id={fieldId('h-tags')}>
+            Tags <span className="draft-optional">optional</span>
+          </h3>
+          {TAG_LAYERS.map((layer) => (
+            <TagInput
+              key={layer.key}
+              title={layer.title}
+              question={layer.question}
+              value={draft.tags[layer.key]}
+              suggestions={tagSuggestions(layer.key, tagPool)}
+              onChange={(next) => update((d) => ({ ...d, tags: { ...d.tags, [layer.key]: next } }))}
+            />
+          ))}
+        </section>
       )}
 
       <section className="rel-block draft-section" aria-labelledby={fieldId('h-relations')}>

@@ -3,6 +3,7 @@ import type { ConceptGraph, GraphEdge, GraphNode, ResourceAttrs } from '../data/
 import vocab from '../data/conceptVocabulary.json';
 import { assumedConceptIds, GENERALITY_MAX, IMPORTANCE_MAX, normalizeRelationship } from '../graph/concepts';
 import { figureProblems } from './figures';
+import { tagProblems, tagsOf } from '../data/tags';
 import { relationRuleProblem } from './relationRules';
 import { relationPhrase, relationTypeProblems } from './relationTypes';
 import type { Evidence, GitHubReview, Proposal, ProposalState } from './types';
@@ -17,6 +18,7 @@ const proposesNothing = (p: Proposal) =>
 
 function nodeProblems(where: string, n: GraphNode): string[] {
   const problems: string[] = [];
+  for (const message of tagProblems(n.tags)) problems.push(`${where}: concept "${n.id}" ${message}`);
   if (!(n.type in NODE_TYPE_LABELS)) problems.push(`${where}: concept "${n.id}" has unknown type "${n.type}"`);
   if (!n.label?.trim()) problems.push(`${where}: concept "${n.id}" has no label`);
   if (n.generality !== undefined && !inRange(n.generality, GENERALITY_MAX))
@@ -252,6 +254,8 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['Importance', String(before.importance ?? ''), String(after.importance ?? '')],
     ['Assumes', assumptionsText(before), assumptionsText(after)],
     ['Pictures', figuresText(before), figuresText(after)],
+    ['Role in physics', tagsOf(before, 'semantic').join(', '), tagsOf(after, 'semantic').join(', ')],
+    ['Represented as', tagsOf(before, 'representation').join(', '), tagsOf(after, 'representation').join(', ')],
   ];
   return rows.filter(([, b, a]) => b !== a).map(([field, b, a]) => ({ field, before: b, after: a }));
 }

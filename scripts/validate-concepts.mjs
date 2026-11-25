@@ -254,6 +254,33 @@ function checkLatex(where, at, tex) {
   }
 }
 
+// A concept's tags, two layers of free words (src/data/tags.ts tagProblems — keep in sync).
+const TAG_MAX_LENGTH = 40;
+const TAG_MAX_PER_LAYER = 12;
+function checkTags(where, tags) {
+  if (tags === undefined) return;
+  if (!tags || typeof tags !== 'object' || Array.isArray(tags)) {
+    errors.push(`${where}: tags must be { "semantic": [...], "representation": [...] }`);
+    return;
+  }
+  for (const [layer, list] of Object.entries(tags)) {
+    if (layer !== 'semantic' && layer !== 'representation') {
+      errors.push(`${where}: tags: unknown layer "${layer}" (semantic, representation)`);
+      continue;
+    }
+    if (!Array.isArray(list) || list.some((t) => typeof t !== 'string')) {
+      errors.push(`${where}: tags.${layer} must be a list of words`);
+      continue;
+    }
+    if (list.length > TAG_MAX_PER_LAYER) errors.push(`${where}: tags.${layer}: at most ${TAG_MAX_PER_LAYER}`);
+    for (const t of list) {
+      if (!t.trim() || t !== t.trim().replace(/s+/g, ' ')) errors.push(`${where}: tags.${layer}: "${t}" must be trimmed, not empty`);
+      if (t.length > TAG_MAX_LENGTH) errors.push(`${where}: tags.${layer}: "${t}" is longer than ${TAG_MAX_LENGTH} characters`);
+    }
+    if (new Set(list.map((t) => t.toLowerCase())).size !== list.length) errors.push(`${where}: tags.${layer} lists a tag twice`);
+  }
+}
+
 const ids = new Set();
 const byId = new Map();
 for (const n of data.nodes) {
@@ -283,6 +310,7 @@ for (const n of data.nodes) {
       warn.push(`${where}: unknown epistemicStatus "${n.epistemicStatus}" — add it to conceptVocabulary.json if this is a new status`);
   }
   if (n.review !== undefined) errors.push(`${where}: "review" (an open question for the author) is no longer a field — delete it`);
+  checkTags(where, n.tags);
 }
 
 const edgeIds = new Set();

@@ -33,9 +33,25 @@ export const COMMENT_LIMITS = { body: 4000, perMap: 2000 };
 /** Owners, editors and commenters read and write comments; viewers don't see them. */
 export const canComment = (role: MapRole) => role !== 'viewer';
 
+/**
+ * The parts of a concept a comment can be about, besides the concept as a whole
+ * (comment mode on the map). A page's depths have their own anchor.
+ */
+export const COMMENT_FIELDS = {
+  label: 'Name',
+  type: 'Kind',
+  description: 'Description',
+  details: 'Equation, formulas or resource details',
+  relations: 'Relations',
+  scale: 'Importance and generality',
+  page: 'Its page',
+} as const;
+export type CommentField = keyof typeof COMMENT_FIELDS;
+const isField = (f: string): f is CommentField => f in COMMENT_FIELDS;
+
 export type Anchor =
   | { kind: 'map' }
-  | { kind: 'node'; id: string }
+  | { kind: 'node'; id: string; field?: CommentField }
   | { kind: 'edge'; id: string }
   | { kind: 'page'; id: string; depth: number };
 
@@ -43,11 +59,14 @@ export function parseAnchor(anchor: string): Anchor | null {
   if (anchor === 'map') return { kind: 'map' };
   const m = /^(node|edge):([^:]{1,200})$/.exec(anchor);
   if (m) return { kind: m[1] as 'node' | 'edge', id: m[2] };
+  const f = /^node:([^:]{1,200}):([a-z]{1,20})$/.exec(anchor);
+  if (f) return isField(f[2]) ? { kind: 'node', id: f[1], field: f[2] } : null;
   const p = /^page:([^:]{1,200}):([1-9]\d?)$/.exec(anchor);
   return p ? { kind: 'page', id: p[1], depth: Number(p[2]) } : null;
 }
 
 export function anchorKey(a: Anchor): string {
+  if (a.kind === 'node' && a.field) return `node:${a.id}:${a.field}`;
   return a.kind === 'map' ? 'map' : a.kind === 'page' ? `page:${a.id}:${a.depth}` : `${a.kind}:${a.id}`;
 }
 
@@ -72,7 +91,25 @@ export function anchorLabel(a: Anchor | null, resolved: ResolvedMap): string {
   }
   const label = byId.get(a.id)?.label;
   if (!label) return `A concept no longer on the map (${a.id})`;
+  if (a.kind === 'node' && a.field) return `${label} — ${COMMENT_FIELDS[a.field].toLowerCase()}`;
   return a.kind === 'page' ? `${label} — page, depth ${a.depth}` : label;
+}
+
+/** What on the map a thread belongs to: a concept (its page and parts too), a relation, or the map itself. */
+export function anchorTarget(a: Anchor | null): { kind: 'node' | 'edge'; id: string } | null {
+  if (!a || a.kind === 'map') return null;
+  return a.kind === 'edge' ? { kind: 'edge', id: a.id } : { kind: 'node', id: a.id };
+}
+
+/** Open threads on each concept and relation, by "node:<id>" / "edge:<id>". */
+export function openThreadsByTarget(comments: MapComment[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const c of comments) {
+    if (c.threadId || c.resolvedAt) continue;
+    const t = anchorTarget(parseAnchor(c.anchor));
+    if (t) out.set(`${t.kind}:${t.id}`, (out.get(`${t.kind}:${t.id}`) ?? 0) + 1);
+  }
+  return out;
 }
 
 /** Threads, newest activity first; replies in order. */

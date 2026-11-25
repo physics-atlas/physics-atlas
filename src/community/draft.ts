@@ -1,5 +1,6 @@
 import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
 import vocab from '../data/conceptVocabulary.json';
+import { cleanTags } from '../data/tags';
 import { pageLinkTargets, parsePage } from '../lib/pageText';
 import type {
   Assumption,
@@ -134,6 +135,8 @@ export interface Draft {
   assumes: DraftAssumption[];
   /** Pictures of it, on its card and page */
   figures: DraftFigure[];
+  /** Its tags, in two layers (src/data/tags.ts): the role it plays, how it's represented */
+  tags: { semantic: string[]; representation: string[] };
   /**
    * Its atlas page, in Markdown + LaTeX (lib/pageText.ts) — one text per depth, depth 1 first. null: the
    * page is left as it is (an edit that doesn't touch it, until it's loaded).
@@ -190,6 +193,7 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     accessibility: '',
     assumes: [],
     figures: [],
+    tags: { semantic: [], representation: [] },
     page: [],
     pageBefore: 0,
     relations: [],
@@ -239,6 +243,7 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
       caption: f.caption ?? '',
       credit: f.credit,
     })),
+    tags: { semantic: [...(node.tags?.semantic ?? [])], representation: [...(node.tags?.representation ?? [])] },
     // The page stays as it is until the editor loads it (DraftEditor's "Edit the page").
     page: null,
     pageBefore: 0,
@@ -359,7 +364,8 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const domain = d.domains.length ? d.domains.join(' / ') : undefined;
   const type = d.type || 'property';
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
-  const { importance: _i, generality: _g, assumes: _a, figures: _f, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
+  const { importance: _i, generality: _g, assumes: _a, figures: _f, tags: _t, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
+  void _t;
   void _i;
   void _g;
   void _a;
@@ -380,7 +386,17 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   };
   const assumes = cleanAssumptions(d.assumes);
   const figures = draftFigures(d, id).map((x) => x.figure);
-  const head = { ...rest, id, label, type, ...scales, ...(assumes.length ? { assumes } : {}), ...(figures.length ? { figures } : {}) };
+  const tags = cleanTags(d.tags);
+  const head = {
+    ...rest,
+    id,
+    label,
+    type,
+    ...scales,
+    ...(tags ? { tags } : {}),
+    ...(assumes.length ? { assumes } : {}),
+    ...(figures.length ? { figures } : {}),
+  };
   const attrs =
     type === 'equation'
       ? {
@@ -942,6 +958,8 @@ export function hasContent(d: Draft): boolean {
       d.equation.trim() ||
       (d.page ?? []).some((s) => s.trim()) ||
       d.figures.length ||
+      d.tags.semantic.length ||
+      d.tags.representation.length ||
       d.relations.length ||
       d.evidence.length,
   );
@@ -1087,6 +1105,12 @@ export function parseDraft(raw: unknown): Draft | null {
     );
   };
   if (!Array.isArray(figures) || !figures.every(figureOk)) return null;
+  // Added 2026-11-24: tags, in two layers — older drafts have none.
+  const rawTags = (d.tags ?? {}) as Record<string, unknown>;
+  const tagList = (v: unknown) => (v === undefined ? [] : Array.isArray(v) && v.every(isString) ? (v as string[]) : null);
+  const semantic = tagList(rawTags.semantic);
+  const representation = tagList(rawTags.representation);
+  if (!semantic || !representation) return null;
   // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
   const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
     void _c;
@@ -1107,6 +1131,7 @@ export function parseDraft(raw: unknown): Draft | null {
     listeningTime: text('listeningTime'),
     accessibility: text('accessibility'),
     mediaTypeOther: text('mediaTypeOther'),
+    tags: { semantic, representation },
     removals: removals as string[],
     variables: variables as EquationVariable[],
     representations: withPlain(representations),

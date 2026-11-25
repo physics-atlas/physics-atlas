@@ -802,6 +802,31 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 56 — Concepts carry tags in two layers beside their kind (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Layers | The kind (`type`) is the first layer — what kind of concept it is. Two more, as tags: **Semantic attributes** (what role it plays in physics) and **Mathematical and representational attributes** (how it's represented). A concept may carry several in each. |
+| Format | `tags: { semantic?: string[], representation?: string[] }` on the node (docs/AUTHORING.md); checked by the validator, by proposals and by personal maps alike. |
+| Words | Free, not a closed list: typed in, with suggestions — the starting words (`conceptVocabulary.json` → `tagLayers`, from the layers' table) and every tag a concept already carries (on the atlas, in the map, in open proposals and drafts). A new tag needs no vocabulary change: it's suggested once a concept with it exists. A known tag keeps its usual capitals. |
+| Editor | A **Tags** section, one field per layer: chips with a remove button, a text field with the browser's suggestion list (Enter, a comma or **Add**), and the unused suggestions as buttons. Not for learning goals or resources. |
+| Shown | On the card, as **Role:** and **Represented as:**, in words. |
+
+**Open paths:** filtering or colouring the map by tag; merging near-duplicate tags (a curator's tool);
+moving the kind itself to the image's eight broader kinds.
+
+## Decision 55 — Comments on a personal map work in comment mode (2026-11)
+
+| Piece | Rule |
+|---|---|
+| Mode | The map bar's **Comments** button (`aria-pressed`) opens the comments beside the map — a sheet over its lower half on a phone — and puts the map in comment mode, as in Lovable or Zotero: a click on a concept or relation picks it for a new comment instead of opening its card. |
+| Parts | A comment is on the map, a concept (in general, or one of its parts: name, kind, description, details, relations, importance and generality, its page), a relation, or a page depth (`node:<id>:<part>` joins the anchors). |
+| Marks | Each concept and relation with open threads shows a small numbered circle — a button naming the count and what it's on — pinned visible at any zoom while comment mode is on. Text on it measured: 6.0:1 dark, 7.5:1 light. |
+| The panel | A new comment (what it's on, preset by the click; which part), then the threads: **To address** / Resolved / All, and only those on what was clicked. Each thread is answered, resolved or reopened in place. |
+| Keyboard | Everything the map clicks do is in the panel's own controls too: the **On** list names every concept, relation and page depth. |
+
+Replaces Phase 3's panel under the map bar.
+
 ## Decision 54 — Even: fewer crossings between relations of the same standing (2026-11)
 
 **Aim:** at each zoom level, the relations you see together (the ones of the same standing)
@@ -907,6 +932,10 @@ send the page with the concept.
 **Open paths:** the reference's other accent, a muted sage, for a second family (e.g. the
 Learning or Community side); a serif display face for the wordmark and page titles, as the
 reference has; terracotta for primary buttons instead of an outline.
+
+**2026-11-24:** the accent is fixed on terracotta. The header's accent picker and its two
+alternates (forest green, creme, `lib/usePalette.ts`) are removed; they stay in git history
+as a path.
 
 ## Decision 47 — Two arrangements of the map: Clustered and Even; sharper, more legible map (2026-11)
 

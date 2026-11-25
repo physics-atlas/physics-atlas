@@ -9,7 +9,6 @@ import { splitFluff } from './graph/concepts';
 import { TYPE_COLORS } from './graph/typeColors';
 import { useProgress } from './lib/useProgress';
 import { useTheme } from './lib/useTheme';
-import { PALETTES, usePalette, type Palette } from './lib/usePalette';
 import { useMotion } from './lib/motion';
 import { hrefOf, isPlainClick, refFromSearch, relationHref, shareFromHash, shareKey, shareToken } from './lib/pageLinks';
 import type { PageRef } from './lib/pageLinks';
@@ -22,7 +21,9 @@ import { canEdit, deleteConceptChanges, proposalChanges, readMap, readShared, sa
 import type { MapChange } from './maps/items';
 import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
-import { anchorLabel, canComment, newSince, parseAnchor } from './maps/comments';
+import { anchorLabel, canComment, newSince, openThreadsByTarget, parseAnchor } from './maps/comments';
+import type { CommentPick } from './components/CommentsPanel';
+import type { CommentMark } from './components/GraphView';
 import { useComments } from './maps/useComments';
 import type { ResolvedMap } from './maps/map';
 import { mapHref, pageHref } from './lib/pageLinks';
@@ -165,17 +166,34 @@ export default function App() {
   const savedMap = mapLoad && mapLoad.id === wantedMap && mapLoad.state === 'ready' ? mapLoad.saved : null;
   const onMapSaved = useCallback((saved: SavedMap) => setMapLoad({ id: saved.map.id, state: 'ready', saved }), []);
   // The panel open under the map bar, one at a time: edit and members, comments, course goals.
-  const [barPanel, setBarPanel] = useState<'edit' | 'comments' | 'goals' | null>(null);
+  const [barPanel, setBarPanel] = useState<'edit' | 'goals' | null>(null);
   const mapPanelOpen = barPanel === 'edit';
   const personal: ResolvedMap | null = useMemo(() => (savedMap ? resolveMap(savedMap.map, concepts) : null), [savedMap]);
-  // Its comments (Phase 3): for members who aren't only viewers. One panel under the bar at a time.
+  // Its comments (Phase 3): for members who aren't only viewers. They open beside the map, which is
+  // then in comment mode: a click on a concept or relation picks it for a comment; marks show open threads.
   const commenting = Boolean(savedMap && me?.user && canComment(savedMap.role));
   const mapComments = useComments(commenting && savedMap ? savedMap.map.id : null, me?.user?.login ?? null);
-  const commentsOpen = barPanel === 'comments';
-  const toggleBarPanel = (panel: 'edit' | 'comments' | 'goals') => {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentPick, setCommentPick] = useState<CommentPick | null>(null);
+  const toggleComments = () => {
     if (commentsOpen) mapComments.markRead();
-    setBarPanel(barPanel === panel ? null : panel);
+    // Comment mode starts with the map clear: a click picks for a comment, so no card stays open,
+    // and the panels under the bar make way for the map and the comments beside it.
+    else {
+      setSelectedId(null);
+      setBarPanel(null);
+    }
+    setCommentsOpen(!commentsOpen);
   };
+  const toggleBarPanel = (panel: 'edit' | 'goals') => setBarPanel(barPanel === panel ? null : panel);
+  const pickForComment = useCallback((kind: 'node' | 'edge', id: string) => setCommentPick((p) => ({ kind, id, tick: (p?.tick ?? 0) + 1 })), []);
+  const commentMarks: CommentMark[] = useMemo(() => {
+    if (!personal || !mapComments.comments) return [];
+    return [...openThreadsByTarget(mapComments.comments)].map(([key, count]) => {
+      const [kind, id] = [key.slice(0, 4) as 'node' | 'edge', key.slice(5)];
+      return { kind, id, count, label: anchorLabel({ kind, id }, personal) };
+    });
+  }, [mapComments.comments, personal]);
   const [commentNews, setCommentNews] = useState('');
   const { arrived } = mapComments;
   useEffect(() => {
@@ -232,7 +250,6 @@ export default function App() {
   }, [mode]);
   const progress = useProgress();
   const { theme, toggle: toggleTheme } = useTheme();
-  const { palette, setPalette } = usePalette();
   const motion = useMotion();
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -263,18 +280,6 @@ export default function App() {
     >
       <span aria-hidden>{theme === 'dark' ? '☀' : '🌙'}</span>
     </button>
-  );
-  const paletteSelect = (
-    <label className="palette-select" title="The accent colour beside the blue">
-      <span className="visually-hidden">Accent colour</span>
-      <select value={palette} onChange={(e) => setPalette(e.target.value as Palette)}>
-        {PALETTES.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
   const motionButton = (
     <button
@@ -580,7 +585,6 @@ export default function App() {
           </a>
           <div className="header-settings" role="group" aria-label="Display settings">
             {motionButton}
-            {paletteSelect}
             {themeButton}
           </div>
         </header>
@@ -631,7 +635,7 @@ export default function App() {
             </button>
           )}
           {commenting && (
-            <button type="button" className="draft-button map-bar-comments" aria-expanded={commentsOpen} aria-controls="comments-panel" onClick={() => toggleBarPanel('comments')}>
+            <button type="button" className="draft-button map-bar-comments" aria-pressed={commentsOpen} onClick={toggleComments}>
               Comments ({commentCounts.open} open{commentCounts.fresh ? `, ${commentCounts.fresh} new` : ''})
             </button>
           )}
@@ -678,24 +682,8 @@ export default function App() {
           </Suspense>
         </div>
       )}
-      {mode === 'map' && savedMap && personal && personalPages && mapPlace && me?.user && commenting && commentsOpen && (
-        <div id="comments-panel">
-          <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
-            <CommentsPanel
-              resolved={personal}
-              comments={mapComments.comments}
-              error={mapComments.error}
-              seen={mapComments.seen}
-              login={me.user.login}
-              role={savedMap.role}
-              onChange={mapComments.replace}
-              current={(mapPlace.view === 'pages' ? mapPlace.page.concept : selectedId) ?? null}
-              pages={personalPages}
-              onShow={showOnPersonalMap}
-            />
-          </Suspense>
-        </div>
-      )}
+      {/* The main view, and — in a personal map — its comments beside it. */}
+      <div className="app-body">
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
         {/* An atlas page's own heading is the view's h1, and the feedback form's; a map's pages, too. */}
         {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && mode !== 'guide' && mode !== 'maps' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
@@ -801,6 +789,7 @@ export default function App() {
                 fromAtlas={personal.refIds}
                 completedIn={personal.map.id}
                 mapEditing={mapEditing}
+                commentMode={commentsOpen && commenting ? { marks: commentMarks, onPick: pickForComment } : undefined}
                 startEditing={Boolean(mapEditing) && mapDraftOnArrival}
                 onEditPage={mapEditing ? editMapPage : undefined}
               />
@@ -825,6 +814,26 @@ export default function App() {
           </MapScope.Provider>
         )}
       </main>
+      {mode === 'map' && savedMap && personal && personalPages && mapPlace && me?.user && commenting && commentsOpen && (
+        <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
+          <CommentsPanel
+            resolved={personal}
+            comments={mapComments.comments}
+            error={mapComments.error}
+            seen={mapComments.seen}
+            login={me.user.login}
+            role={savedMap.role}
+            onChange={mapComments.replace}
+            pick={commentPick}
+            current={mapPlace.view === 'pages' ? (mapPlace.page.concept ?? null) : null}
+            view={mapPlace.view}
+            pages={personalPages}
+            onShow={(id) => (mapPlace.view === 'pages' ? openMapPage({ concept: id }) : focusOn(id))}
+            onClose={toggleComments}
+          />
+        </Suspense>
+      )}
+      </div>
     </div>
   );
 }

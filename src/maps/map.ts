@@ -1,6 +1,7 @@
 import type { ConceptGraph, GraphEdge, GraphNode } from '../data/types';
 import { EDGE_SENTENCE_TEMPLATES, NODE_TYPE_LABELS } from '../data/types';
 import { normalizeRelationship } from '../graph/concepts';
+import { tagProblems } from '../data/tags';
 
 /**
  * A personal map (Decision 50, .claude/plans/epic-personal-maps.md): concepts,
@@ -116,6 +117,7 @@ export function mapProblems(map: PersonalMap, atlas: ConceptGraph): string[] {
     if (atlasIds.has(n.id)) out.push(`${where}: concept id "${n.id}" is an atlas concept — use it by reference instead`);
     if (!(n.type in NODE_TYPE_LABELS)) out.push(`${where}: concept "${n.id}" has an unknown type "${n.type}"`);
     if (!n.label?.trim()) out.push(`${where}: concept "${n.id}" has no name`);
+    for (const message of tagProblems(n.tags)) out.push(`${where}: concept "${n.id}" ${message}`);
     own.add(n.id);
   }
   const refs = new Set(map.refs);

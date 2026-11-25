@@ -561,6 +561,30 @@ concept's card; a missing value shows a **To-do** marker. Known values live in
 the validator warns until you add it there. Leave the field out rather than
 writing an empty string.
 
+## `tags`
+
+Two layers of tags beside a concept's kind (its `type` is the first layer), as an
+optional top-level object — several words per layer:
+
+```json
+"tags": {
+  "semantic": ["Kinematic", "Conserved"],
+  "representation": ["Vector", "Field"]
+}
+```
+
+- `semantic` — **What role does it play in physics?** (Kinematic, Dynamical, Conserved,
+  Interaction-related, Thermodynamic, Geometrical, Probabilistic, Observational …)
+- `representation` — **How is it represented?** (Scalar, Vector, Tensor, Function, Field,
+  Operator, Differential form, Equation, Distribution …)
+
+The words are free. The editor suggests the starting ones (`conceptVocabulary.json` →
+`tagLayers`) and every tag some concept already carries, so a new tag is suggested to
+others once a concept with it is on the map. Each tag trimmed, at most 40 characters,
+at most 12 per layer, none twice (whatever its capitals); leave out a layer with none.
+The card shows them as **Role** and **Represented as**. Learning goals and resources
+have none in the editor.
+
 ## Ids
 
 Ids stay **snake_case**, exactly as exported from Sophie's CSVs

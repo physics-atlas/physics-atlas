@@ -6,6 +6,38 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-85: tags in two layers — semantic, and mathematical/representational
+
+**Status:** ✅ Implemented <!-- status-line: feature-85 -->
+**Planned:** 2026-11-24 — requested: add the layers (after the node type: semantic attributes, mathematical and representational attributes) as tags, several per node, typed in with suggestions from the tags already used; the image's words as the first ones; a new tag joins the suggestions
+**Implemented:** 2026-11-24
+
+### Implemented
+- Schema: `tags: { semantic?, representation? }` on a concept (`src/data/types.ts`, `src/data/tags.ts`); the starting words in `conceptVocabulary.json` → `tagLayers`; checked by `validate-concepts.mjs`, proposals and personal maps; docs/AUTHORING.md, Decision 56
+- Editor: a **Tags** section (`TagInput`) — chips, a typed field with suggestions (the vocabulary's and every tag in use: atlas, map, proposals, drafts), one-tap suggestions; drafts carry tags (older drafts read with none); an edit lists tag changes
+- Card: **Role:** and **Represented as:**
+- Tests: tag rules, suggestions growing with use, a draft round trip, old drafts; smoke: tags on a card, picked and typed in the editor
+
+### Review
+Not run — direct session.
+
+
+## feature-84: terracotta only; course goals filled in bulk; comment mode on personal maps
+
+**Status:** ✅ Implemented <!-- status-line: feature-84 -->
+**Planned:** 2026-11-24 — requested: fix the theme on Terracotta and remove the selector; add learning goals to a course goal in bulk, by ticks in the list of all learning goals; rework comments like Lovable or Zotero — a comment button that lets you click concepts to comment on them, in general or on one of their parts, a side panel with all comments to address (resolve or reply there), and small circle indicators on the map
+**Implemented:** 2026-11-24
+
+### Implemented
+- The accent picker and the forest / creme alternates removed (`lib/usePalette.ts`, their CSS); terracotta always; privacy notice (EN/DE) no longer lists a palette (Decision 48 note)
+- `CourseGoalsPanel`: **Add learning goals** turns the list of all learning goals into a picking list — a tick on each one not yet in the course goal, then **Add N learning goals** at once
+- Comment mode (Decision 55): `CommentsPanel` beside the map (a bottom sheet on a phone); a click on a concept or relation picks it for a comment; comments on a concept's parts (`node:<id>:<part>`, `COMMENT_FIELDS`); numbered circle marks on the map (`GraphView` `marks`), pinned visible at any zoom; reply / resolve in place; the map's canvas follows its box (ResizeObserver)
+- Tests: anchors with parts, open-thread counts; smoke: comment mode (marks, a click picks, a comment on a part, reply, resolve), course goals added in bulk
+
+### Review
+Not run — direct session.
+
+
 ## feature-83: personal maps Phase 4 — sharing with the course by link
 
 **Status:** ✅ Implemented <!-- status-line: feature-83 -->

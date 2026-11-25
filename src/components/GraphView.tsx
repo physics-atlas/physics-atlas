@@ -58,12 +58,23 @@ const PINNED = [
   'draft-subject',
   'edit-proposed',
   'conflict-match',
+  // Comment mode: what has open comments shows at any zoom, so its mark can be seen.
+  'comment-pinned',
 ];
 /** Neither layer of reviewed content: the proposals and the proposer's own draft. */
 const NOT_CONFIRMED = '.overlay, .draft';
 const NEAR_COUNT = 6;
 /** How close (model px) a concept must be to the ghost to count as near it. */
 const NEAR_RADIUS = 450;
+
+export interface CommentMark {
+  kind: 'node' | 'edge';
+  id: string;
+  /** Open threads on it */
+  count: number;
+  /** What it is, in words, for the button's name */
+  label: string;
+}
 
 interface GraphViewProps {
   /**
@@ -137,6 +148,12 @@ interface GraphViewProps {
    * confirmed concept, never in the layout cache.
    */
   fluff?: ConceptGraph | null;
+  /**
+   * Comment marks (personal maps, comment mode): a small numbered circle on each
+   * concept and relation with open comment threads — a button that opens them.
+   */
+  marks?: CommentMark[];
+  onMark?: (mark: CommentMark) => void;
   /** The relation whose card is open: drawn like a hovered one, its two concepts with it. */
   selectedEdgeId?: string | null;
   /** Clicking a line selects its relation (null: clicking off it). */
@@ -1097,6 +1114,8 @@ export default function GraphView({
   selectedEdgeId = null,
   onSelectEdge,
   arrangement: chosenArrangement = 'clustered',
+  marks,
+  onMark,
 }: GraphViewProps) {
   // With the clustered arrangement switched off, every map shows Even.
   const arrangement: Arrangement = CLUSTERED_LAYOUT ? chosenArrangement : 'even';
@@ -1118,6 +1137,8 @@ export default function GraphView({
   /** The lonely concepts' speech bubbles (fun mode), and what moves them with the map. */
   const [lonely, setLonely] = useState<{ id: string; label: string; importance: number }[]>([]);
   const bubbleRefs = useRef(new Map<string, HTMLButtonElement>());
+  /** Comment marks, by "kind:id", placed with the bubbles. */
+  const markRefs = useRef(new Map<string, HTMLButtonElement>());
   const placeBubblesRef = useRef<(() => void) | null>(null);
   /** Relation names a circle still covers, by edge id (with who covers them) — the safety net. */
   const coversRef = useRef(new Map<string, string[]>());
@@ -1393,6 +1414,27 @@ export default function GraphView({
         if (kept.some((k) => box.left < k.right && k.left < box.right && box.top < k.bottom && k.top < box.bottom))
           el.hidden = true;
         else kept.push(box);
+      }
+      // Comment marks: on a concept's upper left, or on a relation's middle; hidden with what they mark.
+      for (const [key, el] of markRefs.current) {
+        const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+        const ele = cy.$id(id);
+        const gone =
+          ele.empty() || !ele.visible() || ['zoom-hidden', 'zoom-past', 'layer-hidden'].some((c) => ele.hasClass(c));
+        let x = 0, y = 0;
+        if (!gone && kind === 'node') {
+          const p = ele.renderedPosition();
+          const r = (ele.data('radius') as number) * z * 0.7;
+          x = p.x - r;
+          y = p.y - r;
+        } else if (!gone) {
+          const m = (ele as cytoscape.EdgeSingular).renderedMidpoint();
+          x = m.x;
+          y = m.y;
+        }
+        el.hidden = gone || x < insets.left || y < 0 || x > cy.width() - insets.right || y > cy.height();
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
       }
     };
     placeBubblesRef.current = placeBubbles;
@@ -1818,10 +1860,36 @@ export default function GraphView({
     );
   }, [showConfirmed, showOverlay, overlay, draftShapes, concepts, theme, fun, fluff]);
 
-  // New bubbles start hidden; place them once they're in the page.
+  // The canvas follows its box, not only the window: a side panel opening beside the map narrows it.
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      cyRef.current?.resize();
+      placeBubblesRef.current?.();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // New bubbles and marks start hidden; place them once they're in the page. What has a mark — a
+  // concept, or both ends of a relation — is pinned visible at any zoom first.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (cy) {
+      cy.batch(() => {
+        cy.elements('.comment-pinned').removeClass('comment-pinned');
+        for (const m of marks ?? []) {
+          const ele = cy.$id(m.id);
+          if (ele.empty()) continue;
+          if (m.kind === 'node') ele.addClass('comment-pinned');
+          else (ele as cytoscape.EdgeSingular).connectedNodes().addClass('comment-pinned');
+        }
+      });
+      applyFadeRef.current?.();
+    }
     placeBubblesRef.current?.();
-  }, [lonely]);
+  }, [lonely, marks]);
 
   // Apply selection/path highlighting without re-layout
   useEffect(() => {
@@ -1983,6 +2051,28 @@ export default function GraphView({
             >
               <span className="visually-hidden">{b.label}: </span>
               {lonelyLine(b.id)}
+            </button>
+          ))}
+        </div>
+      )}
+      {marks && marks.length > 0 && (
+        <div className="graph-bubbles graph-marks" role="group" aria-label="Comments on the map">
+          {marks.map((m) => (
+            <button
+              key={`${m.kind}:${m.id}`}
+              type="button"
+              className={`graph-mark graph-mark-${m.kind}`}
+              hidden
+              ref={(el) => {
+                const key = `${m.kind}:${m.id}`;
+                if (el) markRefs.current.set(key, el);
+                else markRefs.current.delete(key);
+              }}
+              onClick={() => onMark?.(m)}
+              aria-label={`${m.count} open ${m.count === 1 ? 'comment' : 'comments'} on ${m.label}`}
+              title={`${m.count} open ${m.count === 1 ? 'comment' : 'comments'}`}
+            >
+              {m.count}
             </button>
           ))}
         </div>

@@ -697,7 +697,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
     id: 'sample-map',
     title: 'Sample course map',
     refs: ['diff_geometry', 'tangent_space', 'tangent_vector', 'parallel_transport', 'lg_pt_3'],
-    nodes: [{ id: 'sample_week_1_goal', type: 'learning_goal', label: 'Sample week 1 goal', importance: 6, generality: 3, attrs: { description: 'Sample.' } }],
+    nodes: [{ id: 'sample_week_1_goal', type: 'learning_goal', label: 'Sample week 1 goal', importance: 6, generality: 3, tags: { semantic: ['Kinematic'] }, attrs: { description: 'Sample.' } }],
     edges: [{ id: 'sample_course_e1', source: 'sample_week_1_goal', target: 'tangent_vector', relationship: 'is a learning goal of' }],
     pages: { sample_week_1_goal: ['Sample page.\n\n## Before the session\n\nSample: read the page on [[tangent_vector]].'] },
   };
@@ -793,55 +793,80 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   await pm.keyboard.press('Enter');
   await pm.waitForFunction(() => window.__cy.nodes().length === 7, { timeout: 10000 });
   const added = await pm.evaluate(() => ({ status: document.querySelector('.map-panel [role="status"]')?.textContent, onMap: Boolean(window.__cy.$id('four_velocity').length) }));
-  // Comments, by keyboard: the thread there, a new one about the whole map, a reply, resolve.
+  // Comments: comment mode — marks on the map; a click on a concept points a new comment at it, here at one
+  // of its parts; a reply and resolve, by keyboard, right in the panel beside the map.
   await pm.focus('.map-bar-comments');
   await pm.keyboard.press('Enter');
-  await pm.waitForSelector('.comments-thread');
+  await pm.waitForSelector('.comments-side .comments-thread');
+  await pm.waitForSelector('.graph-mark:not([hidden])', { timeout: 10000 }).catch(() => {});
   const comments0 = await pm.evaluate(() => ({
     button: document.querySelector('.map-bar-comments')?.textContent,
-    otherPanel: Boolean(document.querySelector('#map-panel')),
+    pressed: document.querySelector('.map-bar-comments')?.getAttribute('aria-pressed'),
     about: document.querySelector('.comments-about')?.textContent,
     maths: Boolean(document.querySelector('.comments-entry .katex')),
     live: Boolean(document.querySelector('.map-bar [role="status"]')),
+    marks: [...document.querySelectorAll('.graph-mark')].map((m) => m.getAttribute('aria-label')),
   }));
-  await pm.select('.comments-form select', 'map');
-  await pm.type('.comments-form textarea', 'Sample: a thread about the whole map.');
+  await pm.evaluate(() => window.__cy.$id('tangent_space').emit('tap'));
+  await pm.waitForFunction(() => document.querySelector('.comments-form select')?.value === 'node:tangent_space', { timeout: 5000 }).catch(() => {});
+  const picked = await pm.evaluate(() => ({
+    on: document.querySelector('.comments-form select')?.value,
+    heading: document.querySelector('.comments-form-heading')?.textContent,
+    cardOpened: Boolean(document.querySelector('.map-card .map-card-title')),
+  }));
+  await pm.select('.comments-form select:nth-of-type(2)', 'description');
+  await pm.type('.comments-form textarea', 'Sample: a note on its description.');
   await pm.focus('.comments-form button[type="submit"]');
   await pm.keyboard.press('Enter');
-  await pm.waitForFunction(() => document.querySelectorAll('.comments-thread').length === 2);
+  await pm.waitForFunction(() => document.querySelectorAll('.graph-mark').length === 2, { timeout: 10000 }).catch(() => {});
+  const marksAfter = await pm.evaluate(() => document.querySelectorAll('.graph-mark').length);
   await pm.type('.comments-thread .comments-reply textarea', 'Sample reply.');
   await pm.focus('.comments-thread .comments-reply button[type="submit"]');
   await pm.keyboard.press('Enter');
-  await pm.waitForFunction(() => document.querySelectorAll('.comments-entry').length === 3);
+  await pm.waitForFunction(() => document.querySelectorAll('.comments-thread .comments-entry').length === 2);
   const resolveButton = await pm.waitForSelector('.comments-thread .comments-reply button[type="button"]');
   await resolveButton.focus();
   await pm.keyboard.press('Enter');
-  await pm.waitForFunction(() => document.querySelectorAll('.comments-thread').length === 1);
+  await pm.waitForFunction(() => document.querySelector('.comments-side [role="status"]')?.textContent === 'Resolved the thread.');
+  await pm.click('.comments-filter input[type="checkbox"]');
   const comments1 = await pm.evaluate(() => ({
-    status: document.querySelector('.comments-panel [role="status"]')?.textContent,
-    heading: document.querySelector('.comments-threads h2')?.textContent,
+    status: document.querySelector('.comments-side [role="status"]')?.textContent,
+    heading: document.querySelector('.comments-side h2')?.textContent,
+    shown: document.querySelectorAll('.comments-side .comments-thread').length,
+    marks: document.querySelectorAll('.graph-mark').length,
   }));
   await pm.screenshot({ path: `${OUT}/map-comments.png` });
+  await pm.click('.comments-side-close');
   if (
     !comments0.button?.startsWith('Comments (1 open') ||
-    comments0.otherPanel ||
+    comments0.pressed !== 'true' ||
     comments0.about !== 'Tangent vector — open' ||
     !comments0.maths ||
     !comments0.live ||
-    JSON.stringify(sim.posts.map((p) => (p.thread ? `reply:${p.thread}` : p.anchor))) !== JSON.stringify(['map', 'reply:c2']) ||
+    comments0.marks.length !== 1 ||
+    !comments0.marks[0]?.startsWith('1 open comment on Tangent') ||
+    picked.on !== 'node:tangent_space' ||
+    picked.cardOpened ||
+    marksAfter !== 2 ||
+    JSON.stringify(sim.posts.map((p) => (p.thread ? `reply:${p.thread}` : p.anchor))) !== JSON.stringify(['node:tangent_space:description', 'reply:c2']) ||
     comments1.status !== 'Resolved the thread.' ||
-    !comments1.heading?.startsWith('Threads (1 open')
+    !comments1.heading?.includes('1 open') ||
+    comments1.shown !== 1 ||
+    comments1.marks !== 1
   )
-    errors.push(`comments: ${JSON.stringify({ comments0, comments1, posts: sim.posts })}`);
+    errors.push(`comments: ${JSON.stringify({ comments0, picked, marksAfter, comments1, posts: sim.posts })}`);
 
   // Course goals: make one, add a learning goal, pick it — on the map, then on the pages.
   await pm.click('.map-bar-goals');
   await pm.waitForSelector('.goals-panel');
   await pm.type('.goals-main > form input', 'Sample week 1');
   await pm.keyboard.press('Enter');
-  await pm.waitForSelector('.goals-item select');
-  await pm.select('.goals-item select', 'sample_week_1_goal');
-  await pm.click('.goals-item form button[type="submit"]');
+  // Adding learning goals: the list of all of them offers a tick each, added together.
+  await pm.waitForSelector('.goals-edit button[aria-pressed]');
+  await pm.click('.goals-edit button[aria-pressed]');
+  await pm.waitForSelector('.goals-picking input[aria-label="Add Sample week 1 goal"]');
+  await pm.click('.goals-picking input[aria-label="Add Sample week 1 goal"]');
+  await pm.evaluate(() => [...document.querySelectorAll('.goals-picking-actions button')].find((b) => b.textContent === 'Add 1 learning goal')?.click());
   await pm.waitForSelector('.goals-topics button.draft-link');
   // A student's tick: in this browser only, shown on the goal's card too.
   await pm.click('.goals-topics input[type="checkbox"]');
@@ -851,6 +876,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
     button: document.querySelector('.map-bar-goals')?.textContent,
     heading: document.querySelector('.goals-name')?.textContent,
     all: document.querySelectorAll('.goals-all li').length,
+    cardTags: document.querySelector('.map-card .concept-tags')?.textContent,
     completedOnCard: document.querySelector('.goal-completed-toggle input')?.checked,
     stored: localStorage.getItem('physics-atlas-progress-v1'),
   }));
@@ -859,7 +885,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   await pm.click('.goals-topics button.draft-link');
   await pm.waitForFunction(() => document.querySelector('.atlas-page h1')?.textContent?.includes('Sample week 1 goal'), { timeout: 10000 });
   const goalSaves = sim.saves.slice(1).map((s) => s.changes.map((c) => `${c.kind}:${c.body?.goals?.join(',') ?? ''}`).join(' '));
-  if (!goalsOnMap.button?.startsWith('Course goals (1)') || !goalsOnMap.heading?.startsWith('Sample week 1') || goalsOnMap.all !== 2 || !goalsOnMap.heading?.includes('1 completed') || !goalsOnMap.completedOnCard || !goalsOnMap.stored?.includes('map:sample-map:sample_week_1_goal') || sim.saves.some((s) => JSON.stringify(s).includes('completed')) || JSON.stringify(goalSaves) !== JSON.stringify(['goal:', 'goal:sample_week_1_goal']))
+  if (!goalsOnMap.button?.startsWith('Course goals (1)') || !goalsOnMap.heading?.startsWith('Sample week 1') || goalsOnMap.all !== 2 || goalsOnMap.cardTags !== 'Role: Kinematic' || !goalsOnMap.heading?.includes('1 completed') || !goalsOnMap.completedOnCard || !goalsOnMap.stored?.includes('map:sample-map:sample_week_1_goal') || sim.saves.some((s) => JSON.stringify(s).includes('completed')) || JSON.stringify(goalSaves) !== JSON.stringify(['goal:', 'goal:sample_week_1_goal']))
     errors.push(`course goals: ${JSON.stringify({ goalsOnMap, goalSaves })}`);
 
   // The editor saves a new concept into the map (Phase 2, part 2).
@@ -882,6 +908,30 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   const afterEditor = await pm.evaluate(() => ({ nodes: window.__cy.nodes().length, editorOpen: Boolean(document.querySelector('.draft-editor')) }));
   if (proposeLabel !== '＋ Add a concept to this map' || !saveButton || JSON.stringify(editorSave) !== JSON.stringify(['node:Sample week 2 goal', 'edge:tangent_vector']) || afterEditor.nodes !== 8 || afterEditor.editorOpen)
     errors.push(`the map's editor: ${JSON.stringify({ proposeLabel, editorProblems, editorSave, afterEditor })}`);
+
+  // Tags (two layers): one picked from the suggestions, a new one typed in; the draft is then discarded.
+  await pm.click('.concept-propose');
+  await pm.waitForSelector('.draft-editor select');
+  await pm.select('.draft-editor select', 'property');
+  await pm.waitForSelector('.tag-input .tag-suggestion');
+  const firstSuggestion = await pm.$eval('.tag-input .tag-suggestion', (b) => b.textContent.replace('+ ', ''));
+  await pm.click('.tag-input .tag-suggestion');
+  await pm.type('.tag-input input', 'Sample new tag');
+  await pm.keyboard.press('Enter');
+  const tagged = await pm.evaluate(() => ({
+    chips: [...document.querySelectorAll('.tag-input:first-of-type .tag-chip')].map((c) => c.firstChild.textContent),
+    layers: [...document.querySelectorAll('.tag-input legend strong')].map((l) => l.textContent),
+    suggestsUsed: [...document.querySelectorAll('.tag-input:first-of-type .tag-suggestion')].some((b) => b.textContent === '+ Kinematic'),
+  }));
+  await pm.evaluate(() => [...document.querySelectorAll('.draft-editor button')].find((b) => b.textContent.startsWith('Discard this draft'))?.click());
+  await pm.evaluate(() => [...document.querySelectorAll('.draft-confirm button')].find((b) => b.textContent === 'Discard')?.click());
+  if (
+    firstSuggestion !== 'Conserved' ||
+    JSON.stringify(tagged.chips) !== JSON.stringify(['Conserved', 'Sample new tag']) ||
+    JSON.stringify(tagged.layers) !== JSON.stringify(['Semantic attributes', 'Mathematical and representational attributes']) ||
+    !tagged.suggestsUsed
+  )
+    errors.push(`tags in the editor: ${JSON.stringify({ firstSuggestion, tagged })}`);
 
   // A page of the map's own concept is written on the page and saved through the editor; an atlas concept's isn't editable.
   const editButton = () => [...document.querySelectorAll('.atlas-page button')].find((b) => b.textContent.includes('Edit this page'));

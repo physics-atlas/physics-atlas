@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GraphNode } from '../data/types';
 import type { Progress } from '../lib/useProgress';
 import { saveMap } from '../maps/api';
@@ -34,6 +34,22 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const ids = { name: useId(), all: useId() };
+  // Adding learning goals to a course goal, several at once: the list of all of them offers a tick each.
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const allHeading = useRef<HTMLHeadingElement>(null);
+  const target = goals.find((g) => g.id === addingTo) ?? null;
+  useEffect(() => {
+    if (addingTo) allHeading.current?.focus();
+  }, [addingTo]);
+  const startAdding = (id: string) => {
+    setAddingTo(id);
+    setPicked(new Set());
+  };
+  const stopAdding = () => {
+    setAddingTo(null);
+    setPicked(new Set());
+  };
   const learningGoals = useMemo(
     () => resolved.graph.nodes.filter((n) => n.type === 'learning_goal').sort((a, b) => a.label.localeCompare(b.label)),
     [resolved],
@@ -95,6 +111,8 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
                 onPick={onPick}
                 done={done}
                 onToggle={toggle}
+                adding={addingTo === g.id}
+                onStartAdding={() => startAdding(g.id)}
                 onMove={(by) => move(i, by)}
                 onSave={(next, done) => save([put(next)], done)}
                 onDelete={() => {
@@ -130,11 +148,18 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
             </form>
           )}
         </div>
-        <div className="map-panel-part">
-          <h2 className="map-panel-heading" id={ids.all}>
-            All learning goals on this map ({learningGoals.length}
-            {learningGoals.length ? `, ${learningGoals.filter((n) => done(n.id)).length} completed` : ''})
+        <div className={`map-panel-part${target ? ' goals-picking' : ''}`}>
+          <h2 className="map-panel-heading" id={ids.all} ref={allHeading} tabIndex={-1}>
+            {target ? (
+              <>Add learning goals to “{target.name}”</>
+            ) : (
+              <>
+                All learning goals on this map ({learningGoals.length}
+                {learningGoals.length ? `, ${learningGoals.filter((n) => done(n.id)).length} completed` : ''})
+              </>
+            )}
           </h2>
+          {target && <p className="map-panel-note">Tick the ones to add, then add them together.</p>}
           {learningGoals.length === 0 ? (
             <p className="map-panel-note">
               This map has no learning goals yet.{editable ? ' Add one with “Add a concept to this map”, as the kind “Learning goal”.' : ''}
@@ -143,7 +168,28 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
             <ul className="map-panel-list goals-all" aria-labelledby={ids.all}>
               {learningGoals.map((n) => (
                 <li key={n.id}>
-                  <Completed label={n.label} checked={done(n.id)} onChange={() => toggle(n.id)} />
+                  {!target ? (
+                    <Completed label={n.label} checked={done(n.id)} onChange={() => toggle(n.id)} />
+                  ) : target.goals.includes(n.id) ? (
+                    <span className="goals-done goals-already">Already in it</span>
+                  ) : (
+                    <label className="goals-done">
+                      <input
+                        type="checkbox"
+                        checked={picked.has(n.id)}
+                        aria-label={`Add ${n.label}`}
+                        onChange={() =>
+                          setPicked((s) => {
+                            const next = new Set(s);
+                            if (next.has(n.id)) next.delete(n.id);
+                            else next.add(n.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span aria-hidden>Add</span>
+                    </label>
+                  )}
                   <button type="button" className="draft-link" onClick={() => onPick(n.id)}>
                     {n.label}
                   </button>
@@ -154,6 +200,29 @@ export default function CourseGoalsPanel({ resolved, saved, editable, view, onPi
                 </li>
               ))}
             </ul>
+          )}
+          {target && (
+            <div className="map-panel-row goals-picking-actions">
+              <button
+                type="button"
+                className="draft-button draft-button-primary"
+                disabled={busy || picked.size === 0}
+                onClick={async () => {
+                  // In the order of the list, after the ones already in it.
+                  const add = learningGoals.filter((n) => picked.has(n.id)).map((n) => n.id);
+                  const ok = await save(
+                    [put({ ...target, goals: [...target.goals, ...add] })],
+                    `Added ${add.length === 1 ? 'one learning goal' : `${add.length} learning goals`} to “${target.name}”.`,
+                  );
+                  if (ok) stopAdding();
+                }}
+              >
+                {picked.size === 1 ? 'Add 1 learning goal' : `Add ${picked.size} learning goals`}
+              </button>
+              <button type="button" className="draft-button" onClick={stopAdding}>
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -182,17 +251,19 @@ interface CourseGoalItemProps {
   onPick: (id: string) => void;
   done: (id: string) => boolean;
   onToggle: (id: string) => void;
+  /** Its learning goals are being picked in the list beside it */
+  adding: boolean;
+  onStartAdding: () => void;
   onMove: (by: -1 | 1) => void;
   onSave: (next: CourseGoal, done: string) => Promise<boolean>;
   onDelete: () => void;
 }
 
-function CourseGoalItem({ goal, resolved, learningGoals, editable, busy, first, last, onPick, done, onToggle, onMove, onSave, onDelete }: CourseGoalItemProps) {
+function CourseGoalItem({ goal, resolved, learningGoals, editable, busy, first, last, onPick, done, onToggle, adding, onStartAdding, onMove, onSave, onDelete }: CourseGoalItemProps) {
   const { topics, lost } = useMemo(() => courseGoalTopics(goal, resolved.graph), [goal, resolved]);
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(goal.name);
-  const [adding, setAdding] = useState('');
-  const ids = { heading: useId(), name: useId(), add: useId() };
+  const ids = { heading: useId(), name: useId() };
   const offered = learningGoals.filter((n) => !goal.goals.includes(n.id));
 
   return (
@@ -253,28 +324,11 @@ function CourseGoalItem({ goal, resolved, learningGoals, editable, busy, first, 
         {editable && (
           <div className="goals-edit">
             {offered.length > 0 && (
-              <form
-                className="map-panel-row"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const n = learningGoals.find((x) => x.id === adding);
-                  if (!n) return;
-                  if (await onSave({ ...goal, goals: [...goal.goals, n.id] }, `Added ${n.label} to “${goal.name}”.`)) setAdding('');
-                }}
-              >
-                <label htmlFor={ids.add}>Add a learning goal</label>
-                <select id={ids.add} className="draft-input" value={adding} onChange={(e) => setAdding(e.target.value)}>
-                  <option value="">Choose…</option>
-                  {offered.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.label}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit" className="draft-button" disabled={busy || !adding}>
-                  Add
+              <div className="map-panel-row">
+                <button type="button" className="draft-button" aria-pressed={adding} disabled={busy} onClick={onStartAdding}>
+                  {adding ? 'Picking in the list beside…' : 'Add learning goals'}
                 </button>
-              </form>
+              </div>
             )}
             {renaming ? (
               <form

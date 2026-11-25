@@ -1,16 +1,25 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PageSource } from '../data/pageSources';
 import { addComment, deleteComment, resolveThread } from '../maps/api';
 import type { MapResult, MapRole } from '../maps/api';
-import { anchorLabel, newSince, parseAnchor, threadsOf } from '../maps/comments';
-import type { CommentThread, MapComment } from '../maps/comments';
+import { COMMENT_FIELDS, anchorKey, anchorLabel, anchorTarget, newSince, parseAnchor, threadsOf } from '../maps/comments';
+import type { Anchor, CommentField, CommentThread, MapComment } from '../maps/comments';
 import type { ResolvedMap } from '../maps/map';
 import RichText from './RichText';
 
-// A saved map's comment threads (Decision 50, Phase 3), under its bar: start one
-// about the map, a concept, a relation or a page depth; reply; resolve; reopen.
-// Others' comments since the person last closed this are marked "New" — in
-// words, never by colour alone.
+// A saved map's comments (Decision 50, Phase 3), reworked as a side panel beside
+// the map: with it open, the map is in comment mode — clicking a concept or a
+// relation starts a comment on it (as a whole, or on one of its parts), and the
+// numbers on the map show where threads are open. Every thread can be answered,
+// resolved or reopened right here. Others' comments since the person last closed
+// the panel are marked "New" — in words, never by colour alone.
+
+/** What was picked on the map (a click, or a comment mark); `tick` makes the same pick count again. */
+export interface CommentPick {
+  kind: 'node' | 'edge';
+  id: string;
+  tick: number;
+}
 
 interface CommentsPanelProps {
   resolved: ResolvedMap;
@@ -20,26 +29,58 @@ interface CommentsPanelProps {
   login: string;
   role: MapRole;
   onChange: (comments: MapComment[]) => void;
-  /** The concept chosen on the map or whose page is open: the new thread's first choice */
+  /** The last thing picked on the map; null until then */
+  pick: CommentPick | null;
+  /** The concept whose page is open (the pages view): the comment's first choice */
   current: string | null;
+  view: 'map' | 'pages';
   pages: PageSource;
+  /** Shows a concept: centred on the map, or its page */
   onShow: (id: string) => void;
+  onClose: () => void;
 }
 
 type Filter = 'open' | 'resolved' | 'all';
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const same = (a: string | null, b: string) => a?.toLowerCase() === b.toLowerCase();
+const FIELDS = Object.entries(COMMENT_FIELDS) as [CommentField, string][];
 
-export default function CommentsPanel({ resolved, comments, error, seen, login, role, onChange, current, pages, onShow }: CommentsPanelProps) {
+export default function CommentsPanel({
+  resolved,
+  comments,
+  error,
+  seen,
+  login,
+  role,
+  onChange,
+  pick,
+  current,
+  view,
+  pages,
+  onShow,
+  onClose,
+}: CommentsPanelProps) {
   const mapId = resolved.map.id;
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<Filter>('open');
-  const [onlyCurrent, setOnlyCurrent] = useState(false);
-  const [anchor, setAnchor] = useState(() => (current ? `node:${current}` : 'map'));
+  // What a new comment is on: "map", "node:<id>", "edge:<id>" or "page:<id>:<depth>"; and, on a concept, which part.
+  const [on, setOn] = useState(() => (current ? `node:${current}` : 'map'));
+  const [field, setField] = useState<CommentField | ''>('');
+  const [onlyHere, setOnlyHere] = useState(false);
   const [body, setBody] = useState('');
-  const ids = { about: useId(), body: useId(), hint: useId(), filter: useId(), threads: useId() };
+  const ids = { heading: useId(), on: useId(), field: useId(), body: useId(), hint: useId(), filter: useId(), threads: useId() };
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // A click on the map (or on a mark) points the new comment at it, and shows its threads.
+  useEffect(() => {
+    if (!pick) return;
+    setOn(`${pick.kind}:${pick.id}`);
+    setField('');
+    setOnlyHere(true);
+    bodyRef.current?.focus();
+  }, [pick]);
 
   const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label);
   const options = useMemo(() => {
@@ -51,22 +92,18 @@ export default function CommentsPanel({ resolved, comments, error, seen, login, 
     return { nodes, edges, pageDepths };
   }, [resolved, pages]);
 
+  const parsed = parseAnchor(on);
+  const anchor: Anchor | null = parsed?.kind === 'node' && field ? { ...parsed, field } : parsed;
+  const target = anchorTarget(parsed);
+  const targetLabel = target ? anchorLabel(target.kind === 'node' ? { kind: 'node', id: target.id } : target, resolved) : null;
+
   const threads = useMemo(() => threadsOf(comments ?? []), [comments]);
   const fresh = useMemo(() => new Set(newSince(comments ?? [], seen, login).map((c) => c.id)), [comments, seen, login]);
-  const currentLabel = current ? resolved.graph.nodes.find((n) => n.id === current)?.label : undefined;
-  const about = (t: CommentThread) => {
-    if (!current) return true;
-    const a = parseAnchor(t.first.anchor);
-    if (!a || a.kind === 'map') return false;
-    if (a.kind === 'edge') {
-      const e = resolved.graph.edges.find((x) => x.id === a.id);
-      return e?.source === current || e?.target === current;
-    }
-    return a.id === current;
+  const isHere = (t: CommentThread) => {
+    const tt = anchorTarget(parseAnchor(t.first.anchor));
+    return Boolean(target && tt && tt.kind === target.kind && tt.id === target.id);
   };
-  const shown = threads.filter(
-    (t) => (filter === 'all' || (filter === 'open') === !t.first.resolvedAt) && (!onlyCurrent || !currentLabel || about(t)),
-  );
+  const shown = threads.filter((t) => (filter === 'all' || (filter === 'open') === !t.first.resolvedAt) && (!onlyHere || !target || isHere(t)));
   const openCount = threads.filter((t) => !t.first.resolvedAt).length;
 
   async function run(action: () => Promise<MapResult<{ comments: MapComment[] }>>, done: string): Promise<boolean> {
@@ -79,128 +116,157 @@ export default function CommentsPanel({ resolved, comments, error, seen, login, 
   }
 
   return (
-    <section className="map-panel comments-panel" aria-label="Comments on this map">
+    <aside className="comments-side" aria-labelledby={ids.heading}>
+      <div className="comments-side-head">
+        <h2 className="map-panel-heading" id={ids.heading}>
+          Comments <span className="map-panel-role">— {openCount} open{fresh.size ? `, ${fresh.size} new` : ''}</span>
+        </h2>
+        <button type="button" className="map-card-close comments-side-close" onClick={onClose} aria-label="Close the comments (leaves comment mode)">
+          ×
+        </button>
+      </div>
+      {view === 'map' && (
+        <p className="map-panel-note">
+          <strong>Comment mode:</strong> click a concept or a relation on the map to comment on it. The numbers on the map
+          show where threads are open.
+        </p>
+      )}
       <p className="draft-status" role="status">
         {status}
       </p>
       {error && <p className="draft-warning">{error}</p>}
-      <div className="map-panel-columns">
-        <div className="map-panel-part">
-          <h2 className="map-panel-heading">Start a thread</h2>
-          <form
-            className="comments-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!body.trim()) return;
-              const label = anchorLabel(parseAnchor(anchor), resolved);
-              if (await run(() => addComment(mapId, anchor, body.trim()), `Started a thread about ${label}.`)) {
-                setBody('');
-                setFilter((f) => (f === 'resolved' ? 'open' : f));
-              }
-            }}
-          >
-            <label htmlFor={ids.about}>About</label>
-            <select id={ids.about} className="draft-input" value={anchor} onChange={(e) => setAnchor(e.target.value)}>
-              <option value="map">The whole map</option>
-              <optgroup label="Concepts">
-                {options.nodes.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-              {options.edges.length > 0 && (
-                <optgroup label="Relations">
-                  {options.edges.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {options.pageDepths.length > 0 && (
-                <optgroup label="Pages">
-                  {options.pageDepths.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-            <label htmlFor={ids.body}>Your comment</label>
-            <textarea
-              id={ids.body}
-              className="draft-input draft-textarea"
-              rows={3}
-              maxLength={4000}
-              aria-describedby={ids.hint}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-            />
-            <p className="map-panel-note" id={ids.hint}>
-              Formatting: <code>**bold**</code>, <code>*italic*</code>, LaTeX between <code>$</code> signs. Everyone on the map except viewers reads it.
-            </p>
-            <button type="submit" className="draft-button draft-button-primary" disabled={busy || !body.trim()}>
-              Start thread
-            </button>
-          </form>
-        </div>
-        <div className="map-panel-part comments-threads">
-          <h2 className="map-panel-heading" id={ids.threads}>
-            Threads ({openCount} open{fresh.size ? `, ${fresh.size} new` : ''})
-          </h2>
-          <fieldset className="comments-filter">
-            <legend className="visually-hidden">Which threads</legend>
-            {(['open', 'resolved', 'all'] as const).map((f) => (
-              <label key={f}>
-                <input type="radio" name={ids.filter} value={f} checked={filter === f} onChange={() => setFilter(f)} />{' '}
-                {f === 'open' ? 'Open' : f === 'resolved' ? 'Resolved' : 'All'}
-              </label>
+
+      <form
+        className="comments-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!body.trim() || !anchor) return;
+          const label = anchorLabel(anchor, resolved);
+          if (await run(() => addComment(mapId, anchorKey(anchor), body.trim()), `Commented on ${label}.`)) {
+            setBody('');
+            setFilter((f) => (f === 'resolved' ? 'open' : f));
+          }
+        }}
+      >
+        <h3 className="comments-form-heading">New comment{targetLabel ? ` on ${targetLabel}` : ''}</h3>
+        <label htmlFor={ids.on}>On</label>
+        <select
+          id={ids.on}
+          className="draft-input"
+          value={on}
+          onChange={(e) => {
+            setOn(e.target.value);
+            setField('');
+          }}
+        >
+          <option value="map">The whole map</option>
+          <optgroup label="Concepts">
+            {options.nodes.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
             ))}
-            {currentLabel && (
-              <label>
-                <input type="checkbox" checked={onlyCurrent} onChange={(e) => setOnlyCurrent(e.target.checked)} /> Only about{' '}
-                {currentLabel}
-              </label>
-            )}
-          </fieldset>
-          {comments === null && !error && <p>Loading the comments…</p>}
-          {comments !== null && shown.length === 0 && (
-            <p>{threads.length === 0 ? 'No threads yet.' : 'No threads here — try another choice above.'}</p>
+          </optgroup>
+          {options.edges.length > 0 && (
+            <optgroup label="Relations">
+              {options.edges.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
           )}
-          <ol className="comments-list" aria-labelledby={ids.threads}>
-            {shown.map((t) => (
-              <Thread
-                key={t.first.id}
-                thread={t}
-                label={anchorLabel(parseAnchor(t.first.anchor), resolved)}
-                nodeId={(() => {
-                  const a = parseAnchor(t.first.anchor);
-                  return a && a.kind !== 'map' && a.kind !== 'edge' && resolved.graph.nodes.some((n) => n.id === a.id) ? a.id : null;
-                })()}
-                fresh={fresh}
-                login={login}
-                role={role}
-                busy={busy}
-                onShow={onShow}
-                onReply={(words) => run(() => addComment(mapId, t.first.anchor, words, t.first.id), 'Replied.')}
-                onResolve={(r) => run(() => resolveThread(mapId, t.first.id, r), r ? 'Resolved the thread.' : 'Reopened the thread.')}
-                onDelete={(c) => {
-                  const first = !c.threadId;
-                  const sure = window.confirm(
-                    first && t.replies.length
-                      ? 'Delete this thread and all its replies? This can’t be undone.'
-                      : 'Delete this comment? This can’t be undone.',
-                  );
-                  if (sure) void run(() => deleteComment(mapId, c.id), first ? 'Deleted the thread.' : 'Deleted the comment.');
-                }}
-              />
-            ))}
-          </ol>
-        </div>
-      </div>
-    </section>
+          {options.pageDepths.length > 0 && (
+            <optgroup label="Pages">
+              {options.pageDepths.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        {parsed?.kind === 'node' && (
+          <>
+            <label htmlFor={ids.field}>About</label>
+            <select id={ids.field} className="draft-input" value={field} onChange={(e) => setField(e.target.value as CommentField | '')}>
+              <option value="">The concept in general</option>
+              {FIELDS.map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        <label htmlFor={ids.body}>Your comment</label>
+        <textarea
+          ref={bodyRef}
+          id={ids.body}
+          className="draft-input draft-textarea"
+          rows={3}
+          maxLength={4000}
+          aria-describedby={ids.hint}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <p className="map-panel-note" id={ids.hint}>
+          Formatting: <code>**bold**</code>, <code>*italic*</code>, LaTeX between <code>$</code> signs. Everyone on the map except
+          viewers reads it.
+        </p>
+        <button type="submit" className="draft-button draft-button-primary" disabled={busy || !body.trim()}>
+          Post comment
+        </button>
+      </form>
+
+      <fieldset className="comments-filter">
+        <legend className="visually-hidden">Which threads</legend>
+        {(['open', 'resolved', 'all'] as const).map((f) => (
+          <label key={f}>
+            <input type="radio" name={ids.filter} value={f} checked={filter === f} onChange={() => setFilter(f)} />{' '}
+            {f === 'open' ? `To address (${openCount})` : f === 'resolved' ? 'Resolved' : 'All'}
+          </label>
+        ))}
+        {target && (
+          <label>
+            <input type="checkbox" checked={onlyHere} onChange={(e) => setOnlyHere(e.target.checked)} /> Only on {targetLabel}
+          </label>
+        )}
+      </fieldset>
+      {comments === null && !error && <p>Loading the comments…</p>}
+      {comments !== null && shown.length === 0 && (
+        <p className="map-panel-note">{threads.length === 0 ? 'No comments yet.' : 'None here — try another choice above.'}</p>
+      )}
+      <ol className="comments-list" aria-labelledby={ids.heading}>
+        {shown.map((t) => {
+          const a = parseAnchor(t.first.anchor);
+          const tt = anchorTarget(a);
+          return (
+            <Thread
+              key={t.first.id}
+              thread={t}
+              label={anchorLabel(a, resolved)}
+              nodeId={tt?.kind === 'node' && resolved.graph.nodes.some((n) => n.id === tt.id) ? tt.id : null}
+              showLabel={view === 'map' ? 'Show on the map' : 'Open its page'}
+              fresh={fresh}
+              login={login}
+              role={role}
+              busy={busy}
+              onShow={onShow}
+              onReply={(words) => run(() => addComment(mapId, t.first.anchor, words, t.first.id), 'Replied.')}
+              onResolve={(r) => run(() => resolveThread(mapId, t.first.id, r), r ? 'Resolved the thread.' : 'Reopened the thread.')}
+              onDelete={(c) => {
+                const first = !c.threadId;
+                const sure = window.confirm(
+                  first && t.replies.length ? 'Delete this thread and all its replies? This can’t be undone.' : 'Delete this comment? This can’t be undone.',
+                );
+                if (sure) void run(() => deleteComment(mapId, c.id), first ? 'Deleted the thread.' : 'Deleted the comment.');
+              }}
+            />
+          );
+        })}
+      </ol>
+    </aside>
   );
 }
 
@@ -208,6 +274,7 @@ interface ThreadProps {
   thread: CommentThread;
   label: string;
   nodeId: string | null;
+  showLabel: string;
   fresh: Set<string>;
   login: string;
   role: MapRole;
@@ -218,7 +285,7 @@ interface ThreadProps {
   onDelete: (c: MapComment) => void;
 }
 
-function Thread({ thread, label, nodeId, fresh, login, role, busy, onShow, onReply, onResolve, onDelete }: ThreadProps) {
+function Thread({ thread, label, nodeId, showLabel, fresh, login, role, busy, onShow, onReply, onResolve, onDelete }: ThreadProps) {
   const [reply, setReply] = useState('');
   const ids = { heading: useId(), reply: useId() };
   const { first, replies } = thread;
@@ -230,9 +297,7 @@ function Thread({ thread, label, nodeId, fresh, login, role, busy, onShow, onRep
       <article className={`comments-thread${first.resolvedAt ? ' comments-thread-resolved' : ''}`} aria-labelledby={ids.heading}>
         <h3 className="comments-about" id={ids.heading}>
           {label}{' '}
-          <span className="comments-state">
-            — {first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'}
-          </span>
+          <span className="comments-state">— {first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'}</span>
         </h3>
         <ol className="comments-entries">
           {all.map((c) => (
@@ -263,12 +328,16 @@ function Thread({ thread, label, nodeId, fresh, login, role, busy, onShow, onRep
             if (reply.trim() && (await onReply(reply.trim()))) setReply('');
           }}
         >
-          <label htmlFor={ids.reply}>Reply{first.resolvedAt ? ' (reopens the thread)' : ''}</label>
+          <label htmlFor={ids.reply} className="visually-hidden">
+            Reply to the thread on {label}
+            {first.resolvedAt ? ' (reopens it)' : ''}
+          </label>
           <textarea
             id={ids.reply}
             className="draft-input draft-textarea"
-            rows={2}
+            rows={1}
             maxLength={4000}
+            placeholder={first.resolvedAt ? 'Reply (reopens the thread)…' : 'Reply…'}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
           />
@@ -281,7 +350,7 @@ function Thread({ thread, label, nodeId, fresh, login, role, busy, onShow, onRep
             </button>
             {nodeId && (
               <button type="button" className="draft-link" onClick={() => onShow(nodeId)}>
-                Show on the map
+                {showLabel}
               </button>
             )}
           </div>

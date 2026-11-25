@@ -35,5 +35,7 @@ src/data/concepts.json
 .dev.vars
 .wrangler/
 
+seed.sql
+
 # Generated from concepts.json by scripts/build-layout.mjs (npm run build:content)
 src/data/conceptLayout.json

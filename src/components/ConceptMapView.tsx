@@ -22,6 +22,7 @@ import { GitHubStore, fetchMe, loginHref, logout, signInProblemOnLoad, signInPro
 import type { Me, SignInProblem, SubmitResult } from '../community/api';
 import type { Proposal } from '../community/types';
 import type { MapSave } from './DraftEditor';
+import type { CommentMark } from './GraphView';
 import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
 import { buildConceptIndex, conceptPathFor, neighborsOf, splitFluff } from '../graph/concepts';
@@ -152,6 +153,11 @@ interface ConceptMapViewProps {
   mapEditing?: MapEditing;
   /** In a personal map: its id — the learning goals completed there are its own (kept in this browser) */
   completedIn?: string;
+  /**
+   * Comment mode (a personal map, its comments open): clicking a concept or a relation
+   * picks it for a comment instead of opening its card; marks show the open threads.
+   */
+  commentMode?: { marks: CommentMark[]; onPick: (kind: 'node' | 'edge', id: string) => void };
 }
 
 export default function ConceptMapView({
@@ -177,6 +183,7 @@ export default function ConceptMapView({
   fromAtlas,
   mapEditing,
   completedIn,
+  commentMode,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -375,6 +382,10 @@ export default function ConceptMapView({
   };
   // While drafting, clicking a concept on the map connects it instead of opening its card.
   const selectOnMap = (id: string | null) => {
+    if (commentMode && !draft) {
+      if (id) commentMode.onPick('node', id);
+      return;
+    }
     if (!draft || id === null) return onSelect(id);
     if (id === own)
       setDraftStatus(draft.editOf ? 'That’s the concept you’re editing.' : 'That’s your draft — drag it to where it seems to fit.');
@@ -491,6 +502,10 @@ export default function ConceptMapView({
   const selectedEdge = !drafting && selectedEdgeId ? edgeById.get(selectedEdgeId) : undefined;
   const selectEdge = (id: string | null) => {
     if (drafting) return;
+    if (commentMode) {
+      if (id) commentMode.onPick('edge', id);
+      return;
+    }
     if (id) onSelect(null);
     setSelectedEdgeId(id);
   };
@@ -1042,6 +1057,8 @@ export default function ConceptMapView({
           onDraftNear={onDraftNear}
           draftRecall={draftRecall}
           arrangement={arrangement}
+          marks={commentMode?.marks}
+          onMark={(m) => commentMode?.onPick(m.kind, m.id)}
           extraControls={
             <>
               {CLUSTERED_LAYOUT && <span className="graph-control-group" role="group" aria-label="Arrangement of the map">
