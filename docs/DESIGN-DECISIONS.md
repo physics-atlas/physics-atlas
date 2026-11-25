@@ -802,20 +802,23 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
-## Decision 56 — Concepts carry tags in two layers beside their kind (2026-11)
+## Decision 57 — Layers 2 and 3 are tags (2026-11)
+
+Replaces Decision 55's `physicalRole` and `mathematicalCharacter` lists (merged 2026-11-25); its
+`expressions`, its physical domain and its display stay.
 
 | Piece | Rule |
 |---|---|
 | Layers | The kind (`type`) is the first layer — what kind of concept it is. Two more, as tags: **Semantic attributes** (what role it plays in physics) and **Mathematical and representational attributes** (how it's represented). A concept may carry several in each. |
-| Format | `tags: { semantic?: string[], representation?: string[] }` on the node (docs/AUTHORING.md); checked by the validator, by proposals and by personal maps alike. |
-| Words | Free, not a closed list: typed in, with suggestions — the starting words (`conceptVocabulary.json` → `tagLayers`, from the layers' table) and every tag a concept already carries (on the atlas, in the map, in open proposals and drafts). A new tag needs no vocabulary change: it's suggested once a concept with it exists. A known tag keeps its usual capitals. |
-| Editor | A **Tags** section, one field per layer: chips with a remove button, a text field with the browser's suggestion list (Enter, a comma or **Add**), and the unused suggestions as buttons. Not for learning goals or resources. |
-| Shown | On the card, as **Role:** and **Represented as:**, in words. |
+| Format | `tags: { semantic?: string[], representation?: string[] }` on the node (docs/AUTHORING.md); checked by the validator, by proposals and by personal maps alike. A tag may be qualified ("Conserved quantity (under appropriate conditions)"): up to 80 characters, 12 per layer. Not on learning goals, resources or fluff (`UNCHARACTERISED_TYPES`). A draft kept with the older lists reads them as tags. |
+| Words | Free, not a closed list: typed in, with suggestions — the starting words (`conceptVocabulary.json` → `tagLayers`, from the layers' table, with Decision 55's extra ones: State characteristic, Extensive, Intensive) and every tag a concept already carries (on the atlas, in the map, in open proposals and drafts). A new tag needs no vocabulary change: it's suggested once a concept with it exists. A known tag keeps its usual capitals. |
+| Editor | One section, **Role and mathematical character**: a tag field per layer (chips with a remove button, a text field with the browser's suggestion list — Enter, a comma or **Add** — and the unused suggestions as buttons), then Decision 55's **Mathematical expressions**. |
+| Shown | Decision 55's block on the card and page: **Physical role** and **Mathematical character** as tag chips, the physical domain, the expressions. |
 
 **Open paths:** filtering or colouring the map by tag; merging near-duplicate tags (a curator's tool);
 moving the kind itself to the image's eight broader kinds.
 
-## Decision 55 — Comments on a personal map work in comment mode (2026-11)
+## Decision 56 — Comments on a personal map work in comment mode (2026-11)
 
 | Piece | Rule |
 |---|---|
@@ -826,6 +829,26 @@ moving the kind itself to the image's eight broader kinds.
 | Keyboard | Everything the map clicks do is in the panel's own controls too: the **On** list names every concept, relation and page depth. |
 
 Replaces Phase 3's panel under the map bar.
+
+## Decision 55 — Three layers of a concept: kind, physical role, mathematical character (2026-11)
+
+**Aim:** say more about a physical concept than its kind: what role it plays in physics, and
+how it's represented mathematically (Energy: a state characteristic, conserved under
+appropriate conditions; a scalar, extensive; written $E$, $E = T + V$, $E = mc^2$).
+
+| Piece | Rule |
+|---|---|
+| Layer 1 | Its kind (`type`), as before. The picture's own list (System, Quantity, Process, Phenomenon, Principle, Model, Mathematical object, Method) mostly maps onto the existing kinds; no kind was added or renamed. |
+| Layer 2 | `physicalRole`: a list of text. `conceptVocabulary.json` → `physicalRoles` only **suggests** (the form offers them one click away): a concept may name others or qualify one, "Conserved quantity (under appropriate conditions)". |
+| Layer 3 | `mathematicalCharacter`: the same, suggested by `mathematicalCharacters`. Plus `expressions`: how it's written, `{ tex, note? }`. |
+| Physical domain | Its existing `attrs.domain` (the Field, a controlled list); not a second field. Shown with the layers when they're there. |
+| Where | Top-level on the concept, optional, all empty for the existing concepts. Not on learning goals, resources or fluff (`UNCHARACTERISED_TYPES`; the validator refuses them there). Shown on the card and page only when one is filled in. |
+
+**2026-11-25:** layers 2 and 3 are now tags (Decision 57): `tags.semantic` and `tags.representation`
+replace `physicalRole` and `mathematicalCharacter`. Expressions, the physical domain and the display stay.
+
+**Open paths:** a controlled list (refusing other values), once the suggestions settle; filtering
+the map by role or character.
 
 ## Decision 54 — Even: fewer crossings between relations of the same standing (2026-11)
 

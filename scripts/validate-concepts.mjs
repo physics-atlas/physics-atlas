@@ -255,7 +255,7 @@ function checkLatex(where, at, tex) {
 }
 
 // A concept's tags, two layers of free words (src/data/tags.ts tagProblems — keep in sync).
-const TAG_MAX_LENGTH = 40;
+const TAG_MAX_LENGTH = 80;
 const TAG_MAX_PER_LAYER = 12;
 function checkTags(where, tags) {
   if (tags === undefined) return;
@@ -389,6 +389,30 @@ for (const [type, variants] of casingByType) {
     const list = [...variants].map(([raw, count]) => `"${raw}" (${count}×)`).join(', ');
     warn.push(`relationship "${type}" authored in multiple casings: ${list} — same edge type once normalized`);
   }
+}
+
+// Layers 2 and 3 of a concept (optional): its tags (checked with the node, checkTags) and how
+// it's written. Mirrors UNCHARACTERISED_TYPES in src/data/types.ts — keep in sync.
+const UNCHARACTERISED_TYPES = ['learning_goal', 'resource', 'fluff'];
+for (const n of data.nodes) {
+  const where = `node "${n.id}"`;
+  const fields = ['tags', 'expressions'].filter((k) => n[k] !== undefined);
+  if (fields.length && UNCHARACTERISED_TYPES.includes(n.type))
+    errors.push(`${where}: a ${n.type} has no ${fields.map((k) => `"${k}"`).join(' or ')}, delete it`);
+  if (n.physicalRole !== undefined || n.mathematicalCharacter !== undefined)
+    errors.push(`${where}: "physicalRole" and "mathematicalCharacter" are now "tags": { "semantic", "representation" } (docs/AUTHORING.md)`);
+  if (n.expressions === undefined) continue;
+  if (!Array.isArray(n.expressions) || n.expressions.length === 0 || n.expressions.some((x) => !x || typeof x !== 'object' || Array.isArray(x))) {
+    errors.push(`${where}: "expressions" must be a non-empty list of { "tex", "note" } — delete the field if there's nothing to say`);
+    continue;
+  }
+  n.expressions.forEach((x, i) => {
+    const at = `${where}: expression ${i + 1}`;
+    for (const key of Object.keys(x)) if (!['tex', 'note'].includes(key)) errors.push(`${at}: unknown field "${key}"`);
+    if (typeof x.tex !== 'string' || !x.tex.trim()) errors.push(`${at}: needs "tex", its LaTeX`);
+    else checkLatex(where, `expression ${i + 1}`, x.tex);
+    if (x.note !== undefined && (typeof x.note !== 'string' || !x.note.trim())) errors.push(`${at}: "note" must be text, or left out`);
+  });
 }
 
 // `assumes`: what a concept takes for granted, in words — { label, description?,

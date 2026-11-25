@@ -230,6 +230,7 @@ export interface FieldChange {
 
 const assumptionsText = (n: GraphNode) =>
   (n.assumes ?? []).map((a) => [a.label ?? a.concept, a.description].filter(Boolean).join(': ')).join('; ');
+const expressionsText = (n: GraphNode) => (n.expressions ?? []).map((x) => (x.note ? `${x.tex} (${x.note})` : x.tex)).join('; ');
 const figuresText = (n: GraphNode) =>
   (n.figures ?? []).map((f) => [f.file, f.alt, f.caption, f.credit].filter(Boolean).join(' — ')).join('; ');
 
@@ -252,10 +253,11 @@ export function nodeChanges(before: GraphNode, after: GraphNode): FieldChange[] 
     ['In plain words', attr(before, 'plain'), attr(after, 'plain')],
     ['Generality', String(before.generality ?? ''), String(after.generality ?? '')],
     ['Importance', String(before.importance ?? ''), String(after.importance ?? '')],
-    ['Assumes', assumptionsText(before), assumptionsText(after)],
-    ['Pictures', figuresText(before), figuresText(after)],
     ['Role in physics', tagsOf(before, 'semantic').join(', '), tagsOf(after, 'semantic').join(', ')],
     ['Represented as', tagsOf(before, 'representation').join(', '), tagsOf(after, 'representation').join(', ')],
+    ['Mathematical expressions', expressionsText(before), expressionsText(after)],
+    ['Assumes', assumptionsText(before), assumptionsText(after)],
+    ['Pictures', figuresText(before), figuresText(after)],
   ];
   return rows.filter(([, b, a]) => b !== a).map(([field, b, a]) => ({ field, before: b, after: a }));
 }

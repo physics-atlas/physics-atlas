@@ -215,12 +215,12 @@
     "semantic": {
       "title": "Semantic attributes",
       "question": "What role does it play in physics?",
-      "suggested": ["Kinematic", "Dynamical", "Conserved", "Interaction-related", "Thermodynamic", "Geometrical", "Probabilistic", "Observational"]
+      "suggested": ["Kinematic", "Dynamical", "Conserved", "Interaction-related", "Thermodynamic", "Geometrical", "Probabilistic", "Observational", "State characteristic"]
     },
     "representation": {
       "title": "Mathematical and representational attributes",
       "question": "How is it represented?",
-      "suggested": ["Scalar", "Vector", "Tensor", "Function", "Field", "Operator", "Differential form", "Equation", "Distribution"]
+      "suggested": ["Scalar", "Vector", "Tensor", "Function", "Field", "Operator", "Differential form", "Equation", "Distribution", "Extensive", "Intensive"]
     }
   }
 }

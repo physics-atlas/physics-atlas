@@ -840,7 +840,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   if (
     !comments0.button?.startsWith('Comments (1 open') ||
     comments0.pressed !== 'true' ||
-    comments0.about !== 'Tangent vector — open' ||
+    comments0.about !== 'Tangent vector (open)' ||
     !comments0.maths ||
     !comments0.live ||
     comments0.marks.length !== 1 ||
@@ -868,24 +868,22 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   await pm.click('.goals-picking input[aria-label="Add Sample week 1 goal"]');
   await pm.evaluate(() => [...document.querySelectorAll('.goals-picking-actions button')].find((b) => b.textContent === 'Add 1 learning goal')?.click());
   await pm.waitForSelector('.goals-topics button.draft-link');
-  // A student's tick: in this browser only, shown on the goal's card too.
-  await pm.click('.goals-topics input[type="checkbox"]');
+  // The owner and editors don't tick goals as completed: that's for students (the shared map, below).
   await pm.click('.goals-topics button.draft-link');
   await pm.waitForFunction(() => document.querySelector('.map-card .map-card-title')?.textContent?.includes('Sample week 1 goal'), { timeout: 10000 });
   const goalsOnMap = await pm.evaluate(() => ({
     button: document.querySelector('.map-bar-goals')?.textContent,
     heading: document.querySelector('.goals-name')?.textContent,
     all: document.querySelectorAll('.goals-all li').length,
-    cardTags: document.querySelector('.map-card .concept-tags')?.textContent,
-    completedOnCard: document.querySelector('.goal-completed-toggle input')?.checked,
-    stored: localStorage.getItem('physics-atlas-progress-v1'),
+    cardTags: [...document.querySelectorAll('.map-card .concept-character')].map((s) => s.textContent).join(' | '),
+    ticks: document.querySelectorAll('.goals-panel input[type="checkbox"], .goal-completed-toggle').length,
   }));
   await pm.click('.map-bar-views li:nth-child(2) a');
   await pm.waitForSelector('.atlas-page h1');
   await pm.click('.goals-topics button.draft-link');
   await pm.waitForFunction(() => document.querySelector('.atlas-page h1')?.textContent?.includes('Sample week 1 goal'), { timeout: 10000 });
   const goalSaves = sim.saves.slice(1).map((s) => s.changes.map((c) => `${c.kind}:${c.body?.goals?.join(',') ?? ''}`).join(' '));
-  if (!goalsOnMap.button?.startsWith('Course goals (1)') || !goalsOnMap.heading?.startsWith('Sample week 1') || goalsOnMap.all !== 2 || goalsOnMap.cardTags !== 'Role: Kinematic' || !goalsOnMap.heading?.includes('1 completed') || !goalsOnMap.completedOnCard || !goalsOnMap.stored?.includes('map:sample-map:sample_week_1_goal') || sim.saves.some((s) => JSON.stringify(s).includes('completed')) || JSON.stringify(goalSaves) !== JSON.stringify(['goal:', 'goal:sample_week_1_goal']))
+  if (!goalsOnMap.button?.startsWith('Course goals (1)') || !goalsOnMap.heading?.startsWith('Sample week 1') || goalsOnMap.all !== 2 || goalsOnMap.cardTags !== 'Physical roleKinematic' || goalsOnMap.heading?.includes('completed') || goalsOnMap.ticks !== 0 || sim.saves.some((s) => JSON.stringify(s).includes('completed')) || JSON.stringify(goalSaves) !== JSON.stringify(['goal:', 'goal:sample_week_1_goal']))
     errors.push(`course goals: ${JSON.stringify({ goalsOnMap, goalSaves })}`);
 
   // The editor saves a new concept into the map (Phase 2, part 2).
@@ -981,7 +979,7 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
     header: [...document.querySelectorAll('.header-feedback')].some((a) => a.textContent === 'My maps'),
   }));
   console.log('personal map:', { onMap, onPage, ownPage, panel, saves: sim.saves, added, myMaps });
-  if (onMap.nodes !== 6 || onMap.h1 !== 'Sample course map — personal map' || onMap.pageLink !== '?mode=map&map=sample-map&view=pages&concept=tangent_vector')
+  if (onMap.nodes !== 6 || onMap.h1 !== 'Sample course map, personal map' || onMap.pageLink !== '?mode=map&map=sample-map&view=pages&concept=tangent_vector')
     errors.push(`the saved map: ${JSON.stringify(onMap)}`);
   if (onPage.links.some((h) => !h.startsWith('?mode=map&map=sample-map') && !h.startsWith('?mode=page&concept=tangent_vector')))
     errors.push(`a map page links out of the map: ${onPage.links.filter((h) => !h.startsWith('?mode=map')).join(', ')}`);

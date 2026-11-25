@@ -11,8 +11,10 @@ import type {
   Formula,
   GraphEdge,
   GraphNode,
+  MathExpression,
   NodeType,
 } from '../data/types';
+import { UNCHARACTERISED_TYPES } from '../data/types';
 import { FIGURE_MAX_BYTES, FIGURE_TYPES, MAX_FIGURES, figurePath, figureSlug } from './figures';
 import type { FigureExt, FigureUpload } from './figures';
 import { relationPhrase, relationTypeProblems, withRelationTypes } from './relationTypes';
@@ -95,6 +97,12 @@ export interface DraftRepresentation {
   variables: EquationVariable[];
 }
 
+/** A mathematical expression as the form edits it: both fields there, empty until filled in. */
+export interface DraftExpression {
+  tex: string;
+  note: string;
+}
+
 /** One assumption in the editor: its words, more detail, and (optionally) the concept it is. */
 export interface DraftAssumption {
   label: string;
@@ -137,6 +145,8 @@ export interface Draft {
   figures: DraftFigure[];
   /** Its tags, in two layers (src/data/tags.ts): the role it plays, how it's represented */
   tags: { semantic: string[]; representation: string[] };
+  /** How it's written: LaTeX, each with an optional note on where that form applies */
+  expressions: DraftExpression[];
   /**
    * Its atlas page, in Markdown + LaTeX (lib/pageText.ts) — one text per depth, depth 1 first. null: the
    * page is left as it is (an edit that doesn't touch it, until it's loaded).
@@ -194,6 +204,7 @@ export function newDraft(random: () => number = Math.random, now = new Date()): 
     assumes: [],
     figures: [],
     tags: { semantic: [], representation: [] },
+    expressions: [],
     page: [],
     pageBefore: 0,
     relations: [],
@@ -244,6 +255,7 @@ export function newEditDraft(node: GraphNode, random: () => number = Math.random
       credit: f.credit,
     })),
     tags: { semantic: [...(node.tags?.semantic ?? [])], representation: [...(node.tags?.representation ?? [])] },
+    expressions: (node.expressions ?? []).map((x) => ({ tex: x.tex, note: x.note ?? '' })),
     // The page stays as it is until the editor loads it (DraftEditor's "Edit the page").
     page: null,
     pageBefore: 0,
@@ -294,6 +306,14 @@ const toDraftRepresentation = (r: EquationRepresentation | string): DraftReprese
 /** Variables with both a symbol and a meaning; rows left completely empty are dropped. */
 /** The longest a depth of a page may be. */
 export const PAGE_MAX = 100_000;
+
+/** Expressions with LaTeX, trimmed; a note without LaTeX is left out (draftProblems says so). */
+export function cleanExpressions(list: DraftExpression[]): MathExpression[] {
+  return list.flatMap((x) => {
+    const tex = x.tex.trim(), note = x.note.trim();
+    return tex ? [{ tex, ...(note ? { note } : {}) }] : [];
+  });
+}
 
 /**
  * The assumptions as they're exported: trimmed, empty ones dropped, each
@@ -364,12 +384,17 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   const domain = d.domains.length ? d.domains.join(' / ') : undefined;
   const type = d.type || 'property';
   const base = d.editOf ? confirmed.nodes.find((n) => n.id === d.editOf) : undefined;
-  const { importance: _i, generality: _g, assumes: _a, figures: _f, tags: _t, attrs: baseAttrs, ...rest } = base ?? ({} as Partial<GraphNode>);
-  void _t;
-  void _i;
-  void _g;
-  void _a;
-  void _f;
+  const {
+    importance: _i,
+    generality: _g,
+    assumes: _a,
+    figures: _f,
+    tags: _t,
+    expressions: _x,
+    attrs: baseAttrs,
+    ...rest
+  } = base ?? ({} as Partial<GraphNode>);
+  void [_i, _g, _a, _f, _t, _x];
   const kept = Object.fromEntries(
     Object.entries((baseAttrs ?? {}) as Record<string, unknown>).filter(
       // What the form edits comes from the draft; the rest (conditions, a curated rating) is kept.
@@ -386,7 +411,10 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
   };
   const assumes = cleanAssumptions(d.assumes);
   const figures = draftFigures(d, id).map((x) => x.figure);
-  const tags = cleanTags(d.tags);
+  // Learning goals, resources and fluff make no physical claim: no tags, no expressions.
+  const characterised = !UNCHARACTERISED_TYPES.includes(type);
+  const tags = characterised ? cleanTags(d.tags) : undefined;
+  const expressions = characterised ? cleanExpressions(d.expressions) : [];
   const head = {
     ...rest,
     id,
@@ -396,6 +424,7 @@ export function draftNode(d: Draft, confirmed: ConceptGraph, id = conceptId(d)):
     ...(tags ? { tags } : {}),
     ...(assumes.length ? { assumes } : {}),
     ...(figures.length ? { figures } : {}),
+    ...(expressions.length ? { expressions } : {}),
   };
   const attrs =
     type === 'equation'
@@ -637,6 +666,7 @@ export type DraftField =
   | 'formulas'
   | 'assumes'
   | 'figures'
+  | 'expressions'
   | 'link'
   | 'mediaType'
   | 'mediaTypeOther'
@@ -706,6 +736,11 @@ export function draftProblems(d: Draft, ctx: DraftContext): DraftProblem[] {
           index,
           message: `In formula ${index + 1}, give every variable both its symbol and what it stands for.`,
         });
+    });
+  if (d.type && !UNCHARACTERISED_TYPES.includes(d.type))
+    d.expressions.forEach((x, index) => {
+      if (!x.tex.trim() && x.note.trim())
+        out.push({ field: 'expressions', index, message: `Write expression ${index + 1} in LaTeX, or remove it.` });
     });
   const confirmedIds = new Set(ctx.confirmed.nodes.map((n) => n.id));
   (d.page ?? []).forEach((source, index) => {
@@ -1105,12 +1140,18 @@ export function parseDraft(raw: unknown): Draft | null {
     );
   };
   if (!Array.isArray(figures) || !figures.every(figureOk)) return null;
-  // Added 2026-11-24: tags, in two layers — older drafts have none.
+  // Added 2026-11-24: tags, in two layers — older drafts have none. A draft from the short-lived
+  // physicalRole / mathematicalCharacter lists (Decision 55, before tags) brings them as tags.
   const rawTags = (d.tags ?? {}) as Record<string, unknown>;
   const tagList = (v: unknown) => (v === undefined ? [] : Array.isArray(v) && v.every(isString) ? (v as string[]) : null);
   const semantic = tagList(rawTags.semantic);
   const representation = tagList(rawTags.representation);
-  if (!semantic || !representation) return null;
+  const oldRoles = tagList(d.physicalRole);
+  const oldCharacters = tagList(d.mathematicalCharacter);
+  if (!semantic || !representation || !oldRoles || !oldCharacters) return null;
+  const expressions = d.expressions ?? [];
+  const expressionOk = (x: unknown) => Boolean(x) && isString((x as DraftExpression).tex) && isString((x as DraftExpression).note);
+  if (!Array.isArray(expressions) || !expressions.every(expressionOk)) return null;
   // Assumptions on relations (before 2026-10) became concepts; a draft's can't be carried over.
   const relations = (d.relations as Record<string, unknown>[]).map(({ conditions: _c, ...r }) => {
     void _c;
@@ -1120,8 +1161,15 @@ export function parseDraft(raw: unknown): Draft | null {
   const importance =
     d.version !== 3 && typeof d.importance === 'number' ? Math.max(1, Math.round(d.importance / 5)) : (d.importance as number | undefined);
   // Until 2026-11 a draft had minutes (now its time) and a claim (retired, Decision 49).
-  const { minutes: _m, claim: _c, ...stored } = raw as Draft & { minutes?: number; claim?: string };
-  void [_m, _c];
+  // Until 2026-11-25 a draft could carry physicalRole / mathematicalCharacter (now its tags).
+  const {
+    minutes: _m,
+    claim: _c,
+    physicalRole: _r,
+    mathematicalCharacter: _k,
+    ...stored
+  } = raw as Draft & { minutes?: number; claim?: string; physicalRole?: string[]; mathematicalCharacter?: string[] };
+  void [_m, _c, _r, _k];
   return {
     ...stored,
     version: 3,
@@ -1131,7 +1179,7 @@ export function parseDraft(raw: unknown): Draft | null {
     listeningTime: text('listeningTime'),
     accessibility: text('accessibility'),
     mediaTypeOther: text('mediaTypeOther'),
-    tags: { semantic, representation },
+    tags: { semantic: [...semantic, ...oldRoles], representation: [...representation, ...oldCharacters] },
     removals: removals as string[],
     variables: variables as EquationVariable[],
     representations: withPlain(representations),
@@ -1140,6 +1188,7 @@ export function parseDraft(raw: unknown): Draft | null {
     link: (d.link as string | undefined) ?? '',
     mediaType: (d.mediaType as string | undefined) ?? '',
     figures: figures as DraftFigure[],
+    expressions: expressions as DraftExpression[],
     page: page as string[] | null,
     pageBefore,
     relations,

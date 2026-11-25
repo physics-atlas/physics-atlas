@@ -114,7 +114,7 @@ export function mapProblems(map: PersonalMap, atlas: ConceptGraph): string[] {
   for (const n of map.nodes) {
     if (!SNAKE.test(n.id)) out.push(`${where}: concept id "${n.id}" must be snake_case`);
     if (own.has(n.id)) out.push(`${where}: concept id "${n.id}" is used twice`);
-    if (atlasIds.has(n.id)) out.push(`${where}: concept id "${n.id}" is an atlas concept — use it by reference instead`);
+    if (atlasIds.has(n.id)) out.push(`${where}: concept id "${n.id}" is an atlas concept; use it by reference instead`);
     if (!(n.type in NODE_TYPE_LABELS)) out.push(`${where}: concept "${n.id}" has an unknown type "${n.type}"`);
     if (!n.label?.trim()) out.push(`${where}: concept "${n.id}" has no name`);
     for (const message of tagProblems(n.tags)) out.push(`${where}: concept "${n.id}" ${message}`);

@@ -1,0 +1,19 @@
+{
+  "id": "stern_gerlach_experiment_waev",
+  "label": "Stern-Gerlach Experiment",
+  "type": "experiment",
+  "importance": 6,
+  "generality": 2,
+  "figures": [
+    {
+      "file": "stern_gerlach_experiment_waev/6c861aa5-d205-4dd2-b0ba-a0412e65eb36.jpg",
+      "alt": "A schematic diagram of the stern-gerlach experiment.Silver atoms leave an oven and travel between 2 magnets. They have different shape, the top one is like a pencil cross section and labelled S. The bottom is concave and labelled N., behind the magnets is a screen , showing that the silver atoms arrive in an oval, where the top ones are spin up atoms and the bottom are spin down.",
+      "caption": "schematic diagram of the stern-gerlach experiment.Silver atoms leave an oven and travel between 2 magnets. They have different shapes so that the magnetic field between them varies over space which means that a force will be exerted depending on the magnetic moment of the silver atoms",
+      "credit": "https://www.informationphilosopher.com/solutions/experiments/stern_gerlach/"
+    }
+  ],
+  "attrs": {
+    "description": "Experiment demonstrating that there a 2 distinct magnetic moment directions on an atom. (Quantise spin)",
+    "domain": "Quantum mechanics"
+  }
+}

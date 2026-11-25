@@ -77,7 +77,7 @@ export function anchorInMap(a: Anchor, resolved: ResolvedMap): boolean {
   return resolved.graph.nodes.some((n) => n.id === a.id);
 }
 
-/** What a thread is about, in words: "Force", "Force is a … of …", "Force — page, depth 2". */
+/** What a thread is about, in words: "Force", "Force is a … of …", "Force (page, depth 2)". */
 export function anchorLabel(a: Anchor | null, resolved: ResolvedMap): string {
   if (!a) return 'Something unknown';
   if (a.kind === 'map') return 'The whole map';
@@ -91,8 +91,8 @@ export function anchorLabel(a: Anchor | null, resolved: ResolvedMap): string {
   }
   const label = byId.get(a.id)?.label;
   if (!label) return `A concept no longer on the map (${a.id})`;
-  if (a.kind === 'node' && a.field) return `${label} — ${COMMENT_FIELDS[a.field].toLowerCase()}`;
-  return a.kind === 'page' ? `${label} — page, depth ${a.depth}` : label;
+  if (a.kind === 'node' && a.field) return `${label} (${COMMENT_FIELDS[a.field].toLowerCase()})`;
+  return a.kind === 'page' ? `${label} (page, depth ${a.depth})` : label;
 }
 
 /** What on the map a thread belongs to: a concept (its page and parts too), a relation, or the map itself. */

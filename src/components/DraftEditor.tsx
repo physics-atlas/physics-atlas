@@ -1,6 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { CONCEPT_DOMAINS, EDGE_SENTENCE_TEMPLATES, NODE_TYPE_DEFINITIONS, NODE_TYPE_LABELS, RELATION_CATEGORIES } from '../data/types';
+import {
+  CONCEPT_DOMAINS,
+  EDGE_SENTENCE_TEMPLATES,
+  NODE_TYPE_DEFINITIONS,
+  NODE_TYPE_LABELS,
+  RELATION_CATEGORIES,
+  UNCHARACTERISED_TYPES,
+} from '../data/types';
 import type { EdgeType, EquationVariable, GraphEdge, GraphNode, NodeType } from '../data/types';
 import { figureUrl } from '../data/media';
 import vocabularyText from '../data/conceptVocabulary.json?raw';
@@ -27,6 +34,7 @@ import type {
   DraftAssumption,
   DraftFigure,
   DraftContext,
+  DraftExpression,
   DraftField,
   DraftRelation,
   DraftRepresentation,
@@ -469,22 +477,13 @@ export default function DraftEditor({
       </section>
       )}
 
-      {/* Two layers of tags beside its kind (the first layer): its role in physics, how it's represented. */}
-      {draft.type !== 'learning_goal' && draft.type !== 'resource' && (
-        <section className="rel-block draft-section" aria-labelledby={fieldId('h-tags')}>
-          <h3 className="block-heading" id={fieldId('h-tags')}>
-            Tags <span className="draft-optional">optional</span>
+      {/* Layers 2 and 3 beside its kind (layer 1): tags for its role in physics and how it's represented, and how it's written. */}
+      {draft.type && !UNCHARACTERISED_TYPES.includes(draft.type) && (
+        <section className="rel-block draft-section" aria-labelledby={fieldId('h-character')}>
+          <h3 className="block-heading" id={fieldId('h-character')}>
+            Role and mathematical character <span className="draft-optional">optional</span>
           </h3>
-          {TAG_LAYERS.map((layer) => (
-            <TagInput
-              key={layer.key}
-              title={layer.title}
-              question={layer.question}
-              value={draft.tags[layer.key]}
-              suggestions={tagSuggestions(layer.key, tagPool)}
-              onChange={(next) => update((d) => ({ ...d, tags: { ...d.tags, [layer.key]: next } }))}
-            />
-          ))}
+          <CharacterFields draft={draft} update={update} fieldId={fieldId} tagPool={tagPool} />
         </section>
       )}
 
@@ -1906,6 +1905,84 @@ function FormulaFields({
         Add a formula
       </button>
     </fieldset>
+  );
+}
+
+/**
+ * Layers 2 and 3 of a concept: tags for the role it plays in physics and how it's
+ * represented (Decision 57), and how it's written. Layer 1 is its kind; its physical
+ * domain is its Field.
+ */
+function CharacterFields({
+  draft,
+  update,
+  fieldId,
+  tagPool,
+}: {
+  draft: Draft;
+  update: (change: (d: Draft) => Draft) => void;
+  fieldId: (name: string) => string;
+  /** Every concept whose tags are suggested (with the vocabulary's own) */
+  tagPool: GraphNode[];
+}) {
+  const setExpression = (i: number, change: Partial<DraftExpression>) =>
+    update((d) => ({ ...d, expressions: d.expressions.map((x, j) => (j === i ? { ...x, ...change } : x)) }));
+  return (
+    <>
+      <p className="draft-hint">
+        Its kind, chosen above, says what sort of concept it is. Here, as tags: what role it plays in physics, and how it is
+        represented. Pick suggestions or type your own; a new tag is suggested to others once the concept is on the map.
+        Its physical domain is its Field.
+      </p>
+      {TAG_LAYERS.map((layer) => (
+        <TagInput
+          key={layer.key}
+          title={layer.title}
+          question={layer.question}
+          value={draft.tags[layer.key]}
+          suggestions={tagSuggestions(layer.key, tagPool)}
+          onChange={(next) => update((d) => ({ ...d, tags: { ...d.tags, [layer.key]: next } }))}
+        />
+      ))}
+      <fieldset className="draft-representations">
+        <legend className="draft-label">
+          Mathematical expressions <span className="draft-optional">optional</span>
+        </legend>
+        <p className="draft-hint">How it is written, in LaTeX, each with where that form applies when it doesn’t always.</p>
+        {draft.expressions.map((x, i) => (
+          <div key={i} className="draft-relation draft-representation">
+            <Field id={fieldId(`expressions-${i}`)} label={`Expression ${i + 1} (LaTeX)`}>
+              <LatexInput id={fieldId(`expressions-${i}`)} value={x.tex} placeholder="E = mc^2" onChange={(tex) => setExpression(i, { tex })} />
+            </Field>
+            <Field id={fieldId(`expression-note-${i}`)} label="Where it applies" optional>
+              <input
+                id={fieldId(`expression-note-${i}`)}
+                className="draft-input"
+                value={x.note}
+                placeholder="rest energy"
+                onChange={(e) => setExpression(i, { note: e.target.value })}
+              />
+            </Field>
+            <div className="draft-row-actions">
+              <button
+                type="button"
+                className="draft-button"
+                onClick={() => update((d) => ({ ...d, expressions: d.expressions.filter((_, j) => j !== i) }))}
+              >
+                Remove expression {i + 1}
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="draft-button"
+          onClick={() => update((d) => ({ ...d, expressions: [...d.expressions, { tex: '', note: '' }] }))}
+        >
+          Add an expression
+        </button>
+      </fieldset>
+    </>
   );
 }
 

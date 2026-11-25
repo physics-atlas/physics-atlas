@@ -1,0 +1,6 @@
+{
+  "id": "hydrogen_atom_hamiltonian_classical_no_ta8h_e2",
+  "source": "hydrogen_atom_hamiltonian_classical_no_ta8h",
+  "target": "schrodinger_equation_833a",
+  "relationship": "happens in"
+}

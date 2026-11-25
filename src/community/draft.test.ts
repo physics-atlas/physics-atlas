@@ -155,6 +155,49 @@ describe('what a draft becomes', () => {
     // Formulas only belong to formalisms.
     expect('formulas' in draftNode({ ...d, type: 'property' }, concepts).attrs).toBe(false);
   });
+  it('a concept carries its tags (role, representation) and expressions, cleaned; a learning goal none', () => {
+    const d: Draft = {
+      ...jeans(),
+      tags: {
+        semantic: [' State characteristic ', 'Conserved quantity (under appropriate conditions)', '', 'state characteristic'],
+        representation: ['Scalar', 'Extensive (for ordinary additive systems)'],
+      },
+      expressions: [
+        { tex: ' E ', note: '' },
+        { tex: 'E = mc^2', note: ' rest energy ' },
+        { tex: '', note: '' },
+      ],
+    };
+    const node = draftNode(d, concepts);
+    expect(node.tags).toEqual({
+      semantic: ['State characteristic', 'Conserved quantity (under appropriate conditions)'],
+      representation: ['Scalar', 'Extensive (for ordinary additive systems)'],
+    });
+    expect(node.expressions).toEqual([{ tex: 'E' }, { tex: 'E = mc^2', note: 'rest energy' }]);
+    expect(draftProblems(d, alone(d))).toEqual([]);
+    const noteOnly = { ...d, expressions: [{ tex: '', note: 'rest energy' }] };
+    expect(draftProblems(noteOnly, alone(noteOnly)).map((p) => [p.field, p.index])).toEqual([['expressions', 0]]);
+    const goal = draftNode({ ...d, type: 'learning_goal' }, concepts);
+    expect([goal.tags, goal.expressions]).toEqual([undefined, undefined]);
+    // Left empty, nothing is written.
+    expect(Object.keys(draftNode(jeans(), concepts))).not.toContain('tags');
+  });
+  it('an edit starts from the concept’s tags and expressions; an older draft reads with none, or brings its role lists as tags', () => {
+    const base = { ...vlasov(), tags: { semantic: ['Dynamical'] }, expressions: [{ tex: 'f(x, p, t)', note: 'the distribution' }] } as GraphNode;
+    const graph = { ...concepts, nodes: concepts.nodes.map((n) => (n.id === base.id ? base : n)) };
+    const e = newEditDraft(base, fixed, at);
+    expect(e.expressions).toEqual([{ tex: 'f(x, p, t)', note: 'the distribution' }]);
+    expect(draftNode(e, graph)).toEqual(base);
+    expect(draftNode({ ...e, tags: { semantic: [], representation: [] } }, graph).tags).toBeUndefined();
+    const { tags: _t, expressions: _x, ...older } = jeans();
+    void [_t, _x];
+    expect(parseDraft(older)).toMatchObject({ tags: { semantic: [], representation: [] }, expressions: [] });
+    // A draft from the short-lived physicalRole / mathematicalCharacter lists (Decision 55).
+    expect(parseDraft({ ...older, physicalRole: ['Dynamical'], mathematicalCharacter: ['Scalar'] })).toMatchObject({
+      tags: { semantic: ['Dynamical'], representation: ['Scalar'] },
+    });
+    expect(parseDraft({ ...older, physicalRole: ['Dynamical'] })).not.toHaveProperty('physicalRole');
+  });
   it('an equation carries the equation and empty lists', () => {
     const node = draftNode({ ...jeans(), type: 'equation', equation: ' a = b ' }, concepts);
     expect(node.attrs).toMatchObject({ equation: 'a = b', variables: [], conditions: [], representations: [] });

@@ -13,10 +13,11 @@
 **Implemented:** 2026-11-24
 
 ### Implemented
-- Schema: `tags: { semantic?, representation? }` on a concept (`src/data/types.ts`, `src/data/tags.ts`); the starting words in `conceptVocabulary.json` → `tagLayers`; checked by `validate-concepts.mjs`, proposals and personal maps; docs/AUTHORING.md, Decision 56
+- Schema: `tags: { semantic?, representation? }` on a concept (`src/data/types.ts`, `src/data/tags.ts`); the starting words in `conceptVocabulary.json` → `tagLayers`; checked by `validate-concepts.mjs`, proposals and personal maps; docs/AUTHORING.md, Decision 57
 - Editor: a **Tags** section (`TagInput`) — chips, a typed field with suggestions (the vocabulary's and every tag in use: atlas, map, proposals, drafts), one-tap suggestions; drafts carry tags (older drafts read with none); an edit lists tag changes
 - Card: **Role:** and **Represented as:**
 - Tests: tag rules, suggestions growing with use, a draft round trip, old drafts; smoke: tags on a card, picked and typed in the editor
+- Merged 2026-11-25 with the parallel `physicalRole` / `mathematicalCharacter` work (Decision 55): tags replace those lists (their extra words join the suggestions, a draft with them reads them as tags, tags may be 80 characters to qualify one); its expressions, its `Characterisation` block on card and page, and its editor section (**Role and mathematical character**, now with the tag fields) stay. Also kept from it: map text without em dashes, completed ticks for students only, a lighter dim behind a chosen concept
 
 ### Review
 Not run — direct session.
@@ -31,7 +32,7 @@ Not run — direct session.
 ### Implemented
 - The accent picker and the forest / creme alternates removed (`lib/usePalette.ts`, their CSS); terracotta always; privacy notice (EN/DE) no longer lists a palette (Decision 48 note)
 - `CourseGoalsPanel`: **Add learning goals** turns the list of all learning goals into a picking list — a tick on each one not yet in the course goal, then **Add N learning goals** at once
-- Comment mode (Decision 55): `CommentsPanel` beside the map (a bottom sheet on a phone); a click on a concept or relation picks it for a comment; comments on a concept's parts (`node:<id>:<part>`, `COMMENT_FIELDS`); numbered circle marks on the map (`GraphView` `marks`), pinned visible at any zoom; reply / resolve in place; the map's canvas follows its box (ResizeObserver)
+- Comment mode (Decision 56): `CommentsPanel` beside the map (a bottom sheet on a phone); a click on a concept or relation picks it for a comment; comments on a concept's parts (`node:<id>:<part>`, `COMMENT_FIELDS`); numbered circle marks on the map (`GraphView` `marks`), pinned visible at any zoom; reply / resolve in place; the map's canvas follows its box (ResizeObserver)
 - Tests: anchors with parts, open-thread counts; smoke: comment mode (marks, a click picks, a comment on a part, reply, resolve), course goals added in bulk
 
 ### Review

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { NODE_TYPE_LABELS } from '../data/types';
 import type { GraphNode } from '../data/types';
-import { TAG_LAYERS } from '../data/tags';
 import {
   CARD_SECTIONS,
   CONDITION_SECTIONS,
@@ -14,6 +13,7 @@ import {
 import { assumptionsOf } from '../graph/concepts';
 import type { ConceptIndex } from '../graph/concepts';
 import type { ConditionItem } from '../graph/cardSections';
+import Characterisation from './Characterisation';
 import TypeBadge from './TypeBadge';
 
 interface ConceptCardProps {
@@ -60,18 +60,6 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
           <Todo label="To-do" />
         </p>
       )}
-      {TAG_LAYERS.map((layer) =>
-        node.tags?.[layer.key]?.length ? (
-          <p key={layer.key} className="concept-tags">
-            <span className="concept-tags-layer">{layer.key === 'semantic' ? 'Role' : 'Represented as'}:</span>{' '}
-            {node.tags[layer.key]!.map((t) => (
-              <span key={t} className="tag-chip tag-chip-static">
-                {t}
-              </span>
-            ))}
-          </p>
-        ) : null,
-      )}
       {/* Fluff makes no claim, so it has no epistemic status to settle. */}
       {node.type !== 'fluff' && (
         <p className="concept-status">
@@ -81,6 +69,8 @@ export default function ConceptCard({ node, index, onPick, children }: ConceptCa
       )}
 
       {children}
+
+      <Characterisation node={node} level={3} />
 
       {conditionSection && (
         <section className="rel-block">

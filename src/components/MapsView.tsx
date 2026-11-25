@@ -80,7 +80,7 @@ export default function MapsView({ me, onOpen }: MapsViewProps) {
                 >
                   {m.title}
                 </a>{' '}
-                <span className="map-panel-role">— {ROLE_LABELS[m.role]}</span>
+                <span className="map-panel-role">({ROLE_LABELS[m.role]})</span>
               </li>
             ))}
           </ul>

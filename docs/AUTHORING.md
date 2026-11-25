@@ -364,6 +364,40 @@ file in `content/media/` that no concept uses. The editor's **Pictures** field t
 file, makes a large one smaller (to 1600 px), and asks for the description and credit;
 the picture goes into the same pull request.
 
+## Layers 2 and 3: `tags` and `expressions` (Decisions 55, 57)
+
+Optional, on the concept itself (not in `attrs`), and not for learning goals, resources or
+fluff. Layer 1 is the concept's kind; layers 2 and 3 are tags, several words per layer:
+
+```json
+"tags": {
+  "semantic": ["State characteristic", "Conserved quantity (under appropriate conditions)"],
+  "representation": ["Scalar", "Extensive (for ordinary additive systems)"]
+},
+"expressions": [
+  { "tex": "E" },
+  { "tex": "E = T + V", "note": "in a suitable mechanical model" },
+  { "tex": "E = mc^2", "note": "rest energy" }
+]
+```
+
+- `semantic` — **What role does it play in physics?** (Kinematic, Dynamical, Conserved,
+  Interaction-related, Thermodynamic, Geometrical, Probabilistic, Observational, State characteristic …)
+- `representation` — **How is it represented?** (Scalar, Vector, Tensor, Function, Field,
+  Operator, Differential form, Equation, Distribution, Extensive, Intensive …)
+
+The words are free. The editor suggests the starting ones (`conceptVocabulary.json` →
+`tagLayers`) and every tag some concept already carries, so a new tag is suggested to
+others once a concept with it is on the map. Each tag trimmed, at most 80 characters (room
+to qualify one), at most 12 per layer, none twice (whatever its capitals); leave out a layer
+with none. (Until 2026-11-25 these were `physicalRole` and `mathematicalCharacter`; the
+validator now asks for `tags` instead.)
+
+`expressions`: how it's written. An expression's `tex` is LaTeX (checked to typeset), its
+`note` plain words; the list is non-empty when present. The physical domain is the
+concept's `attrs.domain`. The card and page show **Physical role**, **Mathematical
+character**, the physical domain and the expressions, only when there are any.
+
 ## Assumptions — `assumes` on the concept
 
 What a concept takes for granted — a limit, an approximation, a condition — is written
@@ -560,30 +594,6 @@ concept's card; a missing value shows a **To-do** marker. Known values live in
 `conceptVocabulary.json` → `epistemicStatuses`; using a new value is fine but
 the validator warns until you add it there. Leave the field out rather than
 writing an empty string.
-
-## `tags`
-
-Two layers of tags beside a concept's kind (its `type` is the first layer), as an
-optional top-level object — several words per layer:
-
-```json
-"tags": {
-  "semantic": ["Kinematic", "Conserved"],
-  "representation": ["Vector", "Field"]
-}
-```
-
-- `semantic` — **What role does it play in physics?** (Kinematic, Dynamical, Conserved,
-  Interaction-related, Thermodynamic, Geometrical, Probabilistic, Observational …)
-- `representation` — **How is it represented?** (Scalar, Vector, Tensor, Function, Field,
-  Operator, Differential form, Equation, Distribution …)
-
-The words are free. The editor suggests the starting ones (`conceptVocabulary.json` →
-`tagLayers`) and every tag some concept already carries, so a new tag is suggested to
-others once a concept with it is on the map. Each tag trimmed, at most 40 characters,
-at most 12 per layer, none twice (whatever its capitals); leave out a layer with none.
-The card shows them as **Role** and **Represented as**. Learning goals and resources
-have none in the editor.
 
 ## Ids
 

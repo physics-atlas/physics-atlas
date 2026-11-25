@@ -687,7 +687,7 @@ export default function App() {
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
         {/* An atlas page's own heading is the view's h1, and the feedback form's; a map's pages, too. */}
         {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && mode !== 'guide' && mode !== 'maps' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
-          <h1 className="visually-hidden">{mode === 'map' && personal ? `${personal.map.title} — personal map` : VIEW_TITLES[mode]}</h1>
+          <h1 className="visually-hidden">{mode === 'map' && personal ? `${personal.map.title}, personal map` : VIEW_TITLES[mode]}</h1>
         )}
         {isConceptView(mode) && (
           <ConceptMapView

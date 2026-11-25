@@ -11,8 +11,8 @@ const sample = (tags: GraphNode['tags']): GraphNode =>
 describe('concept tags, in two layers', () => {
   it('start from the vocabulary’s words, as in the layers’ table', () => {
     expect(TAG_LAYERS.map((l) => [l.key, l.suggested.length])).toEqual([
-      ['semantic', 8],
-      ['representation', 9],
+      ['semantic', 9],
+      ['representation', 11],
     ]);
   });
 

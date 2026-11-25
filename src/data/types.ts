@@ -169,7 +169,23 @@ interface GraphNodeBase {
   assumes?: Assumption[];
   /** Pictures of it, shown on its card and page (files in content/media/) */
   figures?: Figure[];
+  /** How it's written: `E`, `E = mc^2` with the note "rest energy" */
+  expressions?: MathExpression[];
 }
+
+/** One way a concept is written mathematically, with where that form applies. */
+export interface MathExpression {
+  /** LaTeX: `E = T + V` */
+  tex: string;
+  /** Plain words: "in a suitable mechanical model" */
+  note?: string;
+}
+
+/**
+ * The kinds that make no physical claim of their own, so carry no tags (layers
+ * 2 and 3) or expressions (the validator, proposals and the form agree).
+ */
+export const UNCHARACTERISED_TYPES: readonly NodeType[] = ['learning_goal', 'resource', 'fluff'];
 
 /** A picture of a concept: content/media/<file>, described for people who can't see it. */
 export interface Figure {

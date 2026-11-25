@@ -11,7 +11,8 @@ export const TAG_LAYERS: { key: TagLayer; title: string; question: string; sugge
   ['semantic', 'representation'] as const
 ).map((key) => ({ key, ...vocab.tagLayers[key] }));
 
-export const TAG_LIMITS = { length: 40, perLayer: 12 };
+// Long enough to qualify a tag: "Conserved quantity (under appropriate conditions)".
+export const TAG_LIMITS = { length: 80, perLayer: 12 };
 
 /** A tag as stored: trimmed, inner spaces single. */
 export const cleanTag = (tag: string): string => tag.trim().replace(/\s+/g, ' ');

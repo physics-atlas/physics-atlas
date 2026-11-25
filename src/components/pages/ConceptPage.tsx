@@ -12,6 +12,7 @@ import { pageHref } from '../../lib/pageLinks';
 import type { PageRef } from '../../lib/pageLinks';
 import type { LinkTarget } from '../../lib/pageText';
 import EquationView, { FormulaView } from '../EquationView';
+import Characterisation from '../Characterisation';
 import Figures from '../Figures';
 import RichText from '../RichText';
 import TypeBadge from '../TypeBadge';
@@ -174,7 +175,7 @@ export default function ConceptPage({
         <Placement id={node.id} index={index} contents={contents} links={links} />
         {fromAtlas && (
           <p className="concept-from-atlas">
-            <strong>From the atlas</strong> — this map uses the concept as it is on the atlas.{' '}
+            <strong>From the atlas:</strong> this map uses the concept as it is on the atlas.{' '}
             <a href={pageHref(node.id)}>Its atlas page</a>
           </p>
         )}
@@ -196,6 +197,8 @@ export default function ConceptPage({
         </h2>
         {description?.trim() ? <p>{description}</p> : <p className="atlas-empty">Not written yet.</p>}
       </section>
+
+      <Characterisation node={node} level={2} />
 
       {node.figures && node.figures.length > 0 && <Figures figures={node.figures} />}
 

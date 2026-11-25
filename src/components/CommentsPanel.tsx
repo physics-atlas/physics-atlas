@@ -87,7 +87,7 @@ export default function CommentsPanel({
     const nodes = resolved.graph.nodes.map((n) => ({ key: `node:${n.id}`, label: n.label })).sort(byLabel);
     const edges = resolved.graph.edges.map((e) => ({ key: `edge:${e.id}`, label: anchorLabel({ kind: 'edge', id: e.id }, resolved) })).sort(byLabel);
     const pageDepths = resolved.graph.nodes
-      .flatMap((n) => Array.from({ length: pages.depths(n.id) }, (_, i) => ({ key: `page:${n.id}:${i + 1}`, label: `${n.label} — depth ${i + 1}` })))
+      .flatMap((n) => Array.from({ length: pages.depths(n.id) }, (_, i) => ({ key: `page:${n.id}:${i + 1}`, label: `${n.label} (depth ${i + 1})` })))
       .sort(byLabel);
     return { nodes, edges, pageDepths };
   }, [resolved, pages]);
@@ -119,7 +119,7 @@ export default function CommentsPanel({
     <aside className="comments-side" aria-labelledby={ids.heading}>
       <div className="comments-side-head">
         <h2 className="map-panel-heading" id={ids.heading}>
-          Comments <span className="map-panel-role">— {openCount} open{fresh.size ? `, ${fresh.size} new` : ''}</span>
+          Comments <span className="map-panel-role">({openCount} open{fresh.size ? `, ${fresh.size} new` : ''})</span>
         </h2>
         <button type="button" className="map-card-close comments-side-close" onClick={onClose} aria-label="Close the comments (leaves comment mode)">
           ×
@@ -235,7 +235,7 @@ export default function CommentsPanel({
       </fieldset>
       {comments === null && !error && <p>Loading the comments…</p>}
       {comments !== null && shown.length === 0 && (
-        <p className="map-panel-note">{threads.length === 0 ? 'No comments yet.' : 'None here — try another choice above.'}</p>
+        <p className="map-panel-note">{threads.length === 0 ? 'No comments yet.' : 'None here. Try another choice above.'}</p>
       )}
       <ol className="comments-list" aria-labelledby={ids.heading}>
         {shown.map((t) => {
@@ -297,7 +297,9 @@ function Thread({ thread, label, nodeId, showLabel, fresh, login, role, busy, on
       <article className={`comments-thread${first.resolvedAt ? ' comments-thread-resolved' : ''}`} aria-labelledby={ids.heading}>
         <h3 className="comments-about" id={ids.heading}>
           {label}{' '}
-          <span className="comments-state">— {first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'}</span>
+          <span className="comments-state">
+            ({first.resolvedAt ? `resolved${first.resolvedBy ? ` by @${first.resolvedBy}` : ''}` : 'open'})
+          </span>
         </h3>
         <ol className="comments-entries">
           {all.map((c) => (
