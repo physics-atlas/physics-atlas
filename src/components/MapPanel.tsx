@@ -22,11 +22,13 @@ interface MapPanelProps {
   onLeft: () => void;
   /** Centres the map on a concept */
   onShow: (id: string) => void;
+  /** Opens the atlas to pick several concepts for the map (Decision 58) */
+  onPickFromAtlas: () => void;
 }
 
 const GRANTABLE: MapRole[] = ['editor', 'commenter', 'viewer'];
 
-export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapPanelProps) {
+export default function MapPanel({ saved, login, onSaved, onLeft, onShow, onPickFromAtlas }: MapPanelProps) {
   const { map, role, members } = saved;
   const [status, setStatus] = useState('');
   const [problems, setProblems] = useState<string[]>([]);
@@ -113,6 +115,12 @@ export default function MapPanel({ saved, login, onSaved, onLeft, onShow }: MapP
               placeholder="Add a concept from the atlas…"
               onPick={(id) => void save([{ kind: 'ref', id, body: {} }], `Added ${labelOf(id)} to the map.`).then((ok) => ok && onShow(id))}
             />
+            <div className="map-panel-row">
+              <button type="button" className="draft-button" disabled={busy} onClick={onPickFromAtlas}>
+                Add several from the atlas
+              </button>
+              <span className="map-panel-note">Pick them on the atlas map, then review and add them at once.</span>
+            </div>
           </div>
         )}
         <div className="map-panel-part">

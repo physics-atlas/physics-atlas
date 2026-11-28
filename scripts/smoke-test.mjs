@@ -948,6 +948,83 @@ if (guidePage.search !== '?mode=guide' || guidePage.sections < 2) errors.push(`t
   const pageSave = sim.saves.at(-1)?.changes.map((c) => `${c.kind}:${Array.isArray(c.body) ? c.body.join('|') : (c.body?.id ?? '')}`);
   if (atlasEditable || !saveChanges || !pageSave?.some((c) => c.startsWith('page:') && c.includes('Sample addition.')))
     errors.push(`a map page: ${JSON.stringify({ atlasEditable, saveChanges: Boolean(saveChanges), pageSave })}`);
+  // Adding several from the atlas (Decision 58): the atlas takes the map's place and a click picks; a pick no
+  // relation connects to the map is marked, with what would connect it, and the review offers to add that too.
+  await pm.goto(`${URL}/?mode=map&map=sample-map`, { waitUntil: 'networkidle0' });
+  await pm.click('.map-bar-panel');
+  const severalButton = await pm.waitForFunction(() => [...document.querySelectorAll('.map-panel button')].find((b) => b.textContent === 'Add several from the atlas'));
+  const inMapIds = [...sim.saved.map.refs, ...sim.saved.map.nodes.map((n) => n.id)];
+  await severalButton.click();
+  await pm.waitForSelector('.pick-panel');
+  await pm.waitForFunction((n) => window.__cy && window.__cy.nodes().length > n, {}, inMapIds.length + 10);
+  const pickIds = await pm.evaluate((inMap) => {
+    const cy = window.__cy;
+    const has = new Set(inMap);
+    const out = (n) => !has.has(n.id());
+    const near = cy.$id('tangent_vector').neighborhood('node').filter(out)[0]?.id();
+    const far = cy
+      .nodes()
+      .filter((n) => out(n) && n.id() !== near && n.neighborhood('node').every((m) => out(m) && m.id() !== near))
+      .filter((n) => n.neighborhood('node').some((m) => m.neighborhood('node').some((k) => has.has(k.id()))))[0]
+      ?.id();
+    return { near, far };
+  }, inMapIds);
+  await pm.evaluate((ids) => {
+    for (const id of [ids.near, ids.far, 'tangent_vector']) window.__cy.$id(id).emit('tap');
+  }, pickIds);
+  await pm.waitForFunction(() => document.querySelectorAll('.pick-panel .map-panel-list li').length === 2, { timeout: 5000 }).catch(() => {});
+  const picking = await pm.evaluate((ids) => {
+    const label = (id) => window.__cy.$id(id).data('label') ?? '';
+    return {
+      h1: document.querySelector('h1')?.textContent,
+      news: document.querySelector('.pick-panel [role="status"]')?.textContent,
+      listed: [...document.querySelectorAll('.pick-panel .map-panel-list li > span')].map((s) => s.textContent),
+      near: label(ids.near).includes('✓ Picked') && !label(ids.near).includes('not connected'),
+      far: label(ids.far).includes('✓ Picked · not connected'),
+      inMap: label('tangent_vector').includes('In your map'),
+      wouldConnect: window.__cy.nodes().some((n) => (n.data('label') ?? '').includes('Would connect')),
+    };
+  }, pickIds);
+  await pm.screenshot({ path: `${OUT}/map-picking.png` });
+  await pm.evaluate(() => [...document.querySelectorAll('.pick-panel button')].find((b) => b.textContent.startsWith('Review and add'))?.click());
+  await pm.waitForSelector('.pick-fieldset');
+  await pm.screenshot({ path: `${OUT}/map-picking-review.png` });
+  const review = await pm.evaluate(() => ({
+    legends: [...document.querySelectorAll('.pick-fieldset legend')].map((l) => l.textContent),
+    checked: document.querySelector('.pick-fieldset input:checked')?.value,
+    options: document.querySelectorAll('.pick-fieldset input').length,
+  }));
+  const savesBefore = sim.saves.length;
+  await pm.evaluate(() => [...document.querySelectorAll('.pick-panel button')].find((b) => /^Add \d+ concepts$/.test(b.textContent))?.click());
+  await pm.waitForFunction(() => !document.querySelector('.pick-panel'), { timeout: 10000 }).catch(() => {});
+  const pickSave = sim.saves.length > savesBefore ? sim.saves.at(-1).changes.map((c) => `${c.kind}:${c.id}`) : [];
+  const afterPick = await pm.evaluate(() => ({
+    done: [...document.querySelectorAll('.map-bar-note')].map((p) => p.textContent).join(' '),
+    nodes: window.__cy?.nodes().length,
+  }));
+  if (
+    !pickIds.near ||
+    !pickIds.far ||
+    !picking.h1?.startsWith('The atlas, to pick concepts for') ||
+    !picking.news?.includes('in your map already') ||
+    picking.listed.length !== 2 ||
+    !picking.listed[1].includes('(not connected)') ||
+    !picking.near ||
+    !picking.far ||
+    !picking.inMap ||
+    !picking.wouldConnect ||
+    review.legends.length !== 1 ||
+    review.checked !== 'link' ||
+    review.options !== 3 ||
+    pickSave.length !== 3 ||
+    !pickSave.includes(`ref:${pickIds.near}`) ||
+    !pickSave.includes(`ref:${pickIds.far}`) ||
+    !afterPick.done.includes('Added 3 concepts') ||
+    afterPick.nodes !== inMapIds.length + 3
+  )
+    errors.push(`adding several from the atlas: ${JSON.stringify({ pickIds, picking, review, pickSave, afterPick })}`);
+  console.log('several from the atlas:', { pickIds, pickSave });
+
   // The share link (Phase 4): a map has one from the start; the owner and editors see it, only the owner replaces it.
   const shareView = async () => {
     await pm.goto(`${URL}/?mode=map&map=sample-map`, { waitUntil: 'networkidle0' });

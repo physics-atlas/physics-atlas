@@ -155,6 +155,9 @@ Pictures (later): Cloudflare R2, the same rules as the atlas's figures.
   with its learning goals, and every learning goal on the map with the course goals it's in; picking one
   centres it on the map or opens its page, by the view that's open. Editors make, rename, order (move
   up/down), fill and delete them; a concept that leaves the map leaves its course goals too.
+- ✅ **Several from the atlas** (2026-11-28, Decision 58): editors pick concepts on the atlas map itself;
+  a pick no relation connects to the map is marked as it's picked, with the concepts that would connect
+  it, and before the one save each is added with them, added alone, or left out.
 - **Exit:** the educator, Sophie and mhardtke can build one map together; history recorded.
 
 ### Phase 3 — Comments *(the pilot's asynchronous work)* — ✅ done 2026-11-22

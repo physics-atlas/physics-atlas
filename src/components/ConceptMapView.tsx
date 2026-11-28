@@ -22,7 +22,7 @@ import { GitHubStore, fetchMe, loginHref, logout, signInProblemOnLoad, signInPro
 import type { Me, SignInProblem, SubmitResult } from '../community/api';
 import type { Proposal } from '../community/types';
 import type { MapSave } from './DraftEditor';
-import type { CommentMark } from './GraphView';
+import type { CommentMark, Picking } from './GraphView';
 import { useDrafts } from '../community/useDraft';
 import { similarLabels } from '../graph/conflicts';
 import { buildConceptIndex, conceptPathFor, neighborsOf, splitFluff } from '../graph/concepts';
@@ -158,6 +158,11 @@ interface ConceptMapViewProps {
    * picks it for a comment instead of opening its card; marks show the open threads.
    */
   commentMode?: { marks: CommentMark[]; onPick: (kind: 'node' | 'edge', id: string) => void };
+  /**
+   * Picking concepts for a personal map (the atlas, Decision 58): clicking a concept, or
+   * its entry in the list, picks it or puts it back instead of opening its card.
+   */
+  picking?: Picking & { onPick: (id: string) => void };
 }
 
 export default function ConceptMapView({
@@ -184,6 +189,7 @@ export default function ConceptMapView({
   mapEditing,
   completedIn,
   commentMode,
+  picking,
 }: ConceptMapViewProps) {
   // Fluff is fun mode only. The map always lays out `base` and draws the
   // fluff as a layer on top; everything this view lists, searches and checks
@@ -386,6 +392,10 @@ export default function ConceptMapView({
       if (id) commentMode.onPick('node', id);
       return;
     }
+    if (picking && !draft) {
+      if (id) picking.onPick(id);
+      return;
+    }
     if (!draft || id === null) return onSelect(id);
     if (id === own)
       setDraftStatus(draft.editOf ? 'That’s the concept you’re editing.' : 'That’s your draft — drag it to where it seems to fit.');
@@ -506,6 +516,7 @@ export default function ConceptMapView({
       if (id) commentMode.onPick('edge', id);
       return;
     }
+    if (picking) return;
     if (id) onSelect(null);
     setSelectedEdgeId(id);
   };
@@ -704,11 +715,17 @@ export default function ConceptMapView({
                   {nodes.map((n) => (
                     <li key={n.id}>
                       <button
-                        className={`concept-index-item ${n.id === selectedId ? 'concept-index-item-active' : ''}`}
-                        onClick={() => onFocus(n.id)}
+                        className={`concept-index-item ${n.id === selectedId || picking?.picked.has(n.id) ? 'concept-index-item-active' : ''}`}
+                        aria-pressed={picking && !picking.inMap.has(n.id) ? picking.picked.has(n.id) : undefined}
+                        disabled={picking?.inMap.has(n.id)}
+                        onClick={() => (picking ? picking.onPick(n.id) : onFocus(n.id))}
                       >
                         {n.label}
                         {fromAtlas?.has(n.id) && <span className="concept-via"> · from the atlas</span>}
+                        {picking?.picked.has(n.id) && (
+                          <span className="concept-via"> · picked{picking.unconnected.has(n.id) ? ', not connected' : ''}</span>
+                        )}
+                        {picking?.inMap.has(n.id) && <span className="concept-via"> · in your map</span>}
                       </button>
                     </li>
                   ))}
@@ -1059,6 +1076,7 @@ export default function ConceptMapView({
           onDraftNear={onDraftNear}
           draftRecall={draftRecall}
           arrangement={arrangement}
+          picking={picking}
           marks={commentMode?.marks}
           onMark={(m) => commentMode?.onPick(m.kind, m.id)}
           extraControls={

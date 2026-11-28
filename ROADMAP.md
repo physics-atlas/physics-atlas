@@ -6,6 +6,22 @@
 
 <!-- ROADMAP-INSERT-HERE: planner inserts new entries directly below this line, newest first -->
 
+## feature-86: personal maps — several concepts picked on the atlas at once
+
+**Status:** ✅ Implemented <!-- status-line: feature-86 -->
+**Planned:** 2026-11-28 — requested: a button such as "Add multiple nodes from the map" that takes the editor to the atlas map, where clicks select concepts and a confirmation adds them all; unconnected picks marked while picking, then at confirmation added with the concepts that connect them, added unconnected, or left out
+**Implemented:** 2026-11-28
+
+### Implemented
+- Decision 58. `src/maps/pick.ts`: `pickReport` (which picks no relation connects to the map, and the fewest atlas concepts that would, at most `LINK_STEPS` = 3) and `pickChanges` (one save of references)
+- `MapPanel`: **Add several from the atlas**; `App`: the atlas in the map's place while picking, a click picks (`ConceptMapView` `picking`, also its concept list); `GraphView` `picking`: **✓ Picked**, **✓ Picked · not connected** (dashed), **● In your map**, **＋ Would connect**, all pinned visible
+- `AtlasPicker`: the picks (put back, pick by name), then **Review and add** with a choice per unconnected pick, one save, "Added N concepts to the map." in the map bar
+- Tests: `src/maps/pick.test.ts`; smoke: picking, the marks, the review's default, the save
+
+### Review
+Not run — direct session.
+
+
 ## feature-85: tags in two layers — semantic, and mathematical/representational
 
 **Status:** ✅ Implemented <!-- status-line: feature-85 -->

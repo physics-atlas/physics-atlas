@@ -802,6 +802,24 @@ rules in BACKLOG feature-66 first).
 | Panning on a phone | A drag that starts on a concept pans the map, as one on the background does (an 8px slop keeps taps as taps). Cytoscape leaves such a drag still because the concepts can't be moved — and at the whole-map zoom on a phone the circles and their touch margin cover most of the screen, so a finger rarely found anywhere that panned. Also works around a Cytoscape 3.34 throw on a pinch that starts on a concept. |
 | Zoom-out limit | The map zooms out to half the whole-map view (`minZoom`, following the layout and the window). Past three quarters of it, or panned until none of the map is on screen, a **Take me back!** button returns to the first view. |
 
+## Decision 58 — Several atlas concepts are picked on the atlas, unconnected ones said before saving (2026-11)
+
+**Aim:** build a course map from the atlas faster than one search at a time, without concepts
+floating alone on the map by accident.
+
+| Piece | Rule |
+|---|---|
+| Entry | **Add several from the atlas** in the map's panel (editors). The atlas map takes the personal map's place under the map bar; a panel under the bar holds the picks. |
+| Picking | A click on a concept picks it, a second puts it back; the panel's search and the concept list (`aria-pressed`) pick too, so the keyboard does everything. Relations open nothing. The map's concepts can't be picked; they say **● In your map**. |
+| Connected | A pick is connected when relations (the atlas's, and the map's own) lead from it to the map, through the map and the other picks. In an empty map, the picks hang together around their largest group. |
+| While picking | A pick says **✓ Picked**, or **✓ Picked · not connected** (dashed outline) when it isn't; the atlas concepts on the shortest way from it to the map (at most 3, `LINK_STEPS`; never fluff) say **＋ Would connect**. Words in the label, so colour never carries it alone. |
+| Before saving | **Review and add** lists each unconnected pick with three choices: add it with the concepts that connect it (named; the default when there are any), add it unconnected, or leave it out. It names what will be added, and which of those weren't picked. |
+| Saving | One save: a reference per concept (`pickChanges` in `src/maps/pick.ts`); the atlas's relations between them come along, as for any reference. |
+
+**Open paths:** connecting an unconnected concept with a relation of the map's own (a **Connect it**
+prompt on its card), for a course that links things its own way; a longer `LINK_STEPS`; keeping
+the picks in the address so a picking session survives a reload.
+
 ## Decision 57 — Layers 2 and 3 are tags (2026-11)
 
 Replaces Decision 55's `physicalRole` and `mathematicalCharacter` lists (merged 2026-11-25); its

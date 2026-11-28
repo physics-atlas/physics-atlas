@@ -3889,6 +3889,42 @@ a.mode-tab {
   padding-left: 20px;
 }
 
+/* Picking several concepts from the atlas (Decision 58): the panel, then each unconnected pick's choice. */
+.pick-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.pick-panel .map-panel-heading:focus {
+  outline: none;
+}
+
+.pick-panel .map-panel-heading:focus-visible {
+  outline: 2px solid var(--terra);
+  outline-offset: 2px;
+}
+
+.pick-fieldset {
+  margin: 0;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.pick-fieldset legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.pick-choice {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 24px;
+}
+
 /* A saved map's comment threads (Phase 3): the form, then the threads. */
 .comments-threads {
   flex: 2 1 360px;

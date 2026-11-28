@@ -21,9 +21,10 @@ import { canEdit, deleteConceptChanges, proposalChanges, readMap, readShared, sa
 import type { MapChange } from './maps/items';
 import type { SavedMap } from './maps/api';
 import { resolveMap } from './maps/map';
+import { pickReport } from './maps/pick';
 import { anchorLabel, canComment, newSince, openThreadsByTarget, parseAnchor } from './maps/comments';
 import type { CommentPick } from './components/CommentsPanel';
-import type { CommentMark } from './components/GraphView';
+import type { CommentMark, Picking } from './components/GraphView';
 import { useComments } from './maps/useComments';
 import type { ResolvedMap } from './maps/map';
 import { mapHref, pageHref } from './lib/pageLinks';
@@ -38,6 +39,7 @@ const MapsView = lazy(() => import('./components/MapsView'));
 const MapPanel = lazy(() => import('./components/MapPanel'));
 const CommentsPanel = lazy(() => import('./components/CommentsPanel'));
 const CourseGoalsPanel = lazy(() => import('./components/CourseGoalsPanel'));
+const AtlasPicker = lazy(() => import('./components/AtlasPicker'));
 
 type Mode = 'concepts' | 'community' | 'page' | 'feedback' | 'privacy' | 'guide' | 'map' | 'maps';
 type PrivacyLang = 'en' | 'de';
@@ -182,6 +184,7 @@ export default function App() {
     else {
       setSelectedId(null);
       setBarPanel(null);
+      setPicking(null);
     }
     setCommentsOpen(!commentsOpen);
   };
@@ -449,6 +452,62 @@ export default function App() {
   }, [mapDraftOnArrival, mapPlace?.view]);
   const ownConcept = useCallback((id: string) => Boolean(mapEditing?.own.has(id)), [mapEditing]);
 
+  // Adding several concepts from the atlas at once (Decision 58): the atlas takes the map's
+  // place, and a click picks a concept; the panel under the bar reviews and saves the picks.
+  const [picking, setPicking] = useState<{ ids: string[]; news: string } | null>(null);
+  const [pickDone, setPickDone] = useState('');
+  useEffect(() => setPicking(null), [mode, wantedMap]);
+  const startPicking = useCallback(() => {
+    setBarPanel(null);
+    setCommentsOpen(false);
+    setSelectedId(null);
+    setPickDone('');
+    setPicking({ ids: [], news: '' });
+    setMapPlace((p) => (p ? { ...p, view: 'map' } : p));
+  }, []);
+  const togglePick = useCallback(
+    (id: string) => {
+      const label = concepts.nodes.find((n) => n.id === id)?.label ?? id;
+      setPicking((p) => {
+        if (!p) return p;
+        if (personal?.graph.nodes.some((n) => n.id === id)) return { ...p, news: `${label} is in your map already.` };
+        return p.ids.includes(id)
+          ? { ids: p.ids.filter((x) => x !== id), news: `Put back ${label}.` }
+          : { ids: [...p.ids, id], news: `Picked ${label}.` };
+      });
+    },
+    [personal],
+  );
+  const pickedReport = useMemo(() => (personal && picking ? pickReport(concepts, personal.graph, picking.ids) : null), [personal, picking]);
+  const pickingMarks: (Picking & { onPick: (id: string) => void }) | undefined = useMemo(
+    () =>
+      personal && picking && pickedReport
+        ? {
+            picked: new Set(picking.ids),
+            inMap: new Set(personal.graph.nodes.map((n) => n.id)),
+            unconnected: new Set(pickedReport.unconnected),
+            linkIds: pickedReport.linkIds,
+            onPick: togglePick,
+          }
+        : undefined,
+    [personal, picking, pickedReport, togglePick],
+  );
+  const savePicks = useCallback(
+    async (changes: MapChange[]) => {
+      if (!savedMap) return { error: 'The map isn’t open.' };
+      const r = await saveMap(savedMap.map.id, savedMap.revision, changes);
+      if (!r.ok) {
+        if (r.current) onMapSaved(r.current);
+        return { error: r.error, problems: r.problems };
+      }
+      onMapSaved(r.value);
+      setPicking(null);
+      setPickDone(changes.length === 1 ? 'Added one concept to the map.' : `Added ${changes.length} concepts to the map.`);
+      return null;
+    },
+    [savedMap, onMapSaved],
+  );
+
   const openSavedMap = useCallback((id: string) => {
     setMapPlace({ map: id, view: 'map', page: {} });
     setMode('map');
@@ -598,11 +657,12 @@ export default function App() {
               <li key={view}>
                 <a
                   href={view === 'map' ? mapHref(mapPlace.map) : pageHref(null, mapPlace.map)}
-                  aria-current={mapPlace.view === view ? 'page' : undefined}
-                  className={`mode-tab ${mapPlace.view === view ? 'mode-tab-active' : ''}`}
+                  aria-current={mapPlace.view === view && !picking ? 'page' : undefined}
+                  className={`mode-tab ${mapPlace.view === view && !picking ? 'mode-tab-active' : ''}`}
                   onClick={(e) => {
                     if (!isPlainClick(e)) return;
                     e.preventDefault();
+                    setPicking(null);
                     if (view === 'map') setMapPlace({ ...mapPlace, view: 'map' });
                     else openMapPage({});
                   }}
@@ -647,6 +707,11 @@ export default function App() {
           <a className="map-bar-back" href="/">
             Back to the atlas
           </a>
+          {pickDone && (
+            <p className="map-bar-note" role="status">
+              {pickDone}
+            </p>
+          )}
           {savedMap?.shared && (
             <p className="map-bar-note">
               Shared with you by link. You can read the map and its pages; ticks on completed learning goals stay in this browser.
@@ -678,7 +743,30 @@ export default function App() {
       {mode === 'map' && savedMap && me?.user && !savedMap.shared && mapPanelOpen && (
         <div id="map-panel">
           <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
-            <MapPanel saved={savedMap} login={me.user.login} onSaved={onMapSaved} onLeft={leaveMap} onShow={showOnPersonalMap} />
+            <MapPanel
+              saved={savedMap}
+              login={me.user.login}
+              onSaved={onMapSaved}
+              onLeft={leaveMap}
+              onShow={showOnPersonalMap}
+              onPickFromAtlas={startPicking}
+            />
+          </Suspense>
+        </div>
+      )}
+      {mode === 'map' && savedMap && personal && mayEditMap && picking && pickedReport && (
+        <div id="pick-panel">
+          <Suspense fallback={<p className="atlas-loading">Loading…</p>}>
+            <AtlasPicker
+              title={personal.map.title}
+              map={personal.graph}
+              picked={picking.ids}
+              report={pickedReport}
+              news={picking.news}
+              onPick={togglePick}
+              onCancel={() => setPicking(null)}
+              onConfirm={savePicks}
+            />
           </Suspense>
         </div>
       )}
@@ -687,7 +775,13 @@ export default function App() {
       <main id="main" className="app-main" ref={mainRef} tabIndex={-1}>
         {/* An atlas page's own heading is the view's h1, and the feedback form's; a map's pages, too. */}
         {mode !== 'page' && mode !== 'feedback' && mode !== 'privacy' && mode !== 'guide' && mode !== 'maps' && !(mode === 'map' && mapPlace?.view === 'pages' && personal) && (
-          <h1 className="visually-hidden">{mode === 'map' && personal ? `${personal.map.title}, personal map` : VIEW_TITLES[mode]}</h1>
+          <h1 className="visually-hidden">
+            {mode === 'map' && personal
+              ? picking
+                ? `The atlas, to pick concepts for ${personal.map.title}`
+                : `${personal.map.title}, personal map`
+              : VIEW_TITLES[mode]}
+          </h1>
         )}
         {isConceptView(mode) && (
           <ConceptMapView
@@ -767,7 +861,25 @@ export default function App() {
             </div>
           </div>
         )}
-        {mode === 'map' && personal && mapPlace && personalPages && (
+        {mode === 'map' && personal && mapPlace && picking && pickingMarks && (
+          <ConceptMapView
+            key="atlas-pick"
+            graph={concepts}
+            progress={progress}
+            goalId={null}
+            onGoalChange={() => {}}
+            selectedId={null}
+            onSelect={() => {}}
+            onFocus={focusOn}
+            focus={focus}
+            theme={theme}
+            arrangement={arrangement}
+            onArrangementChange={setArrangement}
+            hintOpen={false}
+            picking={pickingMarks}
+          />
+        )}
+        {mode === 'map' && personal && mapPlace && personalPages && !picking && (
           <MapScope.Provider value={mapPlace.map}>
             {mapPlace.view === 'map' ? (
               <ConceptMapView

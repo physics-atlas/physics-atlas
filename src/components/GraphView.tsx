@@ -60,12 +60,23 @@ const PINNED = [
   'conflict-match',
   // Comment mode: what has open comments shows at any zoom, so its mark can be seen.
   'comment-pinned',
+  // Picking for a personal map: the picks, the map's concepts and what would link a pick.
+  'pick-on',
+  'pick-in',
+  'pick-link',
 ];
 /** Neither layer of reviewed content: the proposals and the proposer's own draft. */
 const NOT_CONFIRMED = '.overlay, .draft';
 const NEAR_COUNT = 6;
 /** How close (model px) a concept must be to the ghost to count as near it. */
 const NEAR_RADIUS = 450;
+
+export interface Picking {
+  picked: Set<string>;
+  inMap: Set<string>;
+  unconnected: Set<string>;
+  linkIds: Set<string>;
+}
 
 export interface CommentMark {
   kind: 'node' | 'edge';
@@ -154,6 +165,12 @@ interface GraphViewProps {
    */
   marks?: CommentMark[];
   onMark?: (mark: CommentMark) => void;
+  /**
+   * Picking concepts for a personal map (Decision 58): the picks, what the map holds
+   * already, the picks that would float alone there and what would link them, each
+   * said in words in the concept's label as well as drawn.
+   */
+  picking?: Picking;
   /** The relation whose card is open: drawn like a hovered one, its two concepts with it. */
   selectedEdgeId?: string | null;
   /** Clicking a line selects its relation (null: clicking off it). */
@@ -474,6 +491,37 @@ const styleFor = (light: boolean) => {
       'underlay-padding': 7,
       'underlay-shape': 'ellipse',
       'text-max-width': 'data(labelWidthWide)',
+    },
+  },
+  // Picking for a personal map: a pick gets a thick outline (dashed while it would float
+  // alone), the map's concepts a thin one, and what would link a pick a soft glow.
+  {
+    selector: 'node.pick-on',
+    style: {
+      'text-max-width': 'data(labelWidthWide)',
+      'border-width': 4,
+      'border-color': accent,
+      'border-opacity': 1,
+      'underlay-color': accent,
+      'underlay-opacity': 0.24,
+      'underlay-padding': 8,
+      'underlay-shape': 'ellipse',
+      'font-weight': 'bold',
+    },
+  },
+  { selector: 'node.pick-alone', style: { 'border-style': 'dashed' } },
+  {
+    selector: 'node.pick-in',
+    style: { 'text-max-width': 'data(labelWidthWide)', 'border-width': 2, 'border-color': ink, 'border-opacity': 0.8 },
+  },
+  {
+    selector: 'node.pick-link',
+    style: {
+      'text-max-width': 'data(labelWidthWide)',
+      'underlay-color': gold,
+      'underlay-opacity': 0.22,
+      'underlay-padding': 7,
+      'underlay-shape': 'ellipse',
     },
   },
   {
@@ -1117,6 +1165,7 @@ export default function GraphView({
   arrangement: chosenArrangement = 'clustered',
   marks,
   onMark,
+  picking,
 }: GraphViewProps) {
   // With the clustered arrangement switched off, every map shows Even.
   const arrangement: Arrangement = CLUSTERED_LAYOUT ? chosenArrangement : 'even';
@@ -1898,7 +1947,7 @@ export default function GraphView({
     if (!cy) return;
     cy.batch(() => {
       cy.elements().removeClass(
-        'chosen dimmed onpath done sel-soft sel-pre sel-post sel-assumed goal-node path-node draft-near conflict-match edge-selected edge-sel-end',
+        'chosen dimmed onpath done sel-soft sel-pre sel-post sel-assumed goal-node path-node draft-near conflict-match edge-selected edge-sel-end pick-on pick-alone pick-in pick-link',
       );
       const near = new Set(draftNearIds);
       const similar = new Set(draftConflictIds);
@@ -1908,7 +1957,23 @@ export default function GraphView({
         const isDone = doneIds?.has(n.id()) ?? false;
         const isGoal = goalId != null && n.id() === goalId;
         // The draft's marks say in words what their glow shows.
-        const hint = similar.has(n.id()) ? '≈ Similar name' : near.has(n.id()) ? '＋ Connect?' : undefined;
+        const id = n.id();
+        const hint = similar.has(id)
+          ? '≈ Similar name'
+          : near.has(id)
+            ? '＋ Connect?'
+            : picking?.picked.has(id)
+              ? picking.unconnected.has(id)
+                ? '✓ Picked · not connected'
+                : '✓ Picked'
+              : picking?.inMap.has(id)
+                ? '● In your map'
+                : picking?.linkIds.has(id)
+                  ? '＋ Would connect'
+                  : undefined;
+        if (picking?.picked.has(id)) n.addClass(picking.unconnected.has(id) ? 'pick-on pick-alone' : 'pick-on');
+        else if (picking?.inMap.has(id)) n.addClass('pick-in');
+        else if (picking?.linkIds.has(id)) n.addClass('pick-link');
         const badge =
           [n.data('badge') as string | undefined, n.data('mark') as string | undefined, hint].filter(Boolean).join(' · ') ||
           undefined;
@@ -1971,6 +2036,7 @@ export default function GraphView({
     draftConflictIds,
     draftShapes,
     selectedEdgeId,
+    picking,
   ]);
 
   // Glide to the focused concept (search / home jumps) — a smooth pan+zoom
